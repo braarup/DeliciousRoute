@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { sql } from "@vercel/postgres";
-import bcrypt from "bcryptjs";
+import { hashPassword } from "@/lib/bcrypt";
 import { randomUUID } from "crypto";
 
 async function createVendorAccount(formData: FormData) {
@@ -23,7 +23,7 @@ async function createVendorAccount(formData: FormData) {
     redirect("/vendor/login?email=" + encodeURIComponent(email));
   }
 
-  const passwordHash = await bcrypt.hash(password, 10);
+  const passwordHash = await hashPassword(password);
 
   const userId = randomUUID();
   const vendorId = randomUUID();
