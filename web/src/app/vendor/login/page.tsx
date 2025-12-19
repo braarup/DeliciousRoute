@@ -1,6 +1,49 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { sql } from "@vercel/postgres";
+import { verifyPassword } from "@/lib/bcrypt";
 
-export default function VendorLoginPage() {
+async function loginVendor(formData: FormData) {
+  "use server";
+
+  const email = (formData.get("email") || "").toString().trim().toLowerCase();
+  const password = (formData.get("password") || "").toString();
+
+  if (!email || !password) {
+    redirect("/vendor/login?error=missing_fields");
+  }
+
+  const userResult = await sql`
+    SELECT id, password_hash
+    FROM users
+    WHERE email = ${email}
+    LIMIT 1
+  `;
+
+  const user = userResult.rows[0];
+
+  if (!user || !user.password_hash) {
+    redirect("/vendor/login?error=invalid_credentials");
+  }
+
+  const ok = await verifyPassword(password, user.password_hash as string);
+
+  if (!ok) {
+    redirect("/vendor/login?error=invalid_credentials");
+  }
+
+  // In a full app, you would set an auth session/cookie here.
+  // For now, treat a successful login as access to the profile page.
+  redirect("/vendor/profile");
+}
+
+export default function VendorLoginPage({
+  searchParams,
+}: {
+  searchParams?: { error?: string };
+}) {
+  const error = searchParams?.error;
+
   return (
     <div className="min-h-screen bg-[var(--dr-neutral)] text-[var(--dr-text)]">
       <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4 py-10 sm:px-6 lg:px-8">
@@ -17,7 +60,11 @@ export default function VendorLoginPage() {
         </header>
 
         <main className="rounded-3xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
-          <form className="space-y-4" aria-label="Vendor login form">
+          <form
+            className="space-y-4"
+            aria-label="Vendor login form"
+            action={loginVendor}
+          >
             <div className="space-y-1">
               <label
                 htmlFor="email"
@@ -60,6 +107,14 @@ export default function VendorLoginPage() {
             >
               Sign in
             </button>
+
+            {error ? (
+              <p className="text-xs text-red-600">
+                {error === "missing_fields"
+                  ? "Please enter both email and password."
+                  : "Email or password was incorrect. Please try again."}
+              </p>
+            ) : null}
           </form>
 
           <div className="mt-4 space-y-2 text-xs text-[#616161]">
