@@ -238,3 +238,10 @@ CREATE INDEX idx_reels_created_at ON reels (created_at);
 -- Vendor status/name filters & search
 CREATE INDEX idx_vendors_status ON vendors (status);
 CREATE INDEX idx_vendors_name ON vendors (name);
+
+-- Additional profile fields for vendor edit page
+ALTER TABLE vendors
+  ADD COLUMN IF NOT EXISTS cuisine_style TEXT,
+  ADD COLUMN IF NOT EXISTS primary_region TEXT,
+  ADD COLUMN IF NOT EXISTS tagline TEXT,
+  ADD COLUMN IF NOT EXISTS hours_text TEXT;

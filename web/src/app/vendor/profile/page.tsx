@@ -6,6 +6,10 @@ async function updateVendorProfile(formData: FormData) {
 
   const truckName = (formData.get("truckName") || "").toString().trim();
   const description = (formData.get("description") || "").toString().trim();
+  const cuisine = (formData.get("cuisine") || "").toString().trim();
+  const city = (formData.get("city") || "").toString().trim();
+  const tagline = (formData.get("tagline") || "").toString().trim();
+  const hours = (formData.get("hours") || "").toString().trim();
   const website = (formData.get("website") || "").toString().trim();
   const socials = (formData.get("socials") || "").toString().trim();
 
@@ -25,6 +29,10 @@ async function updateVendorProfile(formData: FormData) {
     SET
       name = ${truckName || null},
       description = ${description || null},
+      cuisine_style = ${cuisine || null},
+      primary_region = ${city || null},
+      tagline = ${tagline || null},
+      hours_text = ${hours || null},
       website_url = ${website || null},
       instagram_url = ${socials || null},
       updated_at = now()
@@ -36,7 +44,7 @@ async function updateVendorProfile(formData: FormData) {
 
 export default async function VendorProfileManagePage() {
   const vendorResult = await sql`
-    SELECT name, description, website_url, instagram_url
+    SELECT name, description, cuisine_style, primary_region, tagline, hours_text, website_url, instagram_url
     FROM vendors
     ORDER BY created_at DESC
     LIMIT 1
@@ -109,6 +117,7 @@ export default async function VendorProfileManagePage() {
                     name="cuisine"
                     type="text"
                     placeholder="Birria tacos, smash burgers, plant-based bowls..."
+                    defaultValue={vendor?.cuisine_style ?? ""}
                     className="w-full rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)] px-3 py-2 text-sm text-[var(--dr-text)] placeholder:text-[#bdbdbd] focus:border-[var(--dr-primary)] focus:outline-none"
                   />
                 </div>
@@ -125,6 +134,7 @@ export default async function VendorProfileManagePage() {
                     name="city"
                     type="text"
                     placeholder="e.g. Austin, TX"
+                    defaultValue={vendor?.primary_region ?? ""}
                     className="w-full rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)] px-3 py-2 text-sm text-[var(--dr-text)] placeholder:text-[#bdbdbd] focus:border-[var(--dr-primary)] focus:outline-none"
                   />
                 </div>
@@ -141,6 +151,7 @@ export default async function VendorProfileManagePage() {
                     name="tagline"
                     type="text"
                     placeholder="One line that captures your truck."
+                    defaultValue={vendor?.tagline ?? ""}
                     className="w-full rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)] px-3 py-2 text-sm text-[var(--dr-text)] placeholder:text-[#bdbdbd] focus:border-[var(--dr-primary)] focus:outline-none"
                   />
                 </div>
@@ -226,6 +237,7 @@ export default async function VendorProfileManagePage() {
                 name="hours"
                 rows={6}
                 placeholder={"Mon: 11am – 3pm\nTue: 11am – 3pm\nWed: 11am – 3pm\nThu: 5pm – 10pm\nFri: 5pm – 12am"}
+                defaultValue={vendor?.hours_text ?? ""}
                 className="mt-4 w-full resize-none rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)] px-3 py-2 text-sm text-[var(--dr-text)] placeholder:text-[#bdbdbd] focus:border-[var(--dr-primary)] focus:outline-none"
               />
             </div>
