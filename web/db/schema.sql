@@ -259,3 +259,8 @@ CREATE TABLE IF NOT EXISTS customer_profiles (
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
 );
+
+-- Additional user profile fields for first-time signup
+ALTER TABLE users
+  ADD COLUMN IF NOT EXISTS first_name TEXT,
+  ADD COLUMN IF NOT EXISTS last_name TEXT;

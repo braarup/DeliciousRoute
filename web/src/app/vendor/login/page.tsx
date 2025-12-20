@@ -121,7 +121,7 @@ export default function VendorLoginPage({
             <p>
               Don&apos;t have an account?{" "}
               <Link
-                href="/vendor/signup"
+                href="/signup?type=vendor"
                 className="font-semibold text-[var(--dr-primary)] hover:underline"
               >
                 Create vendor account

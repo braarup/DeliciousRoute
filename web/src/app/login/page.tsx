@@ -131,6 +131,8 @@ export default function LoginSelectorPage({
                 <p className="text-xs text-red-600">
                   {error === "missing_fields"
                     ? "Please enter both email and password."
+                    : error === "already_registered"
+                    ? "An account already exists for that email. Please sign in instead."
                     : "Email or password was incorrect. Please try again."}
                 </p>
               ) : null}
@@ -154,7 +156,7 @@ export default function LoginSelectorPage({
                 Vendor tools
               </Link>
               <Link
-                href="/vendor/signup"
+                href="/signup?type=vendor"
                 className="inline-flex items-center justify-center rounded-full border border-[var(--dr-primary)]/60 px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--dr-primary)] hover:bg-[var(--dr-primary)]/5"
               >
                 Create vendor account
@@ -179,7 +181,7 @@ export default function LoginSelectorPage({
                 Go to customer profile
               </Link>
               <Link
-                href="/signup/customer"
+                href="/signup?type=customer"
                 className="inline-flex items-center justify-center rounded-full border border-[#e0e0e0] px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--dr-text)] hover:border-[var(--dr-primary)] hover:bg-[var(--dr-primary)]/5"
               >
                 Create customer account
