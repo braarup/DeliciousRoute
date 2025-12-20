@@ -5,12 +5,17 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 
-export function SiteHeader() {
+type SiteHeaderProps = {
+  ctaHref: string;
+  ctaLabel: string;
+};
+
+export function SiteHeader({ ctaHref, ctaLabel }: SiteHeaderProps) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const isHome = pathname === "/";
-  const showSignIn = isHome;
+  const showCta = isHome;
 
   return (
     <>
@@ -45,12 +50,12 @@ export function SiteHeader() {
             <a href="#about" className="hover:text-[var(--dr-primary)]">
               About
             </a>
-            {showSignIn && (
+            {showCta && (
               <Link
-                href="/login"
+                href={ctaHref}
                 className="rounded-full border border-[var(--dr-primary)] bg-[var(--dr-primary)]/5 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.15em] text-[var(--dr-primary)] shadow-sm hover:bg-[var(--dr-primary)]/10"
               >
-                Sign in
+                {ctaLabel}
               </Link>
             )}
           </div>
@@ -94,10 +99,10 @@ export function SiteHeader() {
                 href="#contact"
                 onClick={() => setMenuOpen(false)}
               />
-              {showSignIn && (
+              {showCta && (
                 <MobileNavItem
-                  label="Sign In"
-                  href="/login"
+                  label={ctaLabel}
+                  href={ctaHref}
                   onClick={() => setMenuOpen(false)}
                 />
               )}
