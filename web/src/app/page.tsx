@@ -12,6 +12,8 @@ type VendorsTabVendor = {
   city: string;
   tagline?: string | null;
   todayHours?: string;
+  isOpenNow?: boolean;
+   profileImagePath?: string | null;
 };
 
 const ads = [
@@ -320,14 +322,32 @@ function VendorsTab({ search, onSearchChange, vendors }: VendorsTabProps) {
               className="group flex flex-col gap-2 rounded-2xl border border-white/10 bg-slate-950/80 p-3 text-sm text-slate-200 shadow-sm shadow-black/40 hover:border-amber-400/60 hover:bg-slate-900/90"
             >
               <div className="flex items-start justify-between gap-2">
-                <div>
-                  <h3 className="text-sm font-semibold text-slate-50">
-                    {vendor.name}
-                  </h3>
-                  <p className="text-xs text-amber-200">{vendor.cuisine}</p>
+                <div className="flex items-start gap-3">
+                  <div className="h-9 w-9 overflow-hidden rounded-full border border-amber-400/40 bg-slate-900">
+                    <img
+                      src={
+                        vendor.profileImagePath || "/deliciousroute-icon.svg"
+                      }
+                      alt="Vendor profile"
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-50">
+                      {vendor.name}
+                    </h3>
+                    <p className="text-xs text-amber-200">{vendor.cuisine}</p>
+                  </div>
                 </div>
-                <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200 ring-1 ring-emerald-400/40">
-                  Live
+                <span
+                  className={
+                    "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] ring-1 " +
+                    (vendor.isOpenNow
+                      ? "bg-emerald-500/15 text-emerald-200 ring-emerald-400/40"
+                      : "bg-slate-500/20 text-slate-200 ring-slate-400/30")
+                  }
+                >
+                  {vendor.isOpenNow ? "Open" : "Closed"}
                 </span>
               </div>
               <p className="line-clamp-2 text-xs text-slate-300">

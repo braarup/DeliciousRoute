@@ -8,6 +8,7 @@ type DbVendorRow = {
   primary_region: string | null;
   tagline: string | null;
   hours_text: string | null;
+  profile_image_path: string | null;
   day_of_week: number | null;
   open_time: any;
   close_time: any;
@@ -101,6 +102,24 @@ function buildConsolidatedHours(
   return parts.join(" · ");
 }
 
+function isOpenNow(hoursByDay: Record<number, { open: string; close: string }>): boolean {
+  const now = new Date();
+  const day = now.getDay();
+  const current = now.toTimeString().slice(0, 5);
+
+  const info = hoursByDay[day];
+  if (!info) return false;
+
+  const { open, close } = info;
+  if (!open || !close) return false;
+
+  if (open <= close) {
+    return current >= open && current <= close;
+  }
+
+  return current >= open || current <= close;
+}
+
 export async function GET() {
   const result = await sql<DbVendorRow>`
     SELECT
@@ -110,6 +129,7 @@ export async function GET() {
       v.primary_region,
       v.tagline,
       v.hours_text,
+      v.profile_image_path,
       lh.day_of_week,
       lh.open_time,
       lh.close_time
@@ -130,6 +150,7 @@ export async function GET() {
       primary_region: string | null;
       tagline: string | null;
       hours_text: string | null;
+      profile_image_path: string | null;
       hoursByDay: Record<number, { open: string; close: string }>;
     }
   >();
@@ -144,6 +165,7 @@ export async function GET() {
         primary_region: row.primary_region,
         tagline: row.tagline,
         hours_text: row.hours_text,
+        profile_image_path: row.profile_image_path,
         hoursByDay: {},
       };
       vendorMap.set(row.id, entry);
@@ -161,6 +183,7 @@ export async function GET() {
 
   const vendors = Array.from(vendorMap.values()).map((row) => {
     const consolidated = buildConsolidatedHours(row.hoursByDay, row.hours_text);
+    const openNow = isOpenNow(row.hoursByDay);
     return {
       id: row.id,
       name: row.name ?? "Untitled venue",
@@ -168,6 +191,8 @@ export async function GET() {
       city: row.primary_region ?? "",
       tagline: row.tagline,
       todayHours: consolidated ?? "",
+      isOpenNow: openNow,
+      profileImagePath: row.profile_image_path ?? null,
     };
   });
 

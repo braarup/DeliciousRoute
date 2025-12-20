@@ -1,6 +1,9 @@
 import { sql } from "@vercel/postgres";
 import { redirect } from "next/navigation";
 import { randomUUID } from "crypto";
+import { Buffer } from "buffer";
+import fs from "fs/promises";
+import path from "path";
 import { destroySession, getCurrentUser } from "@/lib/auth";
 
 async function updateVendorProfile(formData: FormData) {
@@ -26,15 +29,65 @@ async function updateVendorProfile(formData: FormData) {
   }
 
   const vendorResult = await sql`
-    SELECT id FROM vendors
+    SELECT id, profile_image_path FROM vendors
     WHERE owner_user_id = ${currentUser.id}
     ORDER BY created_at DESC
     LIMIT 1
   `;
-  const vendorId = vendorResult.rows[0]?.id as string | undefined;
+  const vendorRow = vendorResult.rows[0] as
+    | { id: string; profile_image_path: string | null }
+    | undefined;
+  const vendorId = vendorRow?.id as string | undefined;
+  const existingImagePath = vendorRow?.profile_image_path ?? null;
 
   if (!vendorId) {
     throw new Error("No vendor found to update");
+  }
+
+  const profileImageFile = formData.get("profileImage");
+  let profileImagePath: string | null = null;
+  let imageErrorCode: string | null = null;
+
+  if (profileImageFile instanceof File && profileImageFile.size > 0) {
+    const maxSizeBytes = 5 * 1024 * 1024; // 5MB
+    const allowedTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+      "image/gif",
+      "image/svg+xml",
+    ];
+
+    const contentType = (profileImageFile as any).type as string | undefined;
+
+    const isValidType = !contentType || allowedTypes.includes(contentType);
+    const isValidSize = profileImageFile.size <= maxSizeBytes;
+
+    if (isValidType && isValidSize) {
+      const arrayBuffer = await profileImageFile.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+
+      const uploadsDir = path.join(process.cwd(), "public", "vendor-profile-images");
+      await fs.mkdir(uploadsDir, { recursive: true });
+
+      let targetPath = existingImagePath;
+
+      if (!targetPath) {
+        const originalName = profileImageFile.name || "upload.png";
+        const extMatch = originalName.match(/\.[a-zA-Z0-9]+$/);
+        const ext = (extMatch ? extMatch[0] : ".png").toLowerCase();
+        const fileName = `${vendorId}${ext}`;
+        targetPath = `/vendor-profile-images/${fileName}`;
+      }
+
+      const fileNameOnDisk = targetPath.replace(/^\/+/, "");
+      const fullPath = path.join(process.cwd(), "public", fileNameOnDisk);
+      await fs.writeFile(fullPath, buffer);
+
+      profileImagePath = targetPath;
+    } else {
+      imageErrorCode = "invalid_image";
+    }
   }
 
   await sql`
@@ -47,6 +100,7 @@ async function updateVendorProfile(formData: FormData) {
       tagline = ${tagline || null},
       website_url = ${website || null},
       instagram_url = ${socials || null},
+      profile_image_path = COALESCE(${profileImagePath}, profile_image_path),
       updated_at = now()
     WHERE id = ${vendorId}
   `;
@@ -118,7 +172,11 @@ async function updateVendorProfile(formData: FormData) {
     }
   }
 
-  redirect("/vendor/profile");
+  redirect(
+    imageErrorCode
+      ? `/vendor/profile?imageError=${encodeURIComponent(imageErrorCode)}`
+      : "/vendor/profile"
+  );
 }
 
 async function signOutVendor() {
@@ -128,7 +186,11 @@ async function signOutVendor() {
   redirect("/");
 }
 
-export default async function VendorProfileManagePage() {
+export default async function VendorProfileManagePage({
+  searchParams,
+}: {
+  searchParams?: { imageError?: string };
+}) {
   const currentUser = await getCurrentUser();
 
   if (!currentUser?.id) {
@@ -162,6 +224,7 @@ export default async function VendorProfileManagePage() {
       v.tagline,
       v.website_url,
       v.instagram_url,
+      v.profile_image_path,
       vl.lat AS default_lat,
       vl.lng AS default_lng
     FROM vendors v
@@ -221,6 +284,12 @@ export default async function VendorProfileManagePage() {
     return "";
   };
 
+  const imageErrorCode = searchParams?.imageError;
+  const imageErrorMessage =
+    imageErrorCode === "invalid_image"
+      ? "Image not updated. Please upload JPEG, PNG, WEBP, GIF, or SVG up to 5MB."
+      : null;
+
   return (
     <div className="min-h-screen bg-[var(--dr-neutral)] text-[var(--dr-text)]">
       <div className="mx-auto flex min-h-screen max-w-5xl flex-col px-4 pb-10 pt-6 sm:px-6 lg:px-8">
@@ -249,6 +318,7 @@ export default async function VendorProfileManagePage() {
 
         <form
           action={updateVendorProfile}
+          encType="multipart/form-data"
           className="grid gap-5 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1.1fr)]"
         >
           {/* Left: core profile fields */}
@@ -345,6 +415,38 @@ export default async function VendorProfileManagePage() {
                     defaultValue={vendor?.description ?? ""}
                     className="w-full resize-none rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)] px-3 py-2 text-sm text-[var(--dr-text)] placeholder:text-[#bdbdbd] focus:border-[var(--dr-primary)] focus:outline-none"
                   />
+                </div>
+
+                <div className="mt-3 flex items-center gap-3 text-xs">
+                  <div className="h-12 w-12 overflow-hidden rounded-full border border-[#e0e0e0] bg-[var(--dr-neutral)]">
+                    <img
+                      src={
+                        (vendor as any)?.profile_image_path ||
+                        "/deliciousroute-icon.svg"
+                      }
+                      alt="Vendor profile"
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[0.7rem] font-medium uppercase tracking-[0.18em] text-[#757575]">
+                      Profile photo
+                    </p>
+                    <input
+                      type="file"
+                      name="profileImage"
+                      accept="image/*"
+                      className="block text-[0.7rem] text-[#616161] file:mr-2 file:rounded-full file:border file:border-[#e0e0e0] file:bg-white file:px-2 file:py-1 file:text-[0.7rem] file:font-semibold file:uppercase file:tracking-[0.16em] file:text-[var(--dr-primary)] hover:file:border-[var(--dr-primary)] hover:file:bg-[var(--dr-primary)]/5"
+                    />
+                    <p className="text-[0.7rem] text-[#9e9e9e]">
+                      Upload a square image. New uploads overwrite the previous photo.
+                    </p>
+                    {imageErrorMessage && (
+                      <p className="text-[0.7rem] text-red-500">
+                        {imageErrorMessage}
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

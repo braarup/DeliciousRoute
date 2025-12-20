@@ -38,7 +38,7 @@ export default async function PublicVendorPage({ params }: PageProps) {
   const { id } = params;
 
   const vendorResult = await sql<DbVendor>`
-    SELECT id, name, description, cuisine_style, primary_region, tagline, hours_text, website_url, instagram_url
+    SELECT id, name, description, cuisine_style, primary_region, tagline, hours_text, website_url, instagram_url, profile_image_path
     FROM vendors
     WHERE id = ${id}
     LIMIT 1
@@ -138,18 +138,30 @@ export default async function PublicVendorPage({ params }: PageProps) {
           <section className="space-y-4">
             <div className="h-full rounded-3xl border border-[#e0e0e0] bg-white p-4 sm:p-5">
               <div className="mb-3 flex items-start justify-between gap-3">
-                <div>
-                  <h2 className="text-base font-semibold text-[var(--dr-text)] sm:text-lg">
-                    {vendor.name || "Untitled venue"}
-                  </h2>
-                  {vendor.cuisine_style && (
-                    <p className="mt-1 text-xs font-medium text-[var(--dr-accent)]">
-                      {vendor.cuisine_style}
-                    </p>
-                  )}
-                  {vendor.tagline && (
-                    <p className="mt-2 text-xs text-[#616161]">{vendor.tagline}</p>
-                  )}
+                <div className="flex items-start gap-3">
+                  <div className="h-11 w-11 overflow-hidden rounded-full border border-[#e0e0e0] bg-[var(--dr-neutral)]">
+                    <img
+                      src={
+                        (vendor as any).profile_image_path ||
+                        "/deliciousroute-icon.svg"
+                      }
+                      alt="Vendor profile"
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-semibold text-[var(--dr-text)] sm:text-lg">
+                      {vendor.name || "Untitled venue"}
+                    </h2>
+                    {vendor.cuisine_style && (
+                      <p className="mt-1 text-xs font-medium text-[var(--dr-accent)]">
+                        {vendor.cuisine_style}
+                      </p>
+                    )}
+                    {vendor.tagline && (
+                      <p className="mt-2 text-xs text-[#616161]">{vendor.tagline}</p>
+                    )}
+                  </div>
                 </div>
               </div>
 

@@ -8,6 +8,7 @@ type DbVendorRow = {
   primary_region: string | null;
   tagline: string | null;
   hours_text: string | null;
+  profile_image_path: string | null;
   day_of_week: number | null;
   open_time: any;
   close_time: any;
@@ -21,6 +22,8 @@ type VendorCard = {
   tagline: string | null;
   hours_text: string | null;
   consolidated_hours: string | null;
+  isOpenNow: boolean;
+  profile_image_path: string | null;
 };
 
 const dayLabels = [
@@ -111,6 +114,26 @@ function buildConsolidatedHours(
   return parts.join(" · ");
 }
 
+function isOpenNow(hoursByDay: Record<number, { open: string; close: string }>): boolean {
+  const now = new Date();
+  const day = now.getDay(); // 0-6
+  const current = now.toTimeString().slice(0, 5); // HH:MM
+
+  const info = hoursByDay[day];
+  if (!info) return false;
+
+  const { open, close } = info;
+  if (!open || !close) return false;
+
+  if (open <= close) {
+    // Same-day range
+    return current >= open && current <= close;
+  }
+
+  // Overnight range, e.g. 20:00-02:00
+  return current >= open || current <= close;
+}
+
 export default async function VendorsListPage() {
   const result = await sql<DbVendorRow>`
     SELECT
@@ -120,6 +143,7 @@ export default async function VendorsListPage() {
       v.primary_region,
       v.tagline,
       v.hours_text,
+      v.profile_image_path,
       lh.day_of_week,
       lh.open_time,
       lh.close_time
@@ -144,6 +168,8 @@ export default async function VendorsListPage() {
         tagline: row.tagline,
         hours_text: row.hours_text,
         consolidated_hours: null,
+        isOpenNow: false,
+        profile_image_path: row.profile_image_path,
         hoursByDay: {},
       };
       vendorMap.set(row.id, entry);
@@ -164,7 +190,8 @@ export default async function VendorsListPage() {
   for (const value of vendorMap.values()) {
     const { hoursByDay, ...rest } = value;
     const consolidated = buildConsolidatedHours(hoursByDay, rest.hours_text);
-    vendors.push({ ...rest, consolidated_hours: consolidated });
+    const openNow = isOpenNow(hoursByDay);
+    vendors.push({ ...rest, consolidated_hours: consolidated, isOpenNow: openNow });
   }
 
   return (
@@ -197,58 +224,69 @@ export default async function VendorsListPage() {
         ) : (
           <main className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {vendors.map((vendor) => (
-              <article
+              <Link
                 key={vendor.id}
+                href={`/vendor/${vendor.id}`}
                 className="vendor-profile-card flex h-full flex-col rounded-3xl border border-[#e0e0e0] bg-white p-4 text-sm text-[#424242] shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
               >
-                <div className="flex-1">
-                  <h2 className="text-base font-semibold text-[var(--dr-text)]">
-                    <Link
-                      href={`/vendor/${vendor.id}`}
-                      className="hover:text-[var(--dr-primary)]"
-                    >
+                <div className="flex flex-1 items-start gap-3">
+                  <div className="h-10 w-10 overflow-hidden rounded-full border border-[#e0e0e0] bg-[var(--dr-neutral)]">
+                    <img
+                      src={
+                        vendor.profile_image_path || "/deliciousroute-icon.svg"
+                      }
+                      alt="Vendor profile"
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <h2 className="text-base font-semibold text-[var(--dr-text)]">
                       {vendor.name || "Untitled venue"}
-                    </Link>
-                  </h2>
+                    </h2>
 
-                  {vendor.cuisine_style && (
-                    <p className="mt-1 text-xs text-[var(--dr-accent)]">
-                      {vendor.cuisine_style}
-                    </p>
-                  )}
+                    {vendor.cuisine_style && (
+                      <p className="mt-1 text-xs text-[var(--dr-accent)]">
+                        {vendor.cuisine_style}
+                      </p>
+                    )}
 
-                  {vendor.primary_region && (
-                    <p className="mt-1 text-xs text-[#757575]">
-                      {vendor.primary_region}
-                    </p>
-                  )}
+                    {vendor.primary_region && (
+                      <p className="mt-1 text-xs text-[#757575]">
+                        {vendor.primary_region}
+                      </p>
+                    )}
 
-                  {vendor.tagline && (
-                    <p className="mt-2 line-clamp-2 text-xs text-[#616161]">
-                      {vendor.tagline}
-                    </p>
-                  )}
+                    {vendor.tagline && (
+                      <p className="mt-2 line-clamp-2 text-xs text-[#616161]">
+                        {vendor.tagline}
+                      </p>
+                    )}
 
-                  {vendor.consolidated_hours && (
-                    <p className="mt-2 text-[11px] text-[#9e9e9e]">
-                      <span className="font-semibold">Hours:</span> {vendor.consolidated_hours}
-                    </p>
-                  )}
+                    {vendor.consolidated_hours && (
+                      <p className="mt-2 text-[11px] text-[#9e9e9e]">
+                        <span className="font-semibold">Hours:</span> {vendor.consolidated_hours}
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 <div className="mt-3 flex items-center justify-between text-[11px] text-[#757575]">
-                  <Link
-                    href={`/vendor/${vendor.id}`}
-                    className="inline-flex items-center gap-1 rounded-full border border-[var(--dr-primary)]/60 px-3 py-1 font-semibold text-[var(--dr-primary)] hover:bg-[var(--dr-primary)]/5"
-                  >
+                  <span className="inline-flex items-center gap-1 rounded-full border border-[var(--dr-primary)]/60 px-3 py-1 font-semibold text-[var(--dr-primary)]">
                     View profile
                     <span aria-hidden>↗</span>
-                  </Link>
-                  <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-700">
-                    Live soon
+                  </span>
+                  <span
+                    className={
+                      "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] " +
+                      (vendor.isOpenNow
+                        ? "bg-emerald-500/10 text-emerald-700"
+                        : "bg-[#eeeeee] text-[#757575]")
+                    }
+                  >
+                    {vendor.isOpenNow ? "Open" : "Closed"}
                   </span>
                 </div>
-              </article>
+              </Link>
             ))}
           </main>
         )}
