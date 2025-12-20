@@ -137,62 +137,15 @@ export default function LoginSelectorPage({
                 </p>
               ) : null}
             </form>
-          </section>
-
-          <div className="h-px bg-[#e0e0e0]" />
-
-          <section className="space-y-2 text-sm">
-            <h2 className="text-sm font-semibold text-[var(--dr-text)]">
-              For vendors
-            </h2>
-            <p className="text-xs text-[#616161]">
-              Update your truck details, hours, and default location.
-            </p>
-            <div className="mt-3 flex flex-col gap-2">
+            <p className="mt-3 text-xs text-[#616161]">
+              Don&apos;t have an account?{" "}
               <Link
-                href="/vendor/login"
-                className="inline-flex items-center justify-center rounded-full bg-[var(--dr-primary)] px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.18em] text-white.shadow-sm shadow-[var(--dr-primary)]/50 hover:bg-[var(--dr-accent)]"
+                href="/signup"
+                className="font-semibold text-[var(--dr-primary)] hover:underline"
               >
-                Vendor tools
+                Create an account
               </Link>
-              <Link
-                href="/signup?type=vendor"
-                className="inline-flex items-center justify-center rounded-full border border-[var(--dr-primary)]/60 px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--dr-primary)] hover:bg-[var(--dr-primary)]/5"
-              >
-                Create vendor account
-              </Link>
-            </div>
-          </section>
-
-          <div className="h-px bg-[#e0e0e0]" />
-
-          <section className="space-y-2 text-sm">
-            <h2 className="text-sm font-semibold text-[var(--dr-text)]">
-              For customers
-            </h2>
-            <p className="text-xs text-[#616161]">
-              Save your favorite cuisines, dietary preferences, and cities.
-            </p>
-            <div className="mt-3 flex flex-col gap-2">
-              <Link
-                href="/customer/profile"
-                className="inline-flex items-center justify-center rounded-full bg-[var(--dr-neutral)] px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--dr-text)] border border-[#e0e0e0] hover:border-[var(--dr-primary)] hover:bg-[var(--dr-primary)]/5"
-              >
-                Go to customer profile
-              </Link>
-              <Link
-                href="/signup?type=customer"
-                className="inline-flex items-center justify-center rounded-full border border-[#e0e0e0] px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--dr-text)] hover:border-[var(--dr-primary)] hover:bg-[var(--dr-primary)]/5"
-              >
-                Create customer account
-              </Link>
-            </div>
-          </section>
-
-          <section className="pt-2 text-xs text-[#9e9e9e]">
-            <p>
-              In a full production app, both vendor and customer areas would be
-              secured behind authentication and personalized to your account.
+              .
             </p>
           </section>
         </main>
