@@ -1,0 +1,228 @@
+import { notFound } from "next/navigation";
+import Link from "next/link";
+import { sql } from "@vercel/postgres";
+
+interface PageProps {
+  params: { id: string };
+}
+
+type DbVendor = {
+  id: string;
+  name: string | null;
+  description: string | null;
+  cuisine_style: string | null;
+  primary_region: string | null;
+  tagline: string | null;
+  hours_text: string | null;
+  website_url: string | null;
+  instagram_url: string | null;
+};
+
+type DbLocation = {
+  label: string | null;
+  address_text: string | null;
+  city: string | null;
+  state: string | null;
+  postal_code: string | null;
+  lat: number | null;
+  lng: number | null;
+};
+
+export default async function PublicVendorPage({ params }: PageProps) {
+  const { id } = params;
+
+  const vendorResult = await sql<DbVendor>`
+    SELECT id, name, description, cuisine_style, primary_region, tagline, hours_text, website_url, instagram_url
+    FROM vendors
+    WHERE id = ${id}
+    LIMIT 1
+  `;
+
+  const vendor = vendorResult.rows[0];
+
+  if (!vendor) {
+    notFound();
+  }
+
+  const locationResult = await sql<DbLocation>`
+    SELECT label, address_text, city, state, postal_code, lat, lng
+    FROM vendor_locations
+    WHERE vendor_id = ${vendor.id} AND is_primary = true
+    ORDER BY created_at DESC
+    LIMIT 1
+  `;
+
+  const location = locationResult.rows[0] ?? null;
+
+  const hasCoords = location?.lat != null && location?.lng != null;
+  const mapsUrl = hasCoords
+    ? `https://www.google.com/maps/dir/?api=1&destination=${location.lat},${location.lng}`
+    : null;
+
+  return (
+    <div className="min-h-screen bg-[var(--dr-neutral)] text-[var(--dr-text)]">
+      <div className="mx-auto flex min-h-screen max-w-5xl flex-col px-4 pb-10 pt-4 sm:px-6 lg:px-8 lg:pt-6">
+        <header className="flex items-center justify-between gap-4 border-b border-[#e0e0e0] bg-white/90 px-3 py-3 shadow-sm">
+          <div className="flex items-center gap-3">
+            <Link
+              href="/vendors"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[#e0e0e0] bg-white text-sm font-semibold text-[var(--dr-text)] hover:bg-[var(--dr-neutral)]"
+            >
+              ←
+            </Link>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--dr-primary)]">
+                Vendor profile
+              </p>
+              <h1 className="text-lg font-semibold leading-snug text-[var(--dr-text)] sm:text-xl">
+                {vendor.name || "Untitled venue"}
+              </h1>
+              {vendor.primary_region && (
+                <p className="text-xs text-[#757575]">{vendor.primary_region}</p>
+              )}
+            </div>
+          </div>
+        </header>
+
+        <main className="mt-5 grid flex-1 gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1.6fr)]">
+          {/* Left column: vendor info */}
+          <section className="space-y-4">
+            <div className="h-full rounded-3xl border border-[#e0e0e0] bg-white p-4 sm:p-5">
+              <div className="mb-3 flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-base font-semibold text-[var(--dr-text)] sm:text-lg">
+                    {vendor.name || "Untitled venue"}
+                  </h2>
+                  {vendor.cuisine_style && (
+                    <p className="mt-1 text-xs font-medium text-[var(--dr-accent)]">
+                      {vendor.cuisine_style}
+                    </p>
+                  )}
+                  {vendor.tagline && (
+                    <p className="mt-2 text-xs text-[#616161]">{vendor.tagline}</p>
+                  )}
+                </div>
+              </div>
+
+              {vendor.description && (
+                <p className="text-sm leading-relaxed text-[#424242]">
+                  {vendor.description}
+                </p>
+              )}
+
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-[var(--dr-primary)]">
+                {vendor.website_url && (
+                  <a
+                    href={vendor.website_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium hover:underline"
+                  >
+                    Website
+                  </a>
+                )}
+                {vendor.website_url && vendor.instagram_url && (
+                  <span className="text-[#bdbdbd]">|</span>
+                )}
+                {vendor.instagram_url && (
+                  <a
+                    href={vendor.instagram_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[#616161] hover:text-[var(--dr-primary)]"
+                  >
+                    Social
+                  </a>
+                )}
+              </div>
+
+              {vendor.hours_text && (
+                <div className="mt-4">
+                  <h3 className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--dr-primary)]/90">
+                    Hours of operation
+                  </h3>
+                  <p className="whitespace-pre-line text-xs text-[#616161]">
+                    {vendor.hours_text}
+                  </p>
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* Right column: location & map stub */}
+          <section className="space-y-4">
+            <div className="rounded-3xl border border-[#e0e0e0] bg-white p-4 text-sm text-[#424242] shadow-sm">
+              <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--dr-primary)]/90">
+                Location
+              </h3>
+              {location ? (
+                <div className="mt-2 text-xs text-[#616161]">
+                  {location.label && (
+                    <p className="font-medium text-[var(--dr-text)]">{location.label}</p>
+                  )}
+                  {(location.address_text || location.city || location.state) && (
+                    <p className="mt-1">
+                      {location.address_text && <span>{location.address_text}</span>}
+                      {location.city && (
+                        <span>
+                          {location.address_text ? ", " : ""}
+                          {location.city}
+                        </span>
+                      )}
+                      {location.state && (
+                        <span>
+                          {location.city ? ", " : ""}
+                          {location.state}
+                        </span>
+                      )}
+                      {location.postal_code && <span> {location.postal_code}</span>}
+                    </p>
+                  )}
+                  {hasCoords && (
+                    <p className="mt-1 text-[11px] text-[#9e9e9e]">
+                      GPS: {location.lat?.toFixed(4)}, {location.lng?.toFixed(4)}
+                    </p>
+                  )}
+
+                  {mapsUrl && (
+                    <a
+                      href={mapsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[var(--dr-primary)] px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-white shadow-sm shadow-[var(--dr-primary)]/50 hover:bg-[var(--dr-accent)]"
+                    >
+                      Get directions
+                      <span aria-hidden>↗</span>
+                    </a>
+                  )}
+                </div>
+              ) : (
+                <p className="mt-2 text-xs text-[#757575]">
+                  This vendor hasn&apos;t set a default location yet. Once a primary location is saved, it will appear here.
+                </p>
+              )}
+            </div>
+
+            <section
+              aria-label="Vendor reels placeholder"
+              className="rounded-3xl border border-[#e0e0e0] bg-white p-4 text-sm text-[#424242] shadow-sm"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-sm font-semibold text-[var(--dr-text)]">
+                  Grub Reels
+                </h3>
+                <span className="rounded-full bg-[var(--dr-accent)]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--dr-accent)]">
+                  Coming soon
+                </span>
+              </div>
+              <p className="mt-2 text-xs text-[#616161]">
+                In a future version, this section will surface short-form video reels for this vendor, similar to the original
+                Delicious Route prototype.
+              </p>
+            </section>
+          </section>
+        </main>
+      </div>
+    </div>
+  );
+}
