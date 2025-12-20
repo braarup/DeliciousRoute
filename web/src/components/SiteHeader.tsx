@@ -16,7 +16,7 @@ export function SiteHeader() {
     <>
       <header className="flex items-center justify-between gap-6 border-b border-[#e0e0e0] bg-white/90 px-4 py-3 shadow-sm backdrop-blur md:px-6 lg:px-8">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-6">
-          <div className="flex items-center gap-2.5">
+          <Link href="/" className="flex items-center gap-2.5">
             <div className="relative h-8 w-8 overflow-hidden rounded-full border border-[var(--dr-primary)] bg-white shadow-sm md:h-9 md:w-9">
               <Image
                 src="/icon_01.png"
@@ -33,7 +33,7 @@ export function SiteHeader() {
               </p>
               <p className="text-xs text-[#616161]">Real-time food truck finder</p>
             </div>
-          </div>
+          </Link>
 
           <div className="hidden items-center gap-5 text-sm text-[#424242] md:flex">
             <a href="#vendors" className="hover:text-[var(--dr-primary)]">
