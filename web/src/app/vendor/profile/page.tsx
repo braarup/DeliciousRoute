@@ -1,6 +1,6 @@
 import { sql } from "@vercel/postgres";
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/auth";
+import { destroySession, getCurrentUser } from "@/lib/auth";
 
 async function updateVendorProfile(formData: FormData) {
   "use server";
@@ -50,11 +50,35 @@ async function updateVendorProfile(formData: FormData) {
   redirect("/vendor/profile");
 }
 
+async function signOutVendor() {
+  "use server";
+
+  await destroySession();
+  redirect("/");
+}
+
 export default async function VendorProfileManagePage() {
   const currentUser = await getCurrentUser();
 
   if (!currentUser?.id) {
     redirect("/login");
+  }
+
+  const rolesResult = await sql`
+    SELECT r.name
+    FROM roles r
+    JOIN user_roles ur ON ur.role_id = r.id
+    WHERE ur.user_id = ${currentUser.id}
+  `;
+
+  const roleNames = rolesResult.rows.map((row) =>
+    (row.name as string).toLowerCase()
+  );
+
+  const isVendor = roleNames.includes("vendor_admin");
+
+  if (!isVendor) {
+    redirect("/customer/profile");
   }
 
   const vendorResult = await sql`
@@ -69,7 +93,7 @@ export default async function VendorProfileManagePage() {
   return (
     <div className="min-h-screen bg-[var(--dr-neutral)] text-[var(--dr-text)]">
       <div className="mx-auto flex min-h-screen max-w-5xl flex-col px-4 pb-10 pt-6 sm:px-6 lg:px-8">
-        <header className="mb-6 flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
+        <header className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-baseline sm:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[var(--dr-primary)]">
               Vendor profile
@@ -82,10 +106,14 @@ export default async function VendorProfileManagePage() {
               Route.
             </p>
           </div>
-          <p className="mt-2 text-xs text-[#9e9e9e]">
-            In production, this page would be secured behind login and
-            connected to your backend.
-          </p>
+          <form action={signOutVendor} className="flex items-center">
+            <button
+              type="submit"
+              className="rounded-full border border-[#e0e0e0] bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#757575] hover:border-[var(--dr-primary)] hover:text-[var(--dr-primary)]"
+            >
+              Sign out
+            </button>
+          </form>
         </header>
 
         <form

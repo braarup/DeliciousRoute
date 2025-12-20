@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { sql } from "@vercel/postgres";
 import { hashPassword } from "@/lib/bcrypt";
 import { randomUUID } from "crypto";
-import { createSession } from "@/lib/auth";
+import { createSession, getCurrentUser } from "@/lib/auth";
 
 async function createAccount(formData: FormData) {
   "use server";
@@ -106,11 +106,34 @@ async function createAccount(formData: FormData) {
   }
 }
 
-export default function SignupPage({
+export default async function SignupPage({
   searchParams,
 }: {
   searchParams?: { type?: string };
 }) {
+  const existingUser = await getCurrentUser();
+
+  if (existingUser) {
+    const rolesResult = await sql`
+      SELECT r.name
+      FROM roles r
+      JOIN user_roles ur ON ur.role_id = r.id
+      WHERE ur.user_id = ${existingUser.id}
+    `;
+
+    const roleNames = rolesResult.rows.map((row) =>
+      (row.name as string).toLowerCase()
+    );
+
+    const isVendor = roleNames.includes("vendor_admin");
+
+    if (isVendor) {
+      redirect("/vendor/profile");
+    } else {
+      redirect("/customer/profile");
+    }
+  }
+
   const defaultType =
     searchParams?.type === "vendor" || searchParams?.type === "customer"
       ? searchParams.type

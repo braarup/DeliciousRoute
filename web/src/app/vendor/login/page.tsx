@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { sql } from "@vercel/postgres";
 import { verifyPassword } from "@/lib/bcrypt";
-import { createSession } from "@/lib/auth";
+import { createSession, getCurrentUser } from "@/lib/auth";
 
 async function loginVendor(formData: FormData) {
   "use server";
@@ -38,11 +38,34 @@ async function loginVendor(formData: FormData) {
   redirect("/vendor/profile");
 }
 
-export default function VendorLoginPage({
+export default async function VendorLoginPage({
   searchParams,
 }: {
   searchParams?: { error?: string };
 }) {
+  const existingUser = await getCurrentUser();
+
+  if (existingUser) {
+    const rolesResult = await sql`
+      SELECT r.name
+      FROM roles r
+      JOIN user_roles ur ON ur.role_id = r.id
+      WHERE ur.user_id = ${existingUser.id}
+    `;
+
+    const roleNames = rolesResult.rows.map((row) =>
+      (row.name as string).toLowerCase()
+    );
+
+    const isVendor = roleNames.includes("vendor_admin");
+
+    if (isVendor) {
+      redirect("/vendor/profile");
+    } else {
+      redirect("/customer/profile");
+    }
+  }
+
   const error = searchParams?.error;
 
   return (

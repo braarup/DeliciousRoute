@@ -1,7 +1,7 @@
 import { sql } from "@vercel/postgres";
 import { redirect } from "next/navigation";
 import { randomUUID } from "crypto";
-import { getCurrentUser } from "@/lib/auth";
+import { destroySession, getCurrentUser } from "@/lib/auth";
 
 async function updateCustomerProfile(formData: FormData) {
   "use server";
@@ -67,10 +67,39 @@ async function updateCustomerProfile(formData: FormData) {
   redirect("/customer/profile");
 }
 
+async function signOutCustomer() {
+  "use server";
+
+  await destroySession();
+  redirect("/");
+}
+
 export default async function CustomerProfilePage() {
   const currentUser = await getCurrentUser();
 
   if (!currentUser?.id) {
+    redirect("/login");
+  }
+
+  const rolesResult = await sql`
+    SELECT r.name
+    FROM roles r
+    JOIN user_roles ur ON ur.role_id = r.id
+    WHERE ur.user_id = ${currentUser.id}
+  `;
+
+  const roleNames = rolesResult.rows.map((row) =>
+    (row.name as string).toLowerCase()
+  );
+
+  const isVendor = roleNames.includes("vendor_admin");
+  const isConsumer = roleNames.includes("consumer");
+
+  if (!isConsumer) {
+    if (isVendor) {
+      redirect("/vendor/profile");
+    }
+
     redirect("/login");
   }
 
@@ -87,16 +116,26 @@ export default async function CustomerProfilePage() {
   return (
     <div className="min-h-screen bg-[var(--dr-neutral)] text-[var(--dr-text)]">
       <div className="mx-auto flex min-h-screen max-w-3xl flex-col px-4 pb-10 pt-6 sm:px-6 lg:px-8">
-        <header className="mb-6">
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[var(--dr-primary)]">
-            Customer profile
-          </p>
-          <h1 className="mt-1 text-2xl font-semibold text-[var(--dr-text)]">
-            Your Delicious Route profile
-          </h1>
-          <p className="mt-1 text-sm text-[#616161]">
-            Save your preferences so we can surface the right trucks and reels for you.
-          </p>
+        <header className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-baseline sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[var(--dr-primary)]">
+              Customer profile
+            </p>
+            <h1 className="mt-1 text-2xl font-semibold text-[var(--dr-text)]">
+              Your Delicious Route profile
+            </h1>
+            <p className="mt-1 text-sm text-[#616161]">
+              Save your preferences so we can surface the right trucks and reels for you.
+            </p>
+          </div>
+          <form action={signOutCustomer} className="flex items-center">
+            <button
+              type="submit"
+              className="rounded-full border border-[#e0e0e0] bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#757575] hover:border-[var(--dr-primary)] hover:text-[var(--dr-primary)]"
+            >
+              Sign out
+            </button>
+          </form>
         </header>
 
         <form
