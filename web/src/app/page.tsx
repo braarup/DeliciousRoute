@@ -2,9 +2,17 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { vendors } from "@/data/vendors";
 
 type TabKey = "grub" | "vendors" | "events";
+
+type VendorsTabVendor = {
+  id: string;
+  name: string;
+  cuisine: string;
+  city: string;
+  tagline?: string | null;
+  todayHours?: string;
+};
 
 const ads = [
   {
@@ -34,6 +42,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<TabKey>("vendors");
   const [search, setSearch] = useState("");
   const [activeAdIndex, setActiveAdIndex] = useState(0);
+  const [vendors, setVendors] = useState<VendorsTabVendor[]>([]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -53,9 +62,32 @@ export default function Home() {
         vendor.city.toLowerCase().includes(query)
       );
     });
-  }, [search]);
+  }, [search, vendors]);
 
   const activeAd = ads[activeAdIndex];
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadVendors() {
+      try {
+        const res = await fetch("/api/vendors");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled && Array.isArray(data.vendors)) {
+          setVendors(data.vendors);
+        }
+      } catch (error) {
+        console.error("Failed to load vendors", error);
+      }
+    }
+
+    loadVendors();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-[var(--dr-neutral)] text-[var(--dr-text)]">
@@ -247,7 +279,7 @@ function TabButton({ label, active, href, onClick }: TabButtonProps) {
 type VendorsTabProps = {
   search: string;
   onSearchChange: (value: string) => void;
-  vendors: typeof vendors;
+  vendors: VendorsTabVendor[];
 };
 
 function VendorsTab({ search, onSearchChange, vendors }: VendorsTabProps) {
@@ -284,7 +316,7 @@ function VendorsTab({ search, onSearchChange, vendors }: VendorsTabProps) {
           vendors.map((vendor) => (
             <Link
               key={vendor.id}
-              href={`/vendors/${vendor.id}`}
+              href={`/vendor/${vendor.id}`}
               className="group flex flex-col gap-2 rounded-2xl border border-white/10 bg-slate-950/80 p-3 text-sm text-slate-200 shadow-sm shadow-black/40 hover:border-amber-400/60 hover:bg-slate-900/90"
             >
               <div className="flex items-start justify-between gap-2">
