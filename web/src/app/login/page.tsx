@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { sql } from "@vercel/postgres";
 import { verifyPassword } from "@/lib/bcrypt";
+import { createSession, getCurrentUser } from "@/lib/auth";
 
 async function loginUser(formData: FormData) {
   "use server";
@@ -45,6 +46,8 @@ async function loginUser(formData: FormData) {
 
   const isVendor = roleNames.includes("vendor_admin");
 
+  await createSession(user.id as string);
+
   if (isVendor) {
     redirect("/vendor/profile");
   } else {
@@ -52,11 +55,33 @@ async function loginUser(formData: FormData) {
   }
 }
 
-export default function LoginSelectorPage({
+export default async function LoginSelectorPage({
   searchParams,
 }: {
   searchParams?: { error?: string };
 }) {
+  const existingUser = await getCurrentUser();
+  if (existingUser) {
+    const rolesResult = await sql`
+      SELECT r.name
+      FROM roles r
+      JOIN user_roles ur ON ur.role_id = r.id
+      WHERE ur.user_id = ${existingUser.id}
+    `;
+
+    const roleNames = rolesResult.rows.map((row) =>
+      (row.name as string).toLowerCase()
+    );
+
+    const isVendor = roleNames.includes("vendor_admin");
+
+    if (isVendor) {
+      redirect("/vendor/profile");
+    } else {
+      redirect("/customer/profile");
+    }
+  }
+
   const error = searchParams?.error;
 
   return (

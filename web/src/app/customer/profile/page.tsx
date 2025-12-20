@@ -1,6 +1,7 @@
 import { sql } from "@vercel/postgres";
 import { redirect } from "next/navigation";
 import { randomUUID } from "crypto";
+import { getCurrentUser } from "@/lib/auth";
 
 async function updateCustomerProfile(formData: FormData) {
   "use server";
@@ -11,9 +12,16 @@ async function updateCustomerProfile(formData: FormData) {
   const dietaryPreferences = (formData.get("dietaryPreferences") || "").toString().trim();
   const notificationPreferences = (formData.get("notificationPreferences") || "").toString().trim();
 
+  const currentUser = await getCurrentUser();
+
+  if (!currentUser?.id) {
+    redirect("/login");
+  }
+
   const existingResult = await sql`
     SELECT id
     FROM customer_profiles
+    WHERE user_id = ${currentUser.id}
     ORDER BY created_at DESC
     LIMIT 1
   `;
@@ -26,6 +34,7 @@ async function updateCustomerProfile(formData: FormData) {
     await sql`
       INSERT INTO customer_profiles (
         id,
+        user_id,
         display_name,
         home_city,
         favorite_cuisines,
@@ -33,6 +42,7 @@ async function updateCustomerProfile(formData: FormData) {
         notification_preferences
       ) VALUES (
         ${newId},
+        ${currentUser.id},
         ${displayName || null},
         ${homeCity || null},
         ${favoriteCuisines || null},
@@ -58,9 +68,16 @@ async function updateCustomerProfile(formData: FormData) {
 }
 
 export default async function CustomerProfilePage() {
+  const currentUser = await getCurrentUser();
+
+  if (!currentUser?.id) {
+    redirect("/login");
+  }
+
   const profileResult = await sql`
     SELECT display_name, home_city, favorite_cuisines, dietary_preferences, notification_preferences
     FROM customer_profiles
+    WHERE user_id = ${currentUser.id}
     ORDER BY created_at DESC
     LIMIT 1
   `;

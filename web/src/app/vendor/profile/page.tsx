@@ -1,5 +1,6 @@
 import { sql } from "@vercel/postgres";
 import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/lib/auth";
 
 async function updateVendorProfile(formData: FormData) {
   "use server";
@@ -13,12 +14,19 @@ async function updateVendorProfile(formData: FormData) {
   const website = (formData.get("website") || "").toString().trim();
   const socials = (formData.get("socials") || "").toString().trim();
 
+  const currentUser = await getCurrentUser();
+
+  if (!currentUser?.id) {
+    redirect("/login");
+  }
+
   const vendorResult = await sql`
     SELECT id FROM vendors
+    WHERE owner_user_id = ${currentUser.id}
     ORDER BY created_at DESC
     LIMIT 1
   `;
-  const vendorId = vendorResult.rows[0]?.id;
+  const vendorId = vendorResult.rows[0]?.id as string | undefined;
 
   if (!vendorId) {
     throw new Error("No vendor found to update");
@@ -43,9 +51,16 @@ async function updateVendorProfile(formData: FormData) {
 }
 
 export default async function VendorProfileManagePage() {
+  const currentUser = await getCurrentUser();
+
+  if (!currentUser?.id) {
+    redirect("/login");
+  }
+
   const vendorResult = await sql`
     SELECT name, description, cuisine_style, primary_region, tagline, hours_text, website_url, instagram_url
     FROM vendors
+    WHERE owner_user_id = ${currentUser.id}
     ORDER BY created_at DESC
     LIMIT 1
   `;

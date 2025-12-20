@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { sql } from "@vercel/postgres";
 import { verifyPassword } from "@/lib/bcrypt";
+import { createSession } from "@/lib/auth";
 
 async function loginVendor(formData: FormData) {
   "use server";
@@ -32,8 +33,8 @@ async function loginVendor(formData: FormData) {
     redirect("/vendor/login?error=invalid_credentials");
   }
 
-  // In a full app, you would set an auth session/cookie here.
-  // For now, treat a successful login as access to the profile page.
+  await createSession(user.id as string);
+
   redirect("/vendor/profile");
 }
 

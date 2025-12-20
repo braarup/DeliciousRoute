@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { sql } from "@vercel/postgres";
 import { hashPassword } from "@/lib/bcrypt";
 import { randomUUID } from "crypto";
+import { createSession } from "@/lib/auth";
 
 async function createAccount(formData: FormData) {
   "use server";
@@ -66,6 +67,7 @@ async function createAccount(formData: FormData) {
       }
 
       await sql`COMMIT`;
+      await createSession(userId);
       redirect("/vendor/profile");
     } else {
       const roleResult = await sql`
@@ -94,6 +96,7 @@ async function createAccount(formData: FormData) {
       `;
 
       await sql`COMMIT`;
+      await createSession(userId);
       redirect("/customer/profile");
     }
   } catch (error) {
