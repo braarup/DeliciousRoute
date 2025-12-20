@@ -202,6 +202,21 @@ export default async function CustomerProfilePage() {
             </p>
           </div>
         </form>
+        <footer className="mt-6 border-t border-[#e0e0e0] pt-3 text-xs text-[#757575]">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p>
+              © {new Date().getFullYear()} Delicious Route. Built for modern
+              food truck culture.
+            </p>
+            <p className="text-[11px]" id="contact">
+              For partnerships, email
+              <span className="font-medium text-[var(--dr-text)]">
+                {" "}
+                hello@deliciousroute.app
+              </span>
+            </p>
+          </div>
+        </footer>
       </div>
     </div>
   );
