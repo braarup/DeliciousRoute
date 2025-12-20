@@ -1,5 +1,6 @@
 import { sql } from "@vercel/postgres";
 import { redirect } from "next/navigation";
+import { randomUUID } from "crypto";
 import { destroySession, getCurrentUser } from "@/lib/auth";
 
 async function updateVendorProfile(formData: FormData) {
@@ -10,9 +11,13 @@ async function updateVendorProfile(formData: FormData) {
   const cuisine = (formData.get("cuisine") || "").toString().trim();
   const city = (formData.get("city") || "").toString().trim();
   const tagline = (formData.get("tagline") || "").toString().trim();
-  const hours = (formData.get("hours") || "").toString().trim();
   const website = (formData.get("website") || "").toString().trim();
   const socials = (formData.get("socials") || "").toString().trim();
+  const latitudeRaw = (formData.get("latitude") || "").toString().trim();
+  const longitudeRaw = (formData.get("longitude") || "").toString().trim();
+
+  const latitude = latitudeRaw ? Number(latitudeRaw) : null;
+  const longitude = longitudeRaw ? Number(longitudeRaw) : null;
 
   const currentUser = await getCurrentUser();
 
@@ -40,12 +45,78 @@ async function updateVendorProfile(formData: FormData) {
       cuisine_style = ${cuisine || null},
       primary_region = ${city || null},
       tagline = ${tagline || null},
-      hours_text = ${hours || null},
       website_url = ${website || null},
       instagram_url = ${socials || null},
       updated_at = now()
     WHERE id = ${vendorId}
   `;
+
+  // Ensure a primary location exists for this vendor so we can attach hours
+  const locationResult = await sql`
+    SELECT id, lat, lng
+    FROM vendor_locations
+    WHERE vendor_id = ${vendorId} AND is_primary = true
+    ORDER BY created_at DESC
+    LIMIT 1
+  `;
+
+  let locationId = locationResult.rows[0]?.id as string | undefined;
+
+  if (!locationId) {
+    const newLocationId = randomUUID();
+
+    await sql`
+      INSERT INTO vendor_locations (id, vendor_id, label, address_text, city, state, postal_code, lat, lng, is_primary)
+      VALUES (
+        ${newLocationId},
+        ${vendorId},
+        'Default location',
+        NULL,
+        ${city || null},
+        NULL,
+        NULL,
+        ${latitude ?? 0},
+        ${longitude ?? 0},
+        true
+      )
+    `;
+
+    locationId = newLocationId;
+  } else if (latitude != null && longitude != null) {
+    // Update coordinates if the vendor provided new ones
+    await sql`
+      UPDATE vendor_locations
+      SET lat = ${latitude}, lng = ${longitude}
+      WHERE id = ${locationId}
+    `;
+  }
+
+  if (locationId) {
+    // Replace existing hours for this location with the submitted schedule
+    await sql`
+      DELETE FROM location_hours
+      WHERE vendor_location_id = ${locationId}
+    `;
+
+    for (let day = 0; day < 7; day++) {
+      const openFlag = formData.get(`day_${day}_open`);
+      const openTime = (formData.get(`day_${day}_open_time`) || "").toString().trim();
+      const closeTime = (formData.get(`day_${day}_close_time`) || "").toString().trim();
+
+      if (!openFlag || !openTime || !closeTime) continue;
+
+      await sql`
+        INSERT INTO location_hours (id, vendor_location_id, day_of_week, open_time, close_time)
+        VALUES (
+          ${randomUUID()},
+          ${locationId},
+          ${day},
+          ${openTime},
+          ${closeTime}
+        )
+      `;
+    }
+  }
 
   redirect("/vendor/profile");
 }
@@ -82,13 +153,73 @@ export default async function VendorProfileManagePage() {
   }
 
   const vendorResult = await sql`
-    SELECT name, description, cuisine_style, primary_region, tagline, hours_text, website_url, instagram_url
-    FROM vendors
-    WHERE owner_user_id = ${currentUser.id}
-    ORDER BY created_at DESC
+    SELECT
+      v.id,
+      v.name,
+      v.description,
+      v.cuisine_style,
+      v.primary_region,
+      v.tagline,
+      v.website_url,
+      v.instagram_url,
+      vl.lat AS default_lat,
+      vl.lng AS default_lng
+    FROM vendors v
+    LEFT JOIN vendor_locations vl
+      ON vl.vendor_id = v.id AND vl.is_primary = true
+    WHERE v.owner_user_id = ${currentUser.id}
+    ORDER BY v.created_at DESC
     LIMIT 1
   `;
   const vendor = vendorResult.rows[0] ?? null;
+
+  const vendorId = vendor?.id as string | undefined;
+
+  let hoursByDay: Record<number, { open_time: any; close_time: any }> = {};
+
+  if (vendorId) {
+    const hoursResult = await sql`
+      SELECT lh.day_of_week, lh.open_time, lh.close_time
+      FROM vendor_locations vl
+      JOIN location_hours lh ON lh.vendor_location_id = vl.id
+      WHERE vl.vendor_id = ${vendorId}
+      ORDER BY lh.day_of_week, lh.open_time
+    `;
+
+    for (const row of hoursResult.rows) {
+      const day = Number((row as any).day_of_week);
+      if (!(day in hoursByDay)) {
+        hoursByDay[day] = {
+          open_time: (row as any).open_time,
+          close_time: (row as any).close_time,
+        };
+      }
+    }
+  }
+
+  const dayLabels = [
+    "Sunday",
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+  ];
+
+  const normalizeTime = (value: any): string => {
+    if (!value) return "";
+    if (typeof value === "string") {
+      // Expecting HH:MM or HH:MM:SS from Postgres TIME
+      return value.slice(0, 5);
+    }
+    if (value instanceof Date) {
+      const h = value.getHours().toString().padStart(2, "0");
+      const m = value.getMinutes().toString().padStart(2, "0");
+      return `${h}:${m}`;
+    }
+    return "";
+  };
 
   return (
     <div className="min-h-screen bg-[var(--dr-neutral)] text-[var(--dr-text)]">
@@ -274,15 +405,80 @@ export default async function VendorProfileManagePage() {
                 Share your usual weekly schedule. Customers will still see your
                 live GPS when you&apos;re online.
               </p>
+              <div className="mt-4 space-y-2 text-sm">
+                {dayLabels.map((label, index) => {
+                  const existing = hoursByDay[index];
+                  const defaultOpen = !!existing;
+                  const defaultOpenTime = normalizeTime(existing?.open_time);
+                  const defaultCloseTime = normalizeTime(existing?.close_time);
 
-              <textarea
-                id="hours"
-                name="hours"
-                rows={6}
-                placeholder={"Mon: 11am – 3pm\nTue: 11am – 3pm\nWed: 11am – 3pm\nThu: 5pm – 10pm\nFri: 5pm – 12am"}
-                defaultValue={vendor?.hours_text ?? ""}
-                className="mt-4 w-full resize-none rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)] px-3 py-2 text-sm text-[var(--dr-text)] placeholder:text-[#bdbdbd] focus:border-[var(--dr-primary)] focus:outline-none"
-              />
+                  return (
+                    <div
+                      key={label}
+                      className="flex flex-wrap items-center gap-2 text-xs text-[#424242]"
+                    >
+                      <div className="w-20 text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#757575]">
+                        {label.slice(0, 3)}
+                      </div>
+                      <label className="flex items-center gap-1 text-[0.7rem] text-[#757575]">
+                        <input
+                          type="checkbox"
+                          name={`day_${index}_open`}
+                          defaultChecked={defaultOpen}
+                          className="h-3 w-3 text-[var(--dr-primary)] focus:ring-[var(--dr-primary)]"
+                        />
+                        <span>Open</span>
+                      </label>
+                      <input
+                        type="time"
+                        name={`day_${index}_open_time`}
+                        defaultValue={defaultOpenTime}
+                        className="h-8 rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)] px-2 text-xs text-[var(--dr-text)] focus:border-[var(--dr-primary)] focus:outline-none"
+                      />
+                      <span className="text-[0.7rem] text-[#9e9e9e]">to</span>
+                      <input
+                        type="time"
+                        name={`day_${index}_close_time`}
+                        defaultValue={defaultCloseTime}
+                        className="h-8 rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)] px-2 text-xs text-[var(--dr-text)] focus:border-[var(--dr-primary)] focus:outline-none"
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="mt-3 rounded-2xl bg-[var(--dr-neutral)] px-3 py-2 text-[11px] text-[#616161]">
+                <p className="mb-1 font-semibold text-[var(--dr-text)]">
+                  Saved hours
+                </p>
+                {Object.keys(hoursByDay).length === 0 ? (
+                  <p className="text-[11px] text-[#9e9e9e]">
+                    No hours saved yet. Choose your open days and times above,
+                    then hit Save changes.
+                  </p>
+                ) : (
+                  <ul className="space-y-0.5">
+                    {dayLabels.map((label, index) => {
+                      const entry = hoursByDay[index];
+                      if (!entry) return null;
+
+                      const openStr = normalizeTime(entry.open_time);
+                      const closeStr = normalizeTime(entry.close_time);
+
+                      return (
+                        <li key={label} className="flex items-center justify-between">
+                          <span className="text-[0.7rem] font-medium text-[var(--dr-text)]">
+                            {label}
+                          </span>
+                          <span className="text-[0.7rem] text-[#616161]">
+                            {openStr} – {closeStr}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
             </div>
 
             <div className="rounded-3xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
@@ -307,6 +503,11 @@ export default async function VendorProfileManagePage() {
                     name="latitude"
                     type="text"
                     placeholder="30.2672"
+                    defaultValue={
+                      vendor?.default_lat != null
+                        ? String(vendor.default_lat)
+                        : ""
+                    }
                     className="w-full rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)] px-3 py-2 text-sm text-[var(--dr-text)] placeholder:text-[#bdbdbd] focus:border-[var(--dr-primary)] focus:outline-none"
                   />
                 </div>
@@ -322,6 +523,11 @@ export default async function VendorProfileManagePage() {
                     name="longitude"
                     type="text"
                     placeholder="-97.7431"
+                    defaultValue={
+                      vendor?.default_lng != null
+                        ? String(vendor.default_lng)
+                        : ""
+                    }
                     className="w-full rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)] px-3 py-2 text-sm text-[var(--dr-text)] placeholder:text-[#bdbdbd] focus:border-[var(--dr-primary)] focus:outline-none"
                   />
                 </div>

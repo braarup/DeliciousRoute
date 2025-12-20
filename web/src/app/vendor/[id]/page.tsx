@@ -18,6 +18,12 @@ type DbVendor = {
   instagram_url: string | null;
 };
 
+type DbHours = {
+  day_of_week: number;
+  open_time: any;
+  close_time: any;
+};
+
 type DbLocation = {
   label: string | null;
   address_text: string | null;
@@ -53,6 +59,49 @@ export default async function PublicVendorPage({ params }: PageProps) {
   `;
 
   const location = locationResult.rows[0] ?? null;
+
+  const hoursResult = await sql<DbHours>`
+    SELECT lh.day_of_week, lh.open_time, lh.close_time
+    FROM vendor_locations vl
+    JOIN location_hours lh ON lh.vendor_location_id = vl.id
+    WHERE vl.vendor_id = ${vendor.id}
+    ORDER BY lh.day_of_week, lh.open_time
+  `;
+
+  const hoursByDay: Record<number, { open_time: any; close_time: any }> = {};
+
+  for (const row of hoursResult.rows) {
+    const day = Number(row.day_of_week);
+    if (!(day in hoursByDay)) {
+      hoursByDay[day] = {
+        open_time: row.open_time,
+        close_time: row.close_time,
+      };
+    }
+  }
+
+  const dayLabels = [
+    "Sunday",
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+  ];
+
+  const normalizeTime = (value: any): string => {
+    if (!value) return "";
+    if (typeof value === "string") {
+      return value.slice(0, 5);
+    }
+    if (value instanceof Date) {
+      const h = value.getHours().toString().padStart(2, "0");
+      const m = value.getMinutes().toString().padStart(2, "0");
+      return `${h}:${m}`;
+    }
+    return "";
+  };
 
   const hasCoords = location?.lat != null && location?.lng != null;
   const mapsUrl = hasCoords
@@ -136,14 +185,40 @@ export default async function PublicVendorPage({ params }: PageProps) {
                 )}
               </div>
 
-              {vendor.hours_text && (
+              {(Object.keys(hoursByDay).length > 0 || vendor.hours_text) && (
                 <div className="mt-4">
                   <h3 className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--dr-primary)]/90">
                     Hours of operation
                   </h3>
-                  <p className="whitespace-pre-line text-xs text-[#616161]">
-                    {vendor.hours_text}
-                  </p>
+                  {Object.keys(hoursByDay).length > 0 ? (
+                    <ul className="space-y-0.5 text-xs text-[#616161]">
+                      {dayLabels.map((label, index) => {
+                        const entry = hoursByDay[index];
+                        if (!entry) return null;
+
+                        const openStr = normalizeTime(entry.open_time);
+                        const closeStr = normalizeTime(entry.close_time);
+
+                        return (
+                          <li
+                            key={label}
+                            className="flex items-center justify-between"
+                          >
+                            <span className="font-medium text-[var(--dr-text)]">
+                              {label}
+                            </span>
+                            <span>
+                              {openStr} – {closeStr}
+                            </span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  ) : (
+                    <p className="whitespace-pre-line text-xs text-[#616161]">
+                      {vendor.hours_text}
+                    </p>
+                  )}
                 </div>
               )}
             </div>
