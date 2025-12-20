@@ -95,8 +95,18 @@ export function SiteHeader({ ctaHref, ctaLabel }: SiteHeaderProps) {
             </div>
             <nav className="flex flex-col gap-1 px-3 py-4 text-sm">
               <MobileNavItem
-                label="Contact Delicious Route"
-                href="#contact"
+                label="Find trucks"
+                href="#vendors"
+                onClick={() => setMenuOpen(false)}
+              />
+              <MobileNavItem
+                label="Events"
+                href="#events"
+                onClick={() => setMenuOpen(false)}
+              />
+              <MobileNavItem
+                label="About"
+                href="#about"
                 onClick={() => setMenuOpen(false)}
               />
               {showCta && (
@@ -106,16 +116,6 @@ export function SiteHeader({ ctaHref, ctaLabel }: SiteHeaderProps) {
                   onClick={() => setMenuOpen(false)}
                 />
               )}
-              <MobileNavItem
-                label="Customer Profile"
-                href="/customer/profile"
-                onClick={() => setMenuOpen(false)}
-              />
-              <MobileNavItem
-                label="About Us"
-                href="#about"
-                onClick={() => setMenuOpen(false)}
-              />
             </nav>
           </div>
         </div>
@@ -135,7 +135,7 @@ function MobileNavItem({ label, href, onClick }: MobileNavItemProps) {
     <a
       href={href}
       onClick={onClick}
-      className="rounded-xl px-3 py-2 text-sm text-slate-100 hover:bg-white/5"
+      className="rounded-xl px-3 py-2 text-sm text-[var(--dr-text)] hover:bg-[var(--dr-neutral)]"
     >
       {label}
     </a>
