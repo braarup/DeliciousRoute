@@ -96,10 +96,10 @@ export default function Home() {
               About
             </a>
             <Link
-              href="/vendor/login"
+              href="/login"
               className="rounded-full border border-[var(--dr-primary)] bg-[var(--dr-primary)]/5 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.15em] text-[var(--dr-primary)] shadow-sm hover:bg-[var(--dr-primary)]/10"
             >
-              Manage my truck
+              Sign in
             </Link>
           </div>
 
@@ -229,13 +229,13 @@ export default function Home() {
                   Find trucks nearby
                   <span aria-hidden>&rarr;</span>
                 </a>
-                <a
+                <Link
                   id="manage-my-truck"
-                  href="#"
+                  href="/login"
                   className="inline-flex flex-1 items-center justify-center rounded-full border border-[var(--dr-primary)]/50 px-4 py-2 text-[var(--dr-primary)] hover:bg-[var(--dr-primary)]/5 sm:flex-none sm:px-5"
                 >
-                  List my truck
-                </a>
+                  Vendor & customer login
+                </Link>
               </div>
             </section>
 
@@ -281,13 +281,13 @@ export default function Home() {
                   onClick={() => setMenuOpen(false)}
                 />
                 <MobileNavItem
-                  label="Manage My Truck"
-                  href="/vendor/login"
+                  label="Sign In"
+                  href="/login"
                   onClick={() => setMenuOpen(false)}
                 />
                 <MobileNavItem
-                  label="Customer Login"
-                  href="#customer-login"
+                  label="Customer Profile"
+                  href="/customer/profile"
                   onClick={() => setMenuOpen(false)}
                 />
                 <MobileNavItem

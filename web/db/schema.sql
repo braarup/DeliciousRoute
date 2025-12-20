@@ -245,3 +245,17 @@ ALTER TABLE vendors
   ADD COLUMN IF NOT EXISTS primary_region TEXT,
   ADD COLUMN IF NOT EXISTS tagline TEXT,
   ADD COLUMN IF NOT EXISTS hours_text TEXT;
+
+-- CUSTOMER PROFILES
+
+CREATE TABLE IF NOT EXISTS customer_profiles (
+  id UUID PRIMARY KEY,
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  display_name TEXT,
+  home_city TEXT,
+  favorite_cuisines TEXT,
+  dietary_preferences TEXT,
+  notification_preferences TEXT,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
