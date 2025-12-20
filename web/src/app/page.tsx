@@ -326,7 +326,7 @@ function VendorsTab({ search, onSearchChange, vendors }: VendorsTabProps) {
                   <div className="h-9 w-9 overflow-hidden rounded-full border border-amber-400/40 bg-slate-900">
                     <img
                       src={
-                        vendor.profileImagePath || "/deliciousroute-icon.svg"
+                        vendor.profileImagePath || "/images/icon_01.png"
                       }
                       alt="Vendor profile"
                       className="h-full w-full object-cover"

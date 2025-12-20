@@ -143,7 +143,7 @@ export default async function PublicVendorPage({ params }: PageProps) {
                     <img
                       src={
                         (vendor as any).profile_image_path ||
-                        "/deliciousroute-icon.svg"
+                        "/images/icon_01.png"
                       }
                       alt="Vendor profile"
                       className="h-full w-full object-cover"
