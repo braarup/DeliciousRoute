@@ -152,6 +152,15 @@ export default async function LoginSelectorPage({
                 Sign in
               </button>
 
+              <p className="mt-2 text-xs text-[#616161]">
+                <Link
+                  href="/reset-password"
+                  className="font-semibold text-[var(--dr-primary)] hover:underline"
+                >
+                  Forgot your password?
+                </Link>
+              </p>
+
               {error ? (
                 <p className="text-xs text-red-600">
                   {error === "missing_fields"

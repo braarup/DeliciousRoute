@@ -143,6 +143,14 @@ export default async function VendorLoginPage({
 
           <div className="mt-4 space-y-2 text-xs text-[#616161]">
             <p>
+              <Link
+                href="/reset-password"
+                className="font-semibold text-[var(--dr-primary)] hover:underline"
+              >
+                Forgot your password?
+              </Link>
+            </p>
+            <p>
               Don&apos;t have an account?{" "}
               <Link
                 href="/signup?type=vendor"

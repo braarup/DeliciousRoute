@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 import { Buffer } from "buffer";
 import fs from "fs/promises";
 import path from "path";
+import { put } from "@vercel/blob";
 import { destroySession, getCurrentUser } from "@/lib/auth";
 
 async function updateVendorProfile(formData: FormData) {
@@ -64,27 +65,44 @@ async function updateVendorProfile(formData: FormData) {
     const isValidSize = profileImageFile.size <= maxSizeBytes;
 
     if (isValidType && isValidSize) {
+      const isOnVercel = process.env.VERCEL === "1";
+      const hasBlobToken = !!process.env.VERCEL_BLOB_READ_WRITE_TOKEN;
+
+      const originalName = profileImageFile.name || "upload.png";
+      const extMatch = originalName.match(/\.[a-zA-Z0-9]+$/);
+      const ext = (extMatch ? extMatch[0] : ".png").toLowerCase();
+      const fileName = `${vendorId}${ext}`;
+
       const arrayBuffer = await profileImageFile.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
 
-      const uploadsDir = path.join(process.cwd(), "public", "vendor-profile-images");
-      await fs.mkdir(uploadsDir, { recursive: true });
+      if (isOnVercel) {
+        if (!hasBlobToken) {
+          imageErrorCode = "storage_unavailable";
+        } else {
+          const blob = await put(`vendor-profile-images/${fileName}`, arrayBuffer, {
+            access: "public",
+            contentType: contentType || "application/octet-stream",
+          });
 
-      let targetPath = existingImagePath;
+          profileImagePath = blob.url;
+        }
+      } else {
+        const buffer = Buffer.from(arrayBuffer);
+        const uploadsDir = path.join(process.cwd(), "public", "vendor-profile-images");
+        await fs.mkdir(uploadsDir, { recursive: true });
 
-      if (!targetPath) {
-        const originalName = profileImageFile.name || "upload.png";
-        const extMatch = originalName.match(/\.[a-zA-Z0-9]+$/);
-        const ext = (extMatch ? extMatch[0] : ".png").toLowerCase();
-        const fileName = `${vendorId}${ext}`;
-        targetPath = `/vendor-profile-images/${fileName}`;
+        let targetPath = existingImagePath;
+
+        if (!targetPath) {
+          targetPath = `/vendor-profile-images/${fileName}`;
+        }
+
+        const fileNameOnDisk = targetPath.replace(/^\/+/, "");
+        const fullPath = path.join(process.cwd(), "public", fileNameOnDisk);
+        await fs.writeFile(fullPath, buffer);
+
+        profileImagePath = targetPath;
       }
-
-      const fileNameOnDisk = targetPath.replace(/^\/+/, "");
-      const fullPath = path.join(process.cwd(), "public", fileNameOnDisk);
-      await fs.writeFile(fullPath, buffer);
-
-      profileImagePath = targetPath;
     } else {
       imageErrorCode = "invalid_image";
     }
@@ -288,6 +306,8 @@ export default async function VendorProfileManagePage({
   const imageErrorMessage =
     imageErrorCode === "invalid_image"
       ? "Image not updated. Please upload JPEG, PNG, WEBP, GIF, or SVG up to 5MB."
+      : imageErrorCode === "storage_unavailable"
+      ? "Image upload is not available yet in this deployment. Ask your admin to configure Vercel Blob (VERCEL_BLOB_READ_WRITE_TOKEN)."
       : null;
 
   return (
