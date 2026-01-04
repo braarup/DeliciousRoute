@@ -30,9 +30,13 @@ export async function POST(request: Request) {
     const token = randomUUID();
     const tokenId = randomUUID();
 
+    const expiresAt = new Date(
+      Date.now() + RESET_TOKEN_TTL_HOURS * 60 * 60 * 1000
+    ).toISOString();
+
     await sql`
       INSERT INTO password_reset_tokens (id, user_id, token, expires_at)
-      VALUES (${tokenId}, ${user.id}, ${token}, now() + interval '${RESET_TOKEN_TTL_HOURS} hours')
+      VALUES (${tokenId}, ${user.id}, ${token}, ${expiresAt})
     `;
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_BASE_URL || process.env.VERCEL_URL || "";
