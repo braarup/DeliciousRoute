@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { sql } from "@vercel/postgres";
+import { unstable_noStore as noStore } from "next/cache";
 
 type DbVendorRow = {
   id: string;
@@ -135,6 +136,7 @@ function isOpenNow(hoursByDay: Record<number, { open: string; close: string }>):
 }
 
 export default async function VendorsListPage() {
+  noStore();
   const result = await sql<DbVendorRow>`
     SELECT
       v.id,

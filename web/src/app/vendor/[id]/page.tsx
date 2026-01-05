@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { sql } from "@vercel/postgres";
+import { unstable_noStore as noStore } from "next/cache";
 
 interface PageProps {
   params: { id: string };
@@ -35,6 +36,7 @@ type DbLocation = {
 };
 
 export default async function PublicVendorPage({ params }: PageProps) {
+  noStore();
   const { id } = params;
 
   const vendorResult = await sql<DbVendor>`
