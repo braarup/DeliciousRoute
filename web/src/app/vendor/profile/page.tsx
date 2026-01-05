@@ -39,7 +39,6 @@ async function updateVendorProfile(formData: FormData) {
     | { id: string; profile_image_path: string | null }
     | undefined;
   const vendorId = vendorRow?.id as string | undefined;
-  const existingImagePath = vendorRow?.profile_image_path ?? null;
 
   if (!vendorId) {
     throw new Error("No vendor found to update");
@@ -71,7 +70,8 @@ async function updateVendorProfile(formData: FormData) {
       const originalName = profileImageFile.name || "upload.png";
       const extMatch = originalName.match(/\.[a-zA-Z0-9]+$/);
       const ext = (extMatch ? extMatch[0] : ".png").toLowerCase();
-      const fileName = `${vendorId}${ext}`;
+      const uniqueSuffix = randomUUID();
+      const fileName = `${vendorId}-${uniqueSuffix}${ext}`;
 
       const arrayBuffer = await profileImageFile.arrayBuffer();
 
@@ -91,11 +91,7 @@ async function updateVendorProfile(formData: FormData) {
         const uploadsDir = path.join(process.cwd(), "public", "vendor-profile-images");
         await fs.mkdir(uploadsDir, { recursive: true });
 
-        let targetPath = existingImagePath;
-
-        if (!targetPath) {
-          targetPath = `/vendor-profile-images/${fileName}`;
-        }
+        const targetPath = `/vendor-profile-images/${fileName}`;
 
         const fileNameOnDisk = targetPath.replace(/^\/+/, "");
         const fullPath = path.join(process.cwd(), "public", fileNameOnDisk);
