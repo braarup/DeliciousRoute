@@ -1,5 +1,6 @@
 import { sql } from "@vercel/postgres";
 import { redirect } from "next/navigation";
+import { unstable_noStore as noStore } from "next/cache";
 import { randomUUID } from "crypto";
 import { Buffer } from "buffer";
 import fs from "fs/promises";
@@ -205,6 +206,7 @@ export default async function VendorProfileManagePage({
 }: {
   searchParams?: { imageError?: string };
 }) {
+  noStore();
   const currentUser = await getCurrentUser();
 
   if (!currentUser?.id) {
