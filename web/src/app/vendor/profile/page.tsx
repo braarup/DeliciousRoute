@@ -441,8 +441,7 @@ export default async function VendorProfileManagePage({
                   <div className="h-12 w-12 overflow-hidden rounded-full border border-[#e0e0e0] bg-[var(--dr-neutral)]">
                     <img
                       src={
-                        (vendor as any)?.profile_image_path ||
-                        "/images/icon_01.png"
+                        (vendor as any)?.profile_image_path || "/icon_01.png"
                       }
                       alt="Vendor profile"
                       className="h-full w-full object-cover"

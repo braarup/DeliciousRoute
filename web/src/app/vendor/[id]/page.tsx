@@ -142,8 +142,7 @@ export default async function PublicVendorPage({ params }: PageProps) {
                   <div className="h-11 w-11 overflow-hidden rounded-full border border-[#e0e0e0] bg-[var(--dr-neutral)]">
                     <img
                       src={
-                        (vendor as any).profile_image_path ||
-                        "/images/icon_01.png"
+                        (vendor as any).profile_image_path || "/icon_01.png"
                       }
                       alt="Vendor profile"
                       className="h-full w-full object-cover"

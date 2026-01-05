@@ -232,9 +232,7 @@ export default async function VendorsListPage() {
                 <div className="flex flex-1 items-start gap-3">
                   <div className="h-10 w-10 overflow-hidden rounded-full border border-[#e0e0e0] bg-[var(--dr-neutral)]">
                     <img
-                      src={
-                        vendor.profile_image_path || "/images/icon_01.png"
-                      }
+                      src={vendor.profile_image_path || "/icon_01.png"}
                       alt="Vendor profile"
                       className="h-full w-full object-cover"
                     />
