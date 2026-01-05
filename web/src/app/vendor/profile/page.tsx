@@ -66,7 +66,9 @@ async function updateVendorProfile(formData: FormData) {
 
     if (isValidType && isValidSize) {
       const isOnVercel = process.env.VERCEL === "1";
-      const hasBlobToken = !!process.env.VERCEL_BLOB_READ_WRITE_TOKEN;
+      const hasBlobToken =
+        !!process.env.BLOB_READ_WRITE_TOKEN ||
+        !!process.env.VERCEL_BLOB_READ_WRITE_TOKEN;
 
       const originalName = profileImageFile.name || "upload.png";
       const extMatch = originalName.match(/\.[a-zA-Z0-9]+$/);
