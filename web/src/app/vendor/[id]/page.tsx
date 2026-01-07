@@ -105,6 +105,33 @@ export default async function PublicVendorPage({ params }: PageProps) {
     return "";
   };
 
+  const isOpenNow = (
+    hours: Record<number, { open_time: any; close_time: any }>
+  ): boolean => {
+    const now = new Date();
+    const day = now.getDay();
+    const entry = hours[day];
+    if (!entry) return false;
+
+    const open = normalizeTime(entry.open_time);
+    const close = normalizeTime(entry.close_time);
+    if (!open || !close) return false;
+
+    const current = now.toTimeString().slice(0, 5);
+
+    if (open <= close) {
+      return current >= open && current <= close;
+    }
+
+    // Overnight range, e.g. 20:00-02:00
+    return current >= open || current <= close;
+  };
+
+  const todayIndex = new Date().getDay();
+  const todayEntry = hoursByDay[todayIndex];
+
+  const openNow = isOpenNow(hoursByDay);
+
   const hasCoords = location?.lat != null && location?.lng != null;
   const mapsUrl = hasCoords
     ? `https://www.google.com/maps/dir/?api=1&destination=${location.lat},${location.lng}`
@@ -123,7 +150,7 @@ export default async function PublicVendorPage({ params }: PageProps) {
             </Link>
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--dr-primary)]">
-                Vendor profile
+                Food truck profile
               </p>
               <h1 className="text-lg font-semibold leading-snug text-[var(--dr-text)] sm:text-xl">
                 {vendor.name || "Untitled venue"}
@@ -133,6 +160,12 @@ export default async function PublicVendorPage({ params }: PageProps) {
               )}
             </div>
           </div>
+          <Link
+            href="/"
+            className="hidden items-center justify-center rounded-full border border-[#e0e0e0] bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--dr-text)] hover:bg-[var(--dr-neutral)] sm:inline-flex"
+          >
+            Back to home
+          </Link>
         </header>
 
         <main className="mt-5 grid flex-1 gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1.6fr)]">
@@ -166,6 +199,21 @@ export default async function PublicVendorPage({ params }: PageProps) {
                 </div>
               </div>
 
+              {todayEntry && (
+                <p className="mt-1 inline-flex items-center gap-2 rounded-full bg-[var(--dr-primary)]/10 px-3 py-1 text-[11px] font-semibold text-[var(--dr-primary)]">
+                  <span
+                    className={
+                      "h-1.5 w-1.5 rounded-full " +
+                      (openNow ? "bg-emerald-500" : "bg-[#bdbdbd]")
+                    }
+                  />
+                  <span>{openNow ? "Open now" : "Closed"}</span>
+                  <span>
+                    · Today: {normalizeTime(todayEntry.open_time)} – {normalizeTime(todayEntry.close_time)}
+                  </span>
+                </p>
+              )}
+
               {vendor.description && (
                 <p className="text-sm leading-relaxed text-[#424242]">
                   {vendor.description}
@@ -197,6 +245,18 @@ export default async function PublicVendorPage({ params }: PageProps) {
                   </a>
                 )}
               </div>
+
+              {vendor.instagram_url && (
+                <a
+                  href={vendor.instagram_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-3 inline-flex items-center gap-2 rounded-full bg-[var(--dr-primary)] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white shadow-sm shadow-[var(--dr-primary)]/50 hover:bg-[var(--dr-accent)]"
+                >
+                  Follow this vendor
+                  <span aria-hidden>↗</span>
+                </a>
+              )}
 
               {(Object.keys(hoursByDay).length > 0 || vendor.hours_text) && (
                 <div className="mt-4">

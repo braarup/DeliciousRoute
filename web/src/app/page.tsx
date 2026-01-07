@@ -382,6 +382,7 @@ function GrubReelsTab() {
       vendor: "La Calle Roja",
       city: "Austin",
       length: "0:23",
+      vendorId: "la-calle-roja",
     },
     {
       id: 2,
@@ -389,6 +390,7 @@ function GrubReelsTab() {
       vendor: "Chrome & Cheddar",
       city: "Portland",
       length: "0:18",
+      vendorId: "chrome-and-cheddar",
     },
     {
       id: 3,
@@ -396,6 +398,7 @@ function GrubReelsTab() {
       vendor: "Glow Bowl",
       city: "Los Angeles",
       length: "0:35",
+      vendorId: "glow-bowl",
     },
   ];
 
@@ -421,11 +424,12 @@ function GrubReelsTab() {
 
       <div className="mt-1 grid gap-3 sm:grid-cols-3">
         {reels.map((reel) => (
-          <article
+          <Link
             key={reel.id}
+            href={`/vendor/${reel.vendorId}`}
             className="group flex flex-col justify-between rounded-2xl border border-[#e0e0e0] bg-[radial-gradient(circle_at_0_0,#e53935_0,transparent_55%),radial-gradient(circle_at_100%_100%,#ff7043_0,transparent_55%)] p-[1px] text-xs text-[var(--dr-text)] shadow-sm"
           >
-            <div className="flex flex-1 flex-col justify-between rounded-[1.05rem] bg-white/95 p-2.5">
+            <article className="flex flex-1 flex-col justify-between rounded-[1.05rem] bg-white/95 p-2.5">
               <div>
                 <div className="flex items-center justify-between text-[10px] text-[#757575]">
                   <span>{reel.length}</span>
@@ -444,11 +448,11 @@ function GrubReelsTab() {
                   {reel.city}
                 </p>
                 <span className="text-[11px] text-[var(--dr-primary)]">
-                  Watch
+                  View vendor
                 </span>
               </div>
-            </div>
-          </article>
+            </article>
+          </Link>
         ))}
       </div>
     </section>
