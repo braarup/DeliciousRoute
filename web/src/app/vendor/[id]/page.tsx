@@ -45,6 +45,12 @@ export default async function PublicVendorPage({ params }: PageProps) {
     LIMIT 1
   `;
 
+  console.log("PublicVendorPage vendor query", {
+    id,
+    rowCount: vendorResult.rows.length,
+    row: vendorResult.rows[0],
+  });
+  
   const vendor = vendorResult.rows[0];
 
   if (!vendor) {
