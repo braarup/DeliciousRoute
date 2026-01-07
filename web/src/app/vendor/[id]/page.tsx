@@ -3,7 +3,8 @@ import { sql } from "@vercel/postgres";
 import { unstable_noStore as noStore } from "next/cache";
 
 interface PageProps {
-  params: { id: string };
+  // In this project, params is passed as a Promise (Next 16 PPR pattern)
+  params: Promise<{ id: string }>;
 }
 
 type DbVendor = {
@@ -36,8 +37,7 @@ type DbLocation = {
 
 export default async function PublicVendorPage({ params }: PageProps) {
   noStore();
-  console.log("PublicVendorPage raw params", params);
-  const { id } = params;
+  const { id } = await params;
 
   const vendorResult = await sql<DbVendor>`
     SELECT id, name, description, cuisine_style, primary_region, tagline, hours_text, website_url, instagram_url, profile_image_path
@@ -64,7 +64,7 @@ export default async function PublicVendorPage({ params }: PageProps) {
                 href="/"
                 className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[#e0e0e0] bg-white text-sm font-semibold text-[var(--dr-text)] hover:bg-[var(--dr-neutral)]"
               >
-                
+                0
               </Link>
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--dr-primary)]">
