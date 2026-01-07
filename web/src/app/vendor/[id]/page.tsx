@@ -36,6 +36,7 @@ type DbLocation = {
 
 export default async function PublicVendorPage({ params }: PageProps) {
   noStore();
+  console.log("PublicVendorPage raw params", params);
   const { id } = params;
 
   const vendorResult = await sql<DbVendor>`
@@ -63,7 +64,7 @@ export default async function PublicVendorPage({ params }: PageProps) {
                 href="/"
                 className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[#e0e0e0] bg-white text-sm font-semibold text-[var(--dr-text)] hover:bg-[var(--dr-neutral)]"
               >
-                
+                
               </Link>
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--dr-primary)]">
