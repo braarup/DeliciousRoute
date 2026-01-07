@@ -1,4 +1,3 @@
-import { notFound } from "next/navigation";
 import Link from "next/link";
 import { sql } from "@vercel/postgres";
 import { unstable_noStore as noStore } from "next/cache";
@@ -49,7 +48,55 @@ export default async function PublicVendorPage({ params }: PageProps) {
   const vendor = vendorResult.rows[0];
 
   if (!vendor) {
-    notFound();
+    return (
+      <div className="min-h-screen bg-[var(--dr-neutral)] text-[var(--dr-text)]">
+        <div className="mx-auto flex min-h-screen max-w-5xl flex-col px-4 pb-10 pt-4 sm:px-6 lg:px-8 lg:pt-6">
+          <header className="flex items-center justify-between gap-4 border-b border-[#e0e0e0] bg-white/90 px-3 py-3 shadow-sm">
+            <div className="flex items-center gap-3">
+              <Link
+                href="/"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[#e0e0e0] bg-white text-sm font-semibold text-[var(--dr-text)] hover:bg-[var(--dr-neutral)]"
+              >
+                
+              </Link>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--dr-primary)]">
+                  Food truck profile
+                </p>
+                <h1 className="text-lg font-semibold leading-snug text-[var(--dr-text)] sm:text-xl">
+                  Truck not found
+                </h1>
+              </div>
+            </div>
+          </header>
+
+          <main className="mt-6 flex flex-1 items-center justify-center">
+            <div className="max-w-md rounded-3xl border border-[#e0e0e0] bg-white px-5 py-6 text-center text-sm text-[#616161] shadow-sm">
+              <p className="text-base font-semibold text-[var(--dr-text)]">
+                This food truck isn&apos;t available.
+              </p>
+              <p className="mt-2 text-xs">
+                The link you followed may be out of date, or this vendor hasn&apos;t completed their public profile yet.
+              </p>
+              <div className="mt-4 flex justify-center gap-2 text-xs font-semibold uppercase tracking-[0.18em]">
+                <Link
+                  href="/"
+                  className="inline-flex items-center justify-center rounded-full bg-[var(--dr-primary)] px-4 py-2 text-white shadow-sm shadow-[var(--dr-primary)]/40 hover:bg-[var(--dr-accent)]"
+                >
+                  Back to home
+                </Link>
+                <Link
+                  href="/vendors"
+                  className="inline-flex items-center justify-center rounded-full border border-[var(--dr-primary)]/50 px-4 py-2 text-[var(--dr-primary)] hover:bg-[var(--dr-primary)]/5"
+                >
+                  Browse vendors
+                </Link>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
   }
 
   const locationResult = await sql<DbLocation>`
@@ -60,57 +107,9 @@ export default async function PublicVendorPage({ params }: PageProps) {
     LIMIT 1
   `;
 
-    if (!vendor) {
-      return (
-        <div className="min-h-screen bg-[var(--dr-neutral)] text-[var(--dr-text)]">
-          <div className="mx-auto flex min-h-screen max-w-5xl flex-col px-4 pb-10 pt-4 sm:px-6 lg:px-8 lg:pt-6">
-            <header className="flex items-center justify-between gap-4 border-b border-[#e0e0e0] bg-white/90 px-3 py-3 shadow-sm">
-              <div className="flex items-center gap-3">
-                <Link
-                  href="/"
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[#e0e0e0] bg-white text-sm font-semibold text-[var(--dr-text)] hover:bg-[var(--dr-neutral)]"
-                >
-                  ←
-                </Link>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--dr-primary)]">
-                    Food truck profile
-                  </p>
-                  <h1 className="text-lg font-semibold leading-snug text-[var(--dr-text)] sm:text-xl">
-                    Truck not found
-                  </h1>
-                </div>
-              </div>
-            </header>
+  const location = locationResult.rows[0] ?? null;
 
-            <main className="mt-6 flex flex-1 items-center justify-center">
-              <div className="max-w-md rounded-3xl border border-[#e0e0e0] bg-white px-5 py-6 text-center text-sm text-[#616161] shadow-sm">
-                <p className="text-base font-semibold text-[var(--dr-text)]">
-                  This food truck isn&apos;t available.
-                </p>
-                <p className="mt-2 text-xs">
-                  The link you followed may be out of date, or this vendor hasn&apos;t completed their public profile yet.
-                </p>
-                <div className="mt-4 flex justify-center gap-2 text-xs font-semibold uppercase tracking-[0.18em]">
-                  <Link
-                    href="/"
-                    className="inline-flex items-center justify-center rounded-full bg-[var(--dr-primary)] px-4 py-2 text-white shadow-sm shadow-[var(--dr-primary)]/40 hover:bg-[var(--dr-accent)]"
-                  >
-                    Back to home
-                  </Link>
-                  <Link
-                    href="/vendors"
-                    className="inline-flex items-center justify-center rounded-full border border-[var(--dr-primary)]/50 px-4 py-2 text-[var(--dr-primary)] hover:bg-[var(--dr-primary)]/5"
-                  >
-                    Browse vendors
-                  </Link>
-                </div>
-              </div>
-            </main>
-          </div>
-        </div>
-      );
-    }
+  const hoursResult = await sql<DbHours>`
     SELECT lh.day_of_week, lh.open_time, lh.close_time
     FROM vendor_locations vl
     JOIN location_hours lh ON lh.vendor_location_id = vl.id
