@@ -186,9 +186,12 @@ export default async function PublicVendorPage({ params }: PageProps) {
 
   const openNow = isOpenNow(hoursByDay);
 
-  const hasCoords = location?.lat != null && location?.lng != null;
+  const latNumber = location?.lat != null ? Number(location.lat) : null;
+  const lngNumber = location?.lng != null ? Number(location.lng) : null;
+  const hasCoords = latNumber != null && !Number.isNaN(latNumber) && lngNumber != null && !Number.isNaN(lngNumber);
+
   const mapsUrl = hasCoords
-    ? `https://www.google.com/maps/dir/?api=1&destination=${location.lat},${location.lng}`
+    ? `https://www.google.com/maps/dir/?api=1&destination=${latNumber},${lngNumber}`
     : null;
 
   return (
@@ -380,9 +383,9 @@ export default async function PublicVendorPage({ params }: PageProps) {
                       {location.postal_code && <span> {location.postal_code}</span>}
                     </p>
                   )}
-                  {hasCoords && (
+                  {hasCoords && latNumber != null && lngNumber != null && (
                     <p className="mt-1 text-[11px] text-[#9e9e9e]">
-                      GPS: {location.lat?.toFixed(4)}, {location.lng?.toFixed(4)}
+                      GPS: {latNumber.toFixed(4)}, {lngNumber.toFixed(4)}
                     </p>
                   )}
 
