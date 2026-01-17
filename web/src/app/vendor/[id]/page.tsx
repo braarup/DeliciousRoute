@@ -159,6 +159,17 @@ export default async function PublicVendorPage({ params }: PageProps) {
     return "";
   };
 
+  const to12h = (time: string): string => {
+    if (!time) return "";
+    const [hStr, mStr] = time.split(":");
+    const h24 = parseInt(hStr || "0", 10);
+    const m = parseInt(mStr || "0", 10);
+    const suffix = h24 < 12 ? "am" : "pm";
+    const h12 = ((h24 + 11) % 12) + 1;
+    const minPart = m === 0 ? "" : `:${m.toString().padStart(2, "0")}`;
+    return `${h12}${minPart}${suffix}`;
+  };
+
   const isOpenNow = (
     hours: Record<number, { open_time: any; close_time: any }>
   ): boolean => {
@@ -266,7 +277,7 @@ export default async function PublicVendorPage({ params }: PageProps) {
                   />
                   <span>{openNow ? "Open now" : "Closed"}</span>
                   <span>
-                    · Today: {normalizeTime(todayEntry.open_time)} – {normalizeTime(todayEntry.close_time)}
+                    · Today: {to12h(normalizeTime(todayEntry.open_time))} – {to12h(normalizeTime(todayEntry.close_time))}
                   </span>
                 </p>
               )}
@@ -326,8 +337,8 @@ export default async function PublicVendorPage({ params }: PageProps) {
                         const entry = hoursByDay[index];
                         if (!entry) return null;
 
-                        const openStr = normalizeTime(entry.open_time);
-                        const closeStr = normalizeTime(entry.close_time);
+                        const openStr = to12h(normalizeTime(entry.open_time));
+                        const closeStr = to12h(normalizeTime(entry.close_time));
 
                         return (
                           <li

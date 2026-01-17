@@ -4,6 +4,8 @@ import { sql } from "@vercel/postgres";
 import { verifyPassword } from "@/lib/bcrypt";
 import { createSession, getCurrentUser } from "@/lib/auth";
 
+export const dynamic = "force-dynamic";
+
 async function loginUser(formData: FormData) {
   "use server";
 
@@ -183,12 +185,6 @@ export default async function LoginSelectorPage({
             </p>
           </section>
         </main>
-
-        <footer className="mt-4 text-xs text-[#757575]">
-          <Link href="/" className="hover:text-[var(--dr-primary)]">
-            860 Back to Delicious Route
-          </Link>
-        </footer>
       </div>
     </div>
   );

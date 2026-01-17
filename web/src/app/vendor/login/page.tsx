@@ -4,6 +4,8 @@ import { sql } from "@vercel/postgres";
 import { verifyPassword } from "@/lib/bcrypt";
 import { createSession, getCurrentUser } from "@/lib/auth";
 
+export const dynamic = "force-dynamic";
+
 async function loginVendor(formData: FormData) {
   "use server";
 
@@ -71,14 +73,6 @@ export default async function VendorLoginPage({
   return (
     <div className="min-h-screen bg-[var(--dr-neutral)] text-[var(--dr-text)]">
       <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4 py-10 sm:px-6 lg:px-8">
-        <header className="mb-6">
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[var(--dr-primary)]">
-            Manage my truck
-          </p>
-          <h1 className="mt-2 text-2xl font-semibold text-[var(--dr-text)]">
-            Vendor login
-          </h1>
-          <p className="mt-1 text-sm text-[#616161]">
             Sign in to update your truck profile, hours, and location.
           </p>
         </header>

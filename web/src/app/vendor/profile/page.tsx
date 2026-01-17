@@ -302,6 +302,17 @@ export default async function VendorProfileManagePage({
     return "";
   };
 
+  const to12h = (time: string): string => {
+    if (!time) return "";
+    const [hStr, mStr] = time.split(":");
+    const h24 = parseInt(hStr || "0", 10);
+    const m = parseInt(mStr || "0", 10);
+    const suffix = h24 < 12 ? "am" : "pm";
+    const h12 = ((h24 + 11) % 12) + 1;
+    const minPart = m === 0 ? "" : `:${m.toString().padStart(2, "0")}`;
+    return `${h12}${minPart}${suffix}`;
+  };
+
   const imageErrorCode = searchParams?.imageError;
   const imageErrorMessage =
     imageErrorCode === "invalid_image"
@@ -583,8 +594,8 @@ export default async function VendorProfileManagePage({
                       const entry = hoursByDay[index];
                       if (!entry) return null;
 
-                      const openStr = normalizeTime(entry.open_time);
-                      const closeStr = normalizeTime(entry.close_time);
+                      const openStr = to12h(normalizeTime(entry.open_time));
+                      const closeStr = to12h(normalizeTime(entry.close_time));
 
                       return (
                         <li key={label} className="flex items-center justify-between">
