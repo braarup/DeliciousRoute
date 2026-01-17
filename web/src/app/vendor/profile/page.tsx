@@ -65,6 +65,8 @@ async function updateVendorProfile(formData: FormData) {
   const profileImageFile = formData.get("profileImage");
   let profileImagePath: string | null = null;
   let imageErrorCode: string | null = null;
+  let photoErrorCode: string | null = null;
+  let reelErrorCode: string | null = null;
 
   if (profileImageFile instanceof File && profileImageFile.size > 0) {
     const contentType = (profileImageFile as any).type as string | undefined;
@@ -208,6 +210,7 @@ async function updateVendorProfile(formData: FormData) {
       const isValidSize = file.size <= maxImageSizeBytes;
 
       if (!isValidType || !isValidSize) {
+        photoErrorCode = photoErrorCode ?? "invalid_photo";
         continue;
       }
 
@@ -229,6 +232,7 @@ async function updateVendorProfile(formData: FormData) {
         if (!hasBlobToken) {
           // Surface a clear error if blob storage isn't configured
           imageErrorCode = imageErrorCode ?? "storage_unavailable";
+          photoErrorCode = photoErrorCode ?? "storage_unavailable";
           // Skip storing photos if blob storage isn't configured
           continue;
         }
@@ -300,6 +304,7 @@ async function updateVendorProfile(formData: FormData) {
         } else {
           // Surface a clear error if blob storage isn't configured
           imageErrorCode = imageErrorCode ?? "storage_unavailable";
+          reelErrorCode = reelErrorCode ?? "storage_unavailable";
         }
       } else {
         const buffer = Buffer.from(arrayBuffer);
@@ -339,14 +344,24 @@ async function updateVendorProfile(formData: FormData) {
           WHERE created_at < (now() - interval '24 hours')
         `;
       }
+    } else {
+      // Invalid reel type or size
+      reelErrorCode = reelErrorCode ?? "invalid_reel";
     }
   }
 
-  redirect(
-    imageErrorCode
-      ? `/vendor/profile?imageError=${encodeURIComponent(imageErrorCode)}`
-      : "/vendor/profile"
-  );
+  const params = new URLSearchParams();
+  if (imageErrorCode) {
+    params.set("imageError", imageErrorCode);
+  }
+  if (photoErrorCode) {
+    params.set("photoError", photoErrorCode);
+  }
+  if (reelErrorCode) {
+    params.set("reelError", reelErrorCode);
+  }
+
+  redirect(params.toString() ? `/vendor/profile?${params.toString()}` : "/vendor/profile");
 }
 
 async function signOutVendor() {
@@ -398,7 +413,7 @@ async function deleteVendorPhoto(formData: FormData) {
 export default async function VendorProfileManagePage({
   searchParams,
 }: {
-  searchParams?: { imageError?: string };
+  searchParams?: { imageError?: string; photoError?: string; reelError?: string };
 }) {
   noStore();
   const currentUser = await getCurrentUser();
@@ -582,6 +597,22 @@ export default async function VendorProfileManagePage({
       ? "Image not updated. Please upload JPEG, PNG, WEBP, GIF, or SVG up to 5MB."
       : imageErrorCode === "storage_unavailable"
       ? "Image upload is not available yet in this deployment. Ask your admin to configure Vercel Blob (VERCEL_BLOB_READ_WRITE_TOKEN)."
+      : null;
+
+  const photoErrorCodeFromQuery = searchParams?.photoError;
+  const photoErrorMessage =
+    photoErrorCodeFromQuery === "invalid_photo"
+      ? "Photo not uploaded. Please upload JPEG, PNG, WEBP, GIF, or SVG up to 5MB."
+      : photoErrorCodeFromQuery === "storage_unavailable"
+      ? "Photo upload is not available yet in this deployment. Ask your admin to configure Vercel Blob."
+      : null;
+
+  const reelErrorCodeFromQuery = searchParams?.reelError;
+  const reelErrorMessage =
+    reelErrorCodeFromQuery === "invalid_reel"
+      ? "Video not uploaded. Please upload MP4, WebM, or QuickTime (MOV) up to 50MB."
+      : reelErrorCodeFromQuery === "storage_unavailable"
+      ? "Grub Reel upload is not available yet in this deployment. Ask your admin to configure Vercel Blob."
       : null;
 
   return (
@@ -814,6 +845,11 @@ export default async function VendorProfileManagePage({
                     You can select multiple images at once. Supported types:
                     JPEG, PNG, WEBP, GIF, SVG up to 5MB each.
                   </p>
+                  {photoErrorMessage && (
+                    <p className="text-[0.7rem] text-red-500">
+                      {photoErrorMessage}
+                    </p>
+                  )}
                 </div>
 
                 {photos.length > 0 && (
@@ -985,6 +1021,12 @@ export default async function VendorProfileManagePage({
                   />
                 </div>
 
+                {reelErrorMessage && (
+                  <p className="text-[0.7rem] text-red-500">
+                    {reelErrorMessage}
+                  </p>
+                )}
+
                 {currentReel && (
                   <div className="mt-2 rounded-2xl bg-[var(--dr-neutral)] px-3 py-2 text-[11px] text-[#616161]">
                     <p className="font-semibold text-[var(--dr-text)]">
@@ -1081,7 +1123,7 @@ export default async function VendorProfileManagePage({
         </form>
 
         {photos.length > 0 && (
-          <div className="mt-4 hidden grid-cols-[minmax(0,1.3fr)_minmax(0,1.1fr)] gap-5 lg:grid">
+          <div className="mt-2 hidden grid-cols-[minmax(0,1.3fr)_minmax(0,1.1fr)] gap-5 lg:grid">
             <section className="rounded-3xl border border-[#e0e0e0] bg-white p-5 text-sm shadow-sm">
               <h2 className="text-sm font-semibold text-[var(--dr-text)]">
                 Current truck photos
