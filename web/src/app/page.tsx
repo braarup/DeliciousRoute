@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { FavoriteButton } from "@/components/FavoriteButton";
 
 type TabKey = "grub" | "vendors" | "events";
 
@@ -15,6 +16,7 @@ type VendorsTabVendor = {
   isOpenNow?: boolean;
   profileImagePath?: string | null;
   favoriteCount?: number;
+  isFavorited?: boolean;
 };
 
 const ads = [
@@ -363,13 +365,11 @@ function VendorsTab({ search, onSearchChange, vendors }: VendorsTabProps) {
                     View route
                   </span>
                   {typeof vendor.favoriteCount === "number" && (
-                    <span className="flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-100">
-                      <span aria-hidden>★</span>
-                      <span>Fav</span>
-                      <span className="text-[9px] text-amber-200">
-                        {vendor.favoriteCount}
-                      </span>
-                    </span>
+                    <FavoriteButton
+                      vendorId={vendor.id}
+                      initialCount={vendor.favoriteCount ?? 0}
+                      initialFavorited={!!vendor.isFavorited}
+                    />
                   )}
                 </p>
               </div>
@@ -392,6 +392,7 @@ function GrubReelsTab() {
       vendorName: string;
       city: string;
       favoriteCount: number;
+      isFavorited: boolean;
     }>
   >([]);
 
@@ -414,6 +415,7 @@ function GrubReelsTab() {
               vendorName: r.vendorName ?? "",
               city: r.city ?? "",
               favoriteCount: typeof r.favoriteCount === "number" ? r.favoriteCount : 0,
+              isFavorited: !!r.isFavorited,
             }))
           );
         }
@@ -486,13 +488,11 @@ function GrubReelsTab() {
                   <span className="rounded-full bg-black/80 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-[0.18em] text-white">
                     Grub Reel
                   </span>
-                  <span className="flex items-center gap-1 rounded-full bg-black/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-[#424242]">
-                    <span aria-hidden>★</span>
-                    <span>Fav</span>
-                    <span className="text-[9px] text-[#757575]">
-                      {reel.favoriteCount}
-                    </span>
-                  </span>
+                  <FavoriteButton
+                    vendorId={reel.vendorId}
+                    initialCount={reel.favoriteCount}
+                    initialFavorited={reel.isFavorited}
+                  />
                   <Link
                     href={`/vendor/${reel.vendorId}`}
                     className="text-[11px] font-medium text-[var(--dr-primary)] hover:underline"

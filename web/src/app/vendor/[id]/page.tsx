@@ -281,8 +281,6 @@ export default async function PublicVendorPage({ params }: PageProps) {
     isFavoritedByCurrentUser = !!userFavoriteResult.rowCount;
   }
 
-  const canFavorite = !!currentUser?.id;
-
   const latNumber = location?.lat != null ? Number(location.lat) : null;
   const lngNumber = location?.lng != null ? Number(location.lng) : null;
   const hasCoords =
@@ -358,7 +356,6 @@ export default async function PublicVendorPage({ params }: PageProps) {
                     vendorId={vendor.id}
                     initialCount={favoriteCount}
                     initialFavorited={isFavoritedByCurrentUser}
-                    canFavorite={canFavorite}
                   />
                 </div>
 
@@ -547,11 +544,7 @@ export default async function PublicVendorPage({ params }: PageProps) {
                 <h3 className="text-sm font-semibold text-[var(--dr-text)]">
                   Grub Reels
                 </h3>
-                {activeReel ? (
-                  <span className="rounded-full bg-[var(--dr-primary)]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--dr-primary)]">
-                      Grub Reel
-                  </span>
-                ) : (
+                {!activeReel && (
                   <span className="rounded-full bg-[var(--dr-accent)]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--dr-accent)]">
                     No active reel
                   </span>

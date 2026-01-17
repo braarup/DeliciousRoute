@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { sql } from "@vercel/postgres";
+import { getCurrentUser } from "@/lib/auth";
 
 type DbVendorRow = {
   id: string;
@@ -147,6 +148,8 @@ function isOpenNow(hoursByDay: Record<number, { open: string; close: string }>):
 }
 
 export async function GET() {
+  const currentUser = await getCurrentUser();
+
   const result = await sql<DbVendorRow>`
     SELECT
       v.id,
@@ -176,6 +179,19 @@ export async function GET() {
   const favoriteCounts = new Map<string, number>();
   for (const row of favoritesResult.rows) {
     favoriteCounts.set(row.vendor_id, row.count);
+  }
+
+  const userFavoriteVendorIds = new Set<string>();
+  if (currentUser?.id) {
+    const userFavoritesResult = await sql<{ vendor_id: string }>`
+      SELECT vendor_id
+      FROM favorites
+      WHERE user_id = ${currentUser.id}
+    `;
+
+    for (const row of userFavoritesResult.rows) {
+      userFavoriteVendorIds.add(row.vendor_id);
+    }
   }
 
   const vendorMap = new Map<
@@ -231,6 +247,7 @@ export async function GET() {
       isOpenNow: openNow,
       profileImagePath: row.profile_image_path ?? null,
       favoriteCount: favoriteCounts.get(row.id) ?? 0,
+      isFavorited: userFavoriteVendorIds.has(row.id),
     };
   });
 

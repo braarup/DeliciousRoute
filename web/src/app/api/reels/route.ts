@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import { sql } from "@vercel/postgres";
+import { getCurrentUser } from "@/lib/auth";
 
 export async function GET() {
   try {
+    const currentUser = await getCurrentUser();
+
     const favoritesResult = await sql<{ vendor_id: string; count: number }>`
       SELECT vendor_id, COUNT(*)::int AS count
       FROM favorites
@@ -12,6 +15,19 @@ export async function GET() {
     const favoriteCounts = new Map<string, number>();
     for (const row of favoritesResult.rows) {
       favoriteCounts.set(row.vendor_id, row.count);
+    }
+
+    const userFavoriteVendorIds = new Set<string>();
+    if (currentUser?.id) {
+      const userFavoritesResult = await sql<{ vendor_id: string }>`
+        SELECT vendor_id
+        FROM favorites
+        WHERE user_id = ${currentUser.id}
+      `;
+
+      for (const row of userFavoritesResult.rows) {
+        userFavoriteVendorIds.add(row.vendor_id);
+      }
     }
 
     const result = await sql`
@@ -41,6 +57,7 @@ export async function GET() {
       vendorName: (row.vendor_name as string) ?? "",
       city: (row.primary_region as string) ?? "",
       favoriteCount: favoriteCounts.get(row.vendor_id as string) ?? 0,
+      isFavorited: userFavoriteVendorIds.has(row.vendor_id as string),
     }));
 
     return NextResponse.json({ reels });
