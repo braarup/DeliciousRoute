@@ -41,7 +41,7 @@ const ads = [
 ];
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<TabKey>("vendors");
+  const [activeTab, setActiveTab] = useState<TabKey>("grub");
   const [search, setSearch] = useState("");
   const [activeAdIndex, setActiveAdIndex] = useState(0);
   const [vendors, setVendors] = useState<VendorsTabVendor[]>([]);
@@ -381,6 +381,7 @@ function GrubReelsTab() {
       vendorId: string;
       caption: string | null;
       createdAt: string;
+      videoUrl: string;
       vendorName: string;
       city: string;
     }>
@@ -401,6 +402,7 @@ function GrubReelsTab() {
               vendorId: String(r.vendorId),
               caption: r.caption ?? null,
               createdAt: typeof r.createdAt === "string" ? r.createdAt : new Date(r.createdAt).toISOString(),
+              videoUrl: String(r.videoUrl),
               vendorName: r.vendorName ?? "",
               city: r.city ?? "",
             }))
@@ -433,51 +435,57 @@ function GrubReelsTab() {
             Swipe-worthy clips from trucks around the country.
           </p>
         </div>
-        <span className="rounded-full bg-[var(--dr-accent)]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--dr-accent)] ring-1 ring-[var(--dr-accent)]/40">
-          Coming soon
-        </span>
+        {/* Coming soon badge removed */}
       </div>
 
-      <div className="mt-1 grid gap-3 sm:grid-cols-3">
+      <div className="mt-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {reels.length === 0 ? (
           <p className="col-span-full text-xs text-[#757575]">
             No Grub Reels are live right now. Check back soon!
           </p>
         ) : (
           reels.map((reel) => (
-            <Link
+            <article
               key={reel.id}
-              href={`/vendor/${reel.vendorId}`}
-              className="group flex flex-col justify-between rounded-2xl border border-[#e0e0e0] bg-[radial-gradient(circle_at_0_0,#e53935_0,transparent_55%),radial-gradient(circle_at_100%_100%,#ff7043_0,transparent_55%)] p-[1px] text-xs text-[var(--dr-text)] shadow-sm"
+              className="flex flex-col overflow-hidden rounded-2xl border border-[#e0e0e0] bg-white text-xs text-[var(--dr-text)] shadow-sm"
             >
-              <article className="flex flex-1 flex-col justify-between rounded-[1.05rem] bg-white/95 p-2.5">
+              <div className="relative bg-black/80">
+                <video
+                  src={reel.videoUrl}
+                  controls
+                  playsInline
+                  muted
+                  className="h-40 w-full object-cover sm:h-44"
+                />
+              </div>
+              <div className="flex flex-1 flex-col justify-between px-3 py-2">
                 <div>
-                  <div className="flex items-center justify-between text-[10px] text-[#757575]">
-                    <span>Live · 24 hrs</span>
-                    <span className="rounded-full bg-black/40 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-[0.18em] text-slate-200">
-                      Reel
-                    </span>
-                  </div>
-                  <h3 className="mt-2 line-clamp-2 text-[11px] font-semibold text-[var(--dr-text)]">
+                  <h3 className="line-clamp-2 text-[11px] font-semibold text-[var(--dr-text)]">
                     {reel.caption || `Grub Reel from ${reel.vendorName || "this truck"}`}
                   </h3>
-                </div>
-                <div className="mt-3 flex items-center justify-between text-[10px] text-[#616161]">
-                  <p>
+                  <p className="mt-1 text-[10px] text-[#616161]">
                     {reel.vendorName}
                     {reel.city && (
                       <>
-                        <span className="mx-1">•</span>
+                        <span className="mx-1"> b7</span>
                         {reel.city}
                       </>
                     )}
                   </p>
-                  <span className="text-[11px] text-[var(--dr-primary)]">
-                    View vendor
-                  </span>
                 </div>
-              </article>
-            </Link>
+                <div className="mt-2 flex items-center justify-between text-[10px] text-[#757575]">
+                  <span className="rounded-full bg-black/80 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-[0.18em] text-white">
+                    Grub Reel
+                  </span>
+                  <Link
+                    href={`/vendor/${reel.vendorId}`}
+                    className="text-[11px] font-medium text-[var(--dr-primary)] hover:underline"
+                  >
+                    View vendor profile
+                  </Link>
+                </div>
+              </div>
+            </article>
           ))
         )}
       </div>

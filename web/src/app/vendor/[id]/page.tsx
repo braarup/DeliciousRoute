@@ -516,7 +516,7 @@ export default async function PublicVendorPage({ params }: PageProps) {
                 </h3>
                 {activeReel ? (
                   <span className="rounded-full bg-[var(--dr-primary)]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--dr-primary)]">
-                    Live · 24 hrs
+                      Grub Reel
                   </span>
                 ) : (
                   <span className="rounded-full bg-[var(--dr-accent)]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--dr-accent)]">
