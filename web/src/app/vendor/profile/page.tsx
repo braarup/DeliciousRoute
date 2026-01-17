@@ -1,4 +1,5 @@
 import { sql } from "@vercel/postgres";
+import { UpdateGpsButton } from "@/components/UpdateGpsButton";
 import { redirect } from "next/navigation";
 import { unstable_noStore as noStore } from "next/cache";
 import { randomUUID } from "crypto";
@@ -667,8 +668,13 @@ export default async function VendorProfileManagePage({
 
               <p className="mt-3 text-[11px] text-[#9e9e9e]">
                 Tip: you can grab coordinates by right-clicking any spot on
-                Google Maps.
+                Google Maps, or use your current GPS below during open hours.
               </p>
+
+              {/* Client-side GPS updater */}
+              {/* eslint-disable-next-line @next/next/no-sync-scripts */}
+              {/* Button component imported at top of file */}
+              <UpdateGpsButton />
             </div>
 
             <div className="flex flex-wrap items-center justify-between gap-3">

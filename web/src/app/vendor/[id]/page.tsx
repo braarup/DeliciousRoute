@@ -224,9 +224,13 @@ export default async function PublicVendorPage({ params }: PageProps) {
 
   const latNumber = location?.lat != null ? Number(location.lat) : null;
   const lngNumber = location?.lng != null ? Number(location.lng) : null;
-  const hasCoords = latNumber != null && !Number.isNaN(latNumber) && lngNumber != null && !Number.isNaN(lngNumber);
+  const hasCoords =
+    latNumber != null && !Number.isNaN(latNumber) &&
+    lngNumber != null && !Number.isNaN(lngNumber);
 
-  const mapsUrl = hasCoords
+  const showLiveGps = openNow && hasCoords;
+
+  const mapsUrl = showLiveGps
     ? `https://www.google.com/maps/dir/?api=1&destination=${latNumber},${lngNumber}`
     : null;
 
@@ -419,7 +423,7 @@ export default async function PublicVendorPage({ params }: PageProps) {
                       {location.postal_code && <span> {location.postal_code}</span>}
                     </p>
                   )}
-                  {hasCoords && latNumber != null && lngNumber != null && (
+                  {showLiveGps && latNumber != null && lngNumber != null && (
                     <p className="mt-1 text-[11px] text-[#9e9e9e]">
                       GPS: {latNumber.toFixed(4)}, {lngNumber.toFixed(4)}
                     </p>
