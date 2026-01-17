@@ -395,6 +395,41 @@ export default async function VendorProfileManagePage({
     photos = mediaResult.rows;
   }
 
+  const dayLabels = [
+    "Sunday",
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+  ];
+
+  const normalizeTime = (value: any): string => {
+    if (!value) return "";
+    if (typeof value === "string") {
+      // Expecting HH:MM or HH:MM:SS from Postgres TIME
+      return value.slice(0, 5);
+    }
+    if (value instanceof Date) {
+      const h = value.getHours().toString().padStart(2, "0");
+      const m = value.getMinutes().toString().padStart(2, "0");
+      return `${h}:${m}`;
+    }
+    return "";
+  };
+
+  const to12h = (time: string): string => {
+    if (!time) return "";
+    const [hStr, mStr] = time.split(":");
+    const h24 = parseInt(hStr || "0", 10);
+    const m = parseInt(mStr || "0", 10);
+    const suffix = h24 < 12 ? "am" : "pm";
+    const h12 = ((h24 + 11) % 12) + 1;
+    const minPart = m === 0 ? "" : `:${m.toString().padStart(2, "0")}`;
+    return `${h12}${minPart}${suffix}`;
+  };
+
   const getLocalDayAndTime = () => {
     const now = new Date();
     const timeZone = process.env.VENDOR_DEFAULT_TIMEZONE || "America/Chicago";
@@ -442,41 +477,6 @@ export default async function VendorProfileManagePage({
   };
 
   const openNow = isOpenNow(hoursByDay);
-
-  const dayLabels = [
-    "Sunday",
-    "Monday",
-    "Tuesday",
-    "Wednesday",
-    "Thursday",
-    "Friday",
-    "Saturday",
-  ];
-
-  const normalizeTime = (value: any): string => {
-    if (!value) return "";
-    if (typeof value === "string") {
-      // Expecting HH:MM or HH:MM:SS from Postgres TIME
-      return value.slice(0, 5);
-    }
-    if (value instanceof Date) {
-      const h = value.getHours().toString().padStart(2, "0");
-      const m = value.getMinutes().toString().padStart(2, "0");
-      return `${h}:${m}`;
-    }
-    return "";
-  };
-
-  const to12h = (time: string): string => {
-    if (!time) return "";
-    const [hStr, mStr] = time.split(":");
-    const h24 = parseInt(hStr || "0", 10);
-    const m = parseInt(mStr || "0", 10);
-    const suffix = h24 < 12 ? "am" : "pm";
-    const h12 = ((h24 + 11) % 12) + 1;
-    const minPart = m === 0 ? "" : `:${m.toString().padStart(2, "0")}`;
-    return `${h12}${minPart}${suffix}`;
-  };
 
   const imageErrorCode = searchParams?.imageError;
   const imageErrorMessage =
