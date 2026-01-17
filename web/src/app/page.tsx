@@ -13,7 +13,8 @@ type VendorsTabVendor = {
   tagline?: string | null;
   todayHours?: string;
   isOpenNow?: boolean;
-   profileImagePath?: string | null;
+  profileImagePath?: string | null;
+  favoriteCount?: number;
 };
 
 const ads = [
@@ -357,13 +358,19 @@ function VendorsTab({ search, onSearchChange, vendors }: VendorsTabProps) {
                   <span className="mx-1">•</span>
                   {vendor.todayHours}
                 </p>
-                <p className="flex items-center gap-1 text-amber-200">
+                <p className="flex items-center gap-2 text-amber-200">
                   <span className="transition-transform group-hover:translate-x-0.5">
                     View route
                   </span>
-                  <span aria-hidden className="transition-transform group-hover:translate-x-0.5">
-                    ↗
-                  </span>
+                  {typeof vendor.favoriteCount === "number" && (
+                    <span className="flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-100">
+                      <span aria-hidden>★</span>
+                      <span>Fav</span>
+                      <span className="text-[9px] text-amber-200">
+                        {vendor.favoriteCount}
+                      </span>
+                    </span>
+                  )}
                 </p>
               </div>
             </Link>
@@ -384,6 +391,7 @@ function GrubReelsTab() {
       videoUrl: string;
       vendorName: string;
       city: string;
+      favoriteCount: number;
     }>
   >([]);
 
@@ -405,6 +413,7 @@ function GrubReelsTab() {
               videoUrl: String(r.videoUrl),
               vendorName: r.vendorName ?? "",
               city: r.city ?? "",
+              favoriteCount: typeof r.favoriteCount === "number" ? r.favoriteCount : 0,
             }))
           );
         }
@@ -467,7 +476,7 @@ function GrubReelsTab() {
                     {reel.vendorName}
                     {reel.city && (
                       <>
-                        <span className="mx-1"> b7</span>
+                        <span className="mx-1">•</span>
                         {reel.city}
                       </>
                     )}
@@ -476,6 +485,13 @@ function GrubReelsTab() {
                 <div className="mt-2 flex items-center justify-between text-[10px] text-[#757575]">
                   <span className="rounded-full bg-black/80 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-[0.18em] text-white">
                     Grub Reel
+                  </span>
+                  <span className="flex items-center gap-1 rounded-full bg-black/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-[#424242]">
+                    <span aria-hidden>★</span>
+                    <span>Fav</span>
+                    <span className="text-[9px] text-[#757575]">
+                      {reel.favoriteCount}
+                    </span>
                   </span>
                   <Link
                     href={`/vendor/${reel.vendorId}`}

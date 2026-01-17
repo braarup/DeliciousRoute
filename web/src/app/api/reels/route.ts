@@ -3,6 +3,17 @@ import { sql } from "@vercel/postgres";
 
 export async function GET() {
   try {
+    const favoritesResult = await sql<{ vendor_id: string; count: number }>`
+      SELECT vendor_id, COUNT(*)::int AS count
+      FROM favorites
+      GROUP BY vendor_id
+    `;
+
+    const favoriteCounts = new Map<string, number>();
+    for (const row of favoritesResult.rows) {
+      favoriteCounts.set(row.vendor_id, row.count);
+    }
+
     const result = await sql`
       SELECT
         r.id,
@@ -29,6 +40,7 @@ export async function GET() {
       videoUrl: row.video_url as string,
       vendorName: (row.vendor_name as string) ?? "",
       city: (row.primary_region as string) ?? "",
+      favoriteCount: favoriteCounts.get(row.vendor_id as string) ?? 0,
     }));
 
     return NextResponse.json({ reels });

@@ -167,6 +167,17 @@ export async function GET() {
     ORDER BY v.created_at DESC, lh.day_of_week
   `;
 
+  const favoritesResult = await sql<{ vendor_id: string; count: number }>`
+    SELECT vendor_id, COUNT(*)::int AS count
+    FROM favorites
+    GROUP BY vendor_id
+  `;
+
+  const favoriteCounts = new Map<string, number>();
+  for (const row of favoritesResult.rows) {
+    favoriteCounts.set(row.vendor_id, row.count);
+  }
+
   const vendorMap = new Map<
     string,
     {
@@ -219,6 +230,7 @@ export async function GET() {
       todayHours: consolidated ?? "",
       isOpenNow: openNow,
       profileImagePath: row.profile_image_path ?? null,
+      favoriteCount: favoriteCounts.get(row.id) ?? 0,
     };
   });
 

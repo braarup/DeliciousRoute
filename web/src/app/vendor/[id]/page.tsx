@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { sql } from "@vercel/postgres";
 import { unstable_noStore as noStore } from "next/cache";
+import { getCurrentUser } from "@/lib/auth";
+import { FavoriteButton } from "@/components/FavoriteButton";
 
 interface PageProps {
   // In this project, params is passed as a Promise (Next 16 PPR pattern)
@@ -51,6 +53,8 @@ type DbMedia = {
 export default async function PublicVendorPage({ params }: PageProps) {
   noStore();
   const { id } = await params;
+
+  const currentUser = await getCurrentUser();
 
   const vendorResult = await sql<DbVendor>`
     SELECT id, name, description, cuisine_style, primary_region, tagline, hours_text, website_url, instagram_url, profile_image_path
@@ -257,6 +261,28 @@ export default async function PublicVendorPage({ params }: PageProps) {
 
   const openNow = isOpenNow(hoursByDay);
 
+  const favoriteCountResult = await sql<{ count: number }>`
+    SELECT COUNT(*)::int AS count
+    FROM favorites
+    WHERE vendor_id = ${vendor.id}
+  `;
+
+  const favoriteCount = favoriteCountResult.rows[0]?.count ?? 0;
+  let isFavoritedByCurrentUser = false;
+
+  if (currentUser?.id) {
+    const userFavoriteResult = await sql`
+      SELECT 1
+      FROM favorites
+      WHERE user_id = ${currentUser.id} AND vendor_id = ${vendor.id}
+      LIMIT 1
+    `;
+
+    isFavoritedByCurrentUser = !!userFavoriteResult.rowCount;
+  }
+
+  const canFavorite = !!currentUser?.id;
+
   const latNumber = location?.lat != null ? Number(location.lat) : null;
   const lngNumber = location?.lng != null ? Number(location.lng) : null;
   const hasCoords =
@@ -328,8 +354,13 @@ export default async function PublicVendorPage({ params }: PageProps) {
                       <p className="mt-2 text-xs text-[#616161]">{vendor.tagline}</p>
                     )}
                   </div>
+                  <FavoriteButton
+                    vendorId={vendor.id}
+                    initialCount={favoriteCount}
+                    initialFavorited={isFavoritedByCurrentUser}
+                    canFavorite={canFavorite}
+                  />
                 </div>
-              </div>
 
               {todayEntry && (
                 <p className="mt-1 inline-flex items-center gap-2 rounded-full bg-[var(--dr-primary)]/10 px-3 py-1 text-[11px] font-semibold text-[var(--dr-primary)]">

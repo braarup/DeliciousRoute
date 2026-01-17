@@ -1,6 +1,7 @@
 import { sql } from "@vercel/postgres";
 import { redirect } from "next/navigation";
 import { randomUUID } from "crypto";
+import Link from "next/link";
 import { destroySession, getCurrentUser } from "@/lib/auth";
 
 async function updateCustomerProfile(formData: FormData) {
@@ -112,6 +113,22 @@ export default async function CustomerProfilePage() {
   `;
 
   const profile = profileResult.rows[0] ?? null;
+
+  const favoritesResult = await sql`
+    SELECT v.id, v.name, v.cuisine_style, v.primary_region, v.profile_image_path
+    FROM favorites f
+    JOIN vendors v ON v.id = f.vendor_id
+    WHERE f.user_id = ${currentUser.id}
+    ORDER BY f.created_at DESC
+  `;
+
+  const favoriteVendors = favoritesResult.rows as Array<{
+    id: string;
+    name: string | null;
+    cuisine_style: string | null;
+    primary_region: string | null;
+    profile_image_path: string | null;
+  }>;
 
   return (
     <div className="min-h-screen bg-[var(--dr-neutral)] text-[var(--dr-text)]">
@@ -241,6 +258,61 @@ export default async function CustomerProfilePage() {
             </p>
           </div>
         </form>
+
+        <section className="mt-6 space-y-3 rounded-3xl border border-[#e0e0e0] bg-white p-5 text-sm text-[#424242] shadow-sm">
+          <div className="flex items-baseline justify-between gap-2">
+            <div>
+              <h2 className="text-sm font-semibold text-[var(--dr-text)]">
+                Favorite trucks
+              </h2>
+              <p className="text-xs text-[#757575]">
+                Trucks you&apos;ve favorited across Delicious Route.
+              </p>
+            </div>
+          </div>
+
+          {favoriteVendors.length === 0 ? (
+            <p className="mt-2 text-xs text-[#9e9e9e]">
+              You haven&apos;t favorited any trucks yet. Tap the Fav button on a
+              vendor profile to save it here.
+            </p>
+          ) : (
+            <div className="mt-2 space-y-2">
+              {favoriteVendors.map((vendor) => (
+                <Link
+                  key={vendor.id}
+                  href={`/vendor/${vendor.id}`}
+                  className="flex items-center gap-3 rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)] px-3 py-2 text-xs text-[var(--dr-text)] hover:border-[var(--dr-primary)]/60 hover:bg-white"
+                >
+                  <div className="h-9 w-9 overflow-hidden rounded-full border border-[#e0e0e0] bg-white">
+                    <img
+                      src={vendor.profile_image_path || "/icon_01.png"}
+                      alt="Vendor profile"
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold">
+                      {vendor.name || "Untitled venue"}
+                    </p>
+                    <p className="text-[11px] text-[#757575]">
+                      {vendor.cuisine_style || "Food truck"}
+                      {vendor.primary_region && (
+                        <>
+                          <span className="mx-1"> b7</span>
+                          {vendor.primary_region}
+                        </>
+                      )}
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-[var(--dr-primary)]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--dr-primary)]">
+                    View
+                  </span>
+                </Link>
+              ))}
+            </div>
+          )}
+        </section>
         <footer className="mt-6 border-t border-[#e0e0e0] pt-3 text-xs text-[#757575]">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p>
