@@ -227,6 +227,8 @@ async function updateVendorProfile(formData: FormData) {
 
       if (isOnVercel) {
         if (!hasBlobToken) {
+          // Surface a clear error if blob storage isn't configured
+          imageErrorCode = imageErrorCode ?? "storage_unavailable";
           // Skip storing photos if blob storage isn't configured
           continue;
         }
@@ -295,6 +297,9 @@ async function updateVendorProfile(formData: FormData) {
             contentType: reelType || "application/octet-stream",
           });
           videoUrl = blob.url;
+        } else {
+          // Surface a clear error if blob storage isn't configured
+          imageErrorCode = imageErrorCode ?? "storage_unavailable";
         }
       } else {
         const buffer = Buffer.from(arrayBuffer);
@@ -845,70 +850,6 @@ export default async function VendorProfileManagePage({
               </div>
             </div>
 
-            <div className="rounded-3xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
-              <h2 className="text-sm font-semibold text-[var(--dr-text)]">
-                Grub Reel
-              </h2>
-              <p className="mt-1 text-xs text-[#757575]">
-                Upload a short vertical video to feature on the Grub Reels tab
-                and your vendor profile. Each reel stays live for 24 hours,
-                then disappears.
-              </p>
-
-              <div className="mt-4 space-y-3 text-sm">
-                <div className="space-y-1 text-xs">
-                  <label
-                    htmlFor="grubReel"
-                    className="text-xs font-medium uppercase tracking-[0.18em] text-[#757575]"
-                  >
-                    Upload Grub Reel
-                  </label>
-                  <input
-                    id="grubReel"
-                    type="file"
-                    name="grubReel"
-                    accept="video/mp4,video/webm,video/quicktime"
-                    className="block text-[0.7rem] text-[#616161] file:mr-2 file:rounded-full file:border file:border-[#e0e0e0] file:bg-white file:px-2 file:py-1 file:text-[0.7rem] file:font-semibold file:uppercase file:tracking-[0.16em] file:text-[var(--dr-primary)] hover:file:border-[var(--dr-primary)] hover:file:bg-[var(--dr-primary)]/5"
-                  />
-                  <p className="text-[0.7rem] text-[#9e9e9e]">
-                    Allowed types: MP4, WebM, or QuickTime (MOV) up to 50MB.
-                    Uploading a new reel replaces any previous one.
-                  </p>
-                </div>
-
-                <div className="space-y-1 text-xs">
-                  <label
-                    htmlFor="grubReelCaption"
-                    className="text-xs font-medium uppercase tracking-[0.18em] text-[#757575]"
-                  >
-                    Reel caption (optional)
-                  </label>
-                  <input
-                    id="grubReelCaption"
-                    name="grubReelCaption"
-                    type="text"
-                    placeholder="e.g. Midnight birria tacos on 6th Street tonight"
-                    className="w-full rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)] px-3 py-2 text-sm text-[var(--dr-text)] placeholder:text-[#bdbdbd] focus:border-[var(--dr-primary)] focus:outline-none"
-                  />
-                </div>
-
-                {currentReel && (
-                  <div className="mt-2 rounded-2xl bg-[var(--dr-neutral)] px-3 py-2 text-[11px] text-[#616161]">
-                    <p className="font-semibold text-[var(--dr-text)]">
-                      Active Grub Reel
-                    </p>
-                    <p className="mt-1">
-                      Your latest reel is live in Grub Reels and on your
-                      profile. It will be removed automatically 24 hours after
-                      upload.
-                    </p>
-                    {currentReel.caption && (
-                      <p className="mt-1 italic">“{currentReel.caption}”</p>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
           </section>
 
           {/* Right: hours and location */}
@@ -993,6 +934,71 @@ export default async function VendorProfileManagePage({
                       );
                     })}
                   </ul>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-3xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
+              <h2 className="text-sm font-semibold text-[var(--dr-text)]">
+                Grub Reel
+              </h2>
+              <p className="mt-1 text-xs text-[#757575]">
+                Upload a short vertical video to feature on the Grub Reels tab
+                and your vendor profile. Each reel stays live for 24 hours,
+                then disappears.
+              </p>
+
+              <div className="mt-4 space-y-3 text-sm">
+                <div className="space-y-1 text-xs">
+                  <label
+                    htmlFor="grubReel"
+                    className="text-xs font-medium uppercase tracking-[0.18em] text-[#757575]"
+                  >
+                    Upload Grub Reel
+                  </label>
+                  <input
+                    id="grubReel"
+                    type="file"
+                    name="grubReel"
+                    accept="video/mp4,video/webm,video/quicktime"
+                    className="block text-[0.7rem] text-[#616161] file:mr-2 file:rounded-full file:border file:border-[#e0e0e0] file:bg-white file:px-2 file:py-1 file:text-[0.7rem] file:font-semibold file:uppercase file:tracking-[0.16em] file:text-[var(--dr-primary)] hover:file:border-[var(--dr-primary)] hover:file:bg-[var(--dr-primary)]/5"
+                  />
+                  <p className="text-[0.7rem] text-[#9e9e9e]">
+                    Allowed types: MP4, WebM, or QuickTime (MOV) up to 50MB.
+                    Uploading a new reel replaces any previous one.
+                  </p>
+                </div>
+
+                <div className="space-y-1 text-xs">
+                  <label
+                    htmlFor="grubReelCaption"
+                    className="text-xs font-medium uppercase tracking-[0.18em] text-[#757575]"
+                  >
+                    Reel caption (optional)
+                  </label>
+                  <input
+                    id="grubReelCaption"
+                    name="grubReelCaption"
+                    type="text"
+                    placeholder="e.g. Midnight birria tacos on 6th Street tonight"
+                    className="w-full rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)] px-3 py-2 text-sm text-[var(--dr-text)] placeholder:text-[#bdbdbd] focus:border-[var(--dr-primary)] focus:outline-none"
+                  />
+                </div>
+
+                {currentReel && (
+                  <div className="mt-2 rounded-2xl bg-[var(--dr-neutral)] px-3 py-2 text-[11px] text-[#616161]">
+                    <p className="font-semibold text-[var(--dr-text)]">
+                      Active Grub Reel
+                    </p>
+                    <p className="mt-1">
+                      Your latest reel is live in Grub Reels and on your
+                      profile. It will be removed automatically 24 hours after
+                      upload.
+                    </p>
+                    {currentReel.caption && (
+                      <p className="mt-1 italic">“{currentReel.caption}”</p>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
