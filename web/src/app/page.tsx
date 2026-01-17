@@ -361,9 +361,6 @@ function VendorsTab({ search, onSearchChange, vendors }: VendorsTabProps) {
                   {vendor.todayHours}
                 </p>
                 <p className="flex items-center gap-2 text-amber-200">
-                  <span className="transition-transform group-hover:translate-x-0.5">
-                    View route
-                  </span>
                   {typeof vendor.favoriteCount === "number" && (
                     <FavoriteButton
                       vendorId={vendor.id}
@@ -485,9 +482,6 @@ function GrubReelsTab() {
                   </p>
                 </div>
                 <div className="mt-2 flex items-center justify-between text-[10px] text-[#757575]">
-                  <span className="rounded-full bg-black/80 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-[0.18em] text-white">
-                    Grub Reel
-                  </span>
                   <FavoriteButton
                     vendorId={reel.vendorId}
                     initialCount={reel.favoriteCount}
@@ -497,7 +491,7 @@ function GrubReelsTab() {
                     href={`/vendor/${reel.vendorId}`}
                     className="text-[11px] font-medium text-[var(--dr-primary)] hover:underline"
                   >
-                    View vendor profile
+                    View
                   </Link>
                 </div>
               </div>
