@@ -489,7 +489,7 @@ export default async function VendorProfileManagePage({
   return (
     <div className="min-h-screen bg-[var(--dr-neutral)] text-[var(--dr-text)]">
       <div className="mx-auto flex min-h-screen max-w-5xl flex-col px-4 pb-10 pt-6 sm:px-6 lg:px-8">
-        <header className="sticky top-0 z-20 mb-4 flex flex-col gap-3 border-b border-[#e0e0e0] bg-[var(--dr-neutral)]/95 pb-3 pt-1 backdrop-blur sm:flex-row sm:items-baseline sm:justify-between">
+        <header className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-baseline sm:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[var(--dr-primary)]">
               Vendor profile
