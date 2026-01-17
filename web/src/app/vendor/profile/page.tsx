@@ -395,6 +395,54 @@ export default async function VendorProfileManagePage({
     photos = mediaResult.rows;
   }
 
+  const getLocalDayAndTime = () => {
+    const now = new Date();
+    const timeZone = process.env.VENDOR_DEFAULT_TIMEZONE || "America/Chicago";
+    const formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      hour12: false,
+      weekday: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    const parts = formatter.formatToParts(now);
+    const weekday = parts.find((p) => p.type === "weekday")?.value || "Sun";
+    const hour = parts.find((p) => p.type === "hour")?.value || "00";
+    const minute = parts.find((p) => p.type === "minute")?.value || "00";
+    const dayIndexMap: Record<string, number> = {
+      Sun: 0,
+      Mon: 1,
+      Tue: 2,
+      Wed: 3,
+      Thu: 4,
+      Fri: 5,
+      Sat: 6,
+    };
+    const day = dayIndexMap[weekday] ?? now.getDay();
+    const current = `${hour}:${minute}`;
+    return { day, current };
+  };
+
+  const isOpenNow = (
+    hours: Record<number, { open_time: any; close_time: any }>
+  ): boolean => {
+    const { day, current } = getLocalDayAndTime();
+    const entry = hours[day];
+    if (!entry) return false;
+
+    const open = normalizeTime(entry.open_time);
+    const close = normalizeTime(entry.close_time);
+    if (!open || !close) return false;
+
+    if (open <= close) {
+      return current >= open && current <= close;
+    }
+
+    return current >= open || current <= close;
+  };
+
+  const openNow = isOpenNow(hoursByDay);
+
   const dayLabels = [
     "Sunday",
     "Monday",
@@ -814,7 +862,7 @@ export default async function VendorProfileManagePage({
                     type="text"
                     placeholder="30.2672"
                     defaultValue={
-                      vendor?.default_lat != null
+                      openNow && vendor?.default_lat != null
                         ? String(vendor.default_lat)
                         : ""
                     }
@@ -834,7 +882,7 @@ export default async function VendorProfileManagePage({
                     type="text"
                     placeholder="-97.7431"
                     defaultValue={
-                      vendor?.default_lng != null
+                      openNow && vendor?.default_lng != null
                         ? String(vendor.default_lng)
                         : ""
                     }
