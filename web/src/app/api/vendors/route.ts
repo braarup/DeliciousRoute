@@ -24,6 +24,34 @@ const dayLabels = [
   "Saturday",
 ];
 
+function getLocalDayAndTime() {
+  const now = new Date();
+  const timeZone = process.env.VENDOR_DEFAULT_TIMEZONE || "America/Chicago";
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hour12: false,
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  const parts = formatter.formatToParts(now);
+  const weekday = parts.find((p) => p.type === "weekday")?.value || "Sun";
+  const hour = parts.find((p) => p.type === "hour")?.value || "00";
+  const minute = parts.find((p) => p.type === "minute")?.value || "00";
+  const dayIndexMap: Record<string, number> = {
+    Sun: 0,
+    Mon: 1,
+    Tue: 2,
+    Wed: 3,
+    Thu: 4,
+    Fri: 5,
+    Sat: 6,
+  };
+  const day = dayIndexMap[weekday] ?? now.getDay();
+  const current = `${hour}:${minute}`;
+  return { day, current };
+}
+
 function normalizeTime(value: any): string {
   if (!value) return "";
   if (typeof value === "string") {
@@ -103,9 +131,7 @@ function buildConsolidatedHours(
 }
 
 function isOpenNow(hoursByDay: Record<number, { open: string; close: string }>): boolean {
-  const now = new Date();
-  const day = now.getDay();
-  const current = now.toTimeString().slice(0, 5);
+  const { day, current } = getLocalDayAndTime();
 
   const info = hoursByDay[day];
   if (!info) return false;
