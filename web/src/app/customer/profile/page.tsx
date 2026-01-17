@@ -2,7 +2,7 @@ import { sql } from "@vercel/postgres";
 import { redirect } from "next/navigation";
 import { randomUUID } from "crypto";
 import { destroySession, getCurrentUser } from "@/lib/auth";
-import { FavoriteTrucksSection } from "@/components/FavoriteTrucksSection";
+import { FavoriteTrucksSection } from "../../../components/FavoriteTrucksSection";
 
 async function updateCustomerProfile(formData: FormData) {
   "use server";
