@@ -687,18 +687,15 @@ export default async function VendorProfileManagePage({
                             className="h-24 w-full object-cover sm:h-28"
                             loading={index > 1 ? "lazy" : "eager"}
                           />
-                          <form
-                            action={deleteVendorPhoto}
-                            className="absolute right-1 top-1"
+                          <button
+                            type="submit"
+                            formAction={deleteVendorPhoto}
+                            name="photoId"
+                            value={photo.id}
+                            className="absolute right-1 top-1 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-white hover:bg-black/80"
                           >
-                            <input type="hidden" name="photoId" value={photo.id} />
-                            <button
-                              type="submit"
-                              className="rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-white hover:bg-black/80"
-                            >
-                              Remove
-                            </button>
-                          </form>
+                            Remove
+                          </button>
                         </div>
                       ))}
                     </div>
