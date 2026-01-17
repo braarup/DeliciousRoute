@@ -14,18 +14,10 @@ async function loginVendor(formData: FormData) {
 
   if (!email || !password) {
     redirect("/vendor/login?error=missing_fields");
-          </form>
+  }
 
-          <div className="mt-4 space-y-2 text-xs text-[#616161]">
-            <p>
-              <Link
-                href="/reset-password"
-                className="font-semibold text-[var(--dr-primary)] hover:underline"
-              >
-                Forgot your password?
-              </Link>
-            </p>
-            <p>
+  const userResult = await sql`
+    SELECT id, password_hash
     FROM users
     WHERE email = ${email}
     LIMIT 1
@@ -35,12 +27,20 @@ async function loginVendor(formData: FormData) {
 
   if (!user || !user.password_hash) {
     redirect("/vendor/login?error=invalid_credentials");
-          </div>
-        </main>
-      </div>
-    </div>
-  );
+  }
+
+  const ok = await verifyPassword(password, user.password_hash as string);
+
+  if (!ok) {
+    redirect("/vendor/login?error=invalid_credentials");
+  }
+
+  await createSession(user.id as string);
+
+  redirect("/vendor/profile");
 }
+
+export default async function VendorLoginPage({
   searchParams,
 }: {
   searchParams?: { error?: string };
@@ -141,6 +141,14 @@ async function loginVendor(formData: FormData) {
                   : "Email or password was incorrect. Please try again."}
               </p>
             ) : null}
+          </form>
+
+          <div className="mt-4 space-y-2 text-xs text-[#616161]">
+            <p>
+              <Link
+                href="/reset-password"
+                className="font-semibold text-[var(--dr-primary)] hover:underline"
+              >
                 Forgot your password?
               </Link>
             </p>
@@ -153,14 +161,6 @@ async function loginVendor(formData: FormData) {
                 Create vendor account
               </Link>
               .
-            </p>
-            <p>
-              <Link
-                href="/"
-                className="text-[#757575] hover:text-[var(--dr-primary)]"
-              >
-                ← Back to Delicious Route
-              </Link>
             </p>
           </div>
         </main>
