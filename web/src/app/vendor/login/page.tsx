@@ -14,10 +14,18 @@ async function loginVendor(formData: FormData) {
 
   if (!email || !password) {
     redirect("/vendor/login?error=missing_fields");
-  }
+          </form>
 
-  const userResult = await sql`
-    SELECT id, password_hash
+          <div className="mt-4 space-y-2 text-xs text-[#616161]">
+            <p>
+              <Link
+                href="/reset-password"
+                className="font-semibold text-[var(--dr-primary)] hover:underline"
+              >
+                Forgot your password?
+              </Link>
+            </p>
+            <p>
     FROM users
     WHERE email = ${email}
     LIMIT 1
@@ -27,20 +35,12 @@ async function loginVendor(formData: FormData) {
 
   if (!user || !user.password_hash) {
     redirect("/vendor/login?error=invalid_credentials");
-  }
-
-  const ok = await verifyPassword(password, user.password_hash as string);
-
-  if (!ok) {
-    redirect("/vendor/login?error=invalid_credentials");
-  }
-
-  await createSession(user.id as string);
-
-  redirect("/vendor/profile");
+          </div>
+        </main>
+      </div>
+    </div>
+  );
 }
-
-export default async function VendorLoginPage({
   searchParams,
 }: {
   searchParams?: { error?: string };
