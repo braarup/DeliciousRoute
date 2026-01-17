@@ -362,6 +362,8 @@ export default async function PublicVendorPage({ params }: PageProps) {
                   />
                 </div>
 
+              </div>
+
               {todayEntry && (
                 <p className="mt-1 inline-flex items-center gap-2 rounded-full bg-[var(--dr-primary)]/10 px-3 py-1 text-[11px] font-semibold text-[var(--dr-primary)]">
                   <span
