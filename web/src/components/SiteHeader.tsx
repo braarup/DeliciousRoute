@@ -19,7 +19,7 @@ export function SiteHeader({ ctaHref, ctaLabel }: SiteHeaderProps) {
 
   return (
     <>
-      <header className="sticky top-0 z-30 flex items-center justify-between gap-6 border-b border-[#e0e0e0] bg-white/90 px-4 py-3 shadow-sm backdrop-blur md:px-6 lg:px-8">
+      <header className="fixed inset-x-0 top-0 z-30 flex items-center justify-between gap-6 border-b border-[#e0e0e0] bg-white/90 px-4 py-3 shadow-sm backdrop-blur md:px-6 lg:px-8">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-6">
           <Link href="/" className="flex items-center gap-2.5">
             <div className="relative h-8 w-8 overflow-hidden rounded-full border border-[var(--dr-primary)] bg-white shadow-sm md:h-9 md:w-9">
