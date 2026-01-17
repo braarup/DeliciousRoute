@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { FavoriteButton } from "./FavoriteButton";
 
 export type FavoriteVendor = {
   id: string;
@@ -17,8 +18,9 @@ type FavoriteTrucksSectionProps = {
 
 export function FavoriteTrucksSection({ favoriteVendors }: FavoriteTrucksSectionProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [vendors, setVendors] = useState(favoriteVendors);
 
-  const hasFavorites = favoriteVendors.length > 0;
+  const hasFavorites = vendors.length > 0;
 
   return (
     <section className="mt-6 space-y-3 rounded-3xl border border-[#e0e0e0] bg-white p-5 text-sm text-[#424242] shadow-sm">
@@ -49,8 +51,8 @@ export function FavoriteTrucksSection({ favoriteVendors }: FavoriteTrucksSection
         </p>
       ) : (
         <p className="mt-1 text-[11px] text-[#9e9e9e]">
-          You have {favoriteVendors.length} favorite
-          {favoriteVendors.length === 1 ? " truck." : " trucks."}
+          You have {vendors.length} favorite
+          {vendors.length === 1 ? " truck." : " trucks."}
         </p>
       )}
 
@@ -75,7 +77,7 @@ export function FavoriteTrucksSection({ favoriteVendors }: FavoriteTrucksSection
               </button>
             </div>
             <div className="max-h-[60vh] space-y-2 overflow-y-auto px-4 py-3">
-              {favoriteVendors.map((vendor) => (
+              {vendors.map((vendor) => (
                 <Link
                   key={vendor.id}
                   href={`/vendor/${vendor.id}`}
@@ -103,9 +105,22 @@ export function FavoriteTrucksSection({ favoriteVendors }: FavoriteTrucksSection
                       )}
                     </p>
                   </div>
-                  <span className="rounded-full bg-[var(--dr-primary)]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--dr-primary)]">
-                    Open
-                  </span>
+                  <FavoriteButton
+                    vendorId={vendor.id}
+                    initialCount={(vendor as any).favorite_count ?? 0}
+                    initialFavorited={true}
+                    onToggle={(favorited) => {
+                      if (!favorited) {
+                        setVendors((prev) => {
+                          const next = prev.filter((v) => v.id !== vendor.id);
+                          if (next.length === 0) {
+                            setIsOpen(false);
+                          }
+                          return next;
+                        });
+                      }
+                    }}
+                  />
                 </Link>
               ))}
             </div>

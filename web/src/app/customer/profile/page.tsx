@@ -115,9 +115,20 @@ export default async function CustomerProfilePage() {
   const profile = profileResult.rows[0] ?? null;
 
   const favoritesResult = await sql`
-    SELECT v.id, v.name, v.cuisine_style, v.primary_region, v.profile_image_path
+    SELECT
+      v.id,
+      v.name,
+      v.cuisine_style,
+      v.primary_region,
+      v.profile_image_path,
+      COALESCE(fc.favorite_count, 0) AS favorite_count
     FROM favorites f
     JOIN vendors v ON v.id = f.vendor_id
+    LEFT JOIN (
+      SELECT vendor_id, COUNT(*)::int AS favorite_count
+      FROM favorites
+      GROUP BY vendor_id
+    ) fc ON fc.vendor_id = v.id
     WHERE f.user_id = ${currentUser.id}
     ORDER BY f.created_at DESC
   `;
@@ -128,6 +139,7 @@ export default async function CustomerProfilePage() {
     cuisine_style: string | null;
     primary_region: string | null;
     profile_image_path: string | null;
+    favorite_count: number;
   }>;
 
   return (

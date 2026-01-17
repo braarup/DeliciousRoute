@@ -6,12 +6,14 @@ type FavoriteButtonProps = {
   vendorId: string;
   initialCount: number;
   initialFavorited: boolean;
+  onToggle?: (favorited: boolean, count: number) => void;
 };
 
 export function FavoriteButton({
   vendorId,
   initialCount,
   initialFavorited,
+  onToggle,
 }: FavoriteButtonProps) {
   const [count, setCount] = useState(initialCount);
   const [favorited, setFavorited] = useState(initialFavorited);
@@ -27,9 +29,10 @@ export function FavoriteButton({
       const previous = { favorited, count };
       try {
         // Optimistic update
-        const nextFavorited = !favorited;
+        let nextFavorited = !favorited;
+        let nextCount = Math.max(0, count + (nextFavorited ? 1 : -1));
         setFavorited(nextFavorited);
-        setCount((c) => Math.max(0, c + (nextFavorited ? 1 : -1)));
+        setCount(nextCount);
 
         const res = await fetch("/api/favorites", {
           method: "POST",
@@ -52,10 +55,16 @@ export function FavoriteButton({
 
         const data = await res.json();
         if (typeof data.favoriteCount === "number") {
+          nextCount = data.favoriteCount;
           setCount(data.favoriteCount);
         }
         if (typeof data.favorited === "boolean") {
+          nextFavorited = data.favorited;
           setFavorited(data.favorited);
+        }
+
+        if (onToggle) {
+          onToggle(nextFavorited, nextCount);
         }
       } catch (error) {
         console.error("Error toggling favorite", error);
