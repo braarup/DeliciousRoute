@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { sql } from "@vercel/postgres";
 import { verifyPassword } from "@/lib/bcrypt";
 import { createSession, getCurrentUser } from "@/lib/auth";
+import { LoginErrorNotice } from "@/components/LoginErrorNotice";
 
 export const dynamic = "force-dynamic";
 
@@ -57,11 +58,7 @@ async function loginUser(formData: FormData) {
   }
 }
 
-export default async function LoginSelectorPage({
-  searchParams,
-}: {
-  searchParams?: { error?: string };
-}) {
+export default async function LoginSelectorPage() {
   const existingUser = await getCurrentUser();
   if (existingUser) {
     const rolesResult = await sql`
@@ -83,8 +80,6 @@ export default async function LoginSelectorPage({
       redirect("/customer/profile");
     }
   }
-
-  const error = searchParams?.error;
 
   return (
     <div className="min-h-screen bg-[var(--dr-neutral)] text-[var(--dr-text)]">
@@ -162,16 +157,7 @@ export default async function LoginSelectorPage({
                   Forgot your password?
                 </Link>
               </p>
-
-              {error ? (
-                <p className="text-xs text-red-600">
-                  {error === "missing_fields"
-                    ? "Please enter both email and password."
-                    : error === "already_registered"
-                    ? "An account already exists for that email. Please sign in instead."
-                    : "Email or password was incorrect. Please try again."}
-                </p>
-              ) : null}
+              <LoginErrorNotice includeAlreadyRegistered />
             </form>
             <p className="mt-3 text-xs text-[#616161]">
               Don&apos;t have an account?{" "}

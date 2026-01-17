@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { sql } from "@vercel/postgres";
 import { verifyPassword } from "@/lib/bcrypt";
 import { createSession, getCurrentUser } from "@/lib/auth";
+import { LoginErrorNotice } from "@/components/LoginErrorNotice";
 
 export const dynamic = "force-dynamic";
 
@@ -40,11 +41,7 @@ async function loginVendor(formData: FormData) {
   redirect("/vendor/profile");
 }
 
-export default async function VendorLoginPage({
-  searchParams,
-}: {
-  searchParams?: { error?: string };
-}) {
+export default async function VendorLoginPage() {
   const existingUser = await getCurrentUser();
 
   if (existingUser) {
@@ -67,8 +64,6 @@ export default async function VendorLoginPage({
       redirect("/customer/profile");
     }
   }
-
-  const error = searchParams?.error;
 
   return (
     <div className="min-h-screen bg-[var(--dr-neutral)] text-[var(--dr-text)]">
@@ -133,14 +128,7 @@ export default async function VendorLoginPage({
             >
               Sign in
             </button>
-
-            {error ? (
-              <p className="text-xs text-red-600">
-                {error === "missing_fields"
-                  ? "Please enter both email and password."
-                  : "Email or password was incorrect. Please try again."}
-              </p>
-            ) : null}
+            <LoginErrorNotice />
           </form>
 
           <div className="mt-4 space-y-2 text-xs text-[#616161]">
