@@ -35,6 +35,12 @@ type DbLocation = {
   lng: number | null;
 };
 
+type DbMedia = {
+  url: string;
+  media_type: string;
+  sort_order: number | null;
+};
+
 export default async function PublicVendorPage({ params }: PageProps) {
   noStore();
   const { id } = await params;
@@ -115,6 +121,15 @@ export default async function PublicVendorPage({ params }: PageProps) {
   `;
 
   const location = locationResult.rows[0] ?? null;
+
+  const mediaResult = await sql<DbMedia>`
+    SELECT url, media_type, sort_order
+    FROM vendor_media
+    WHERE vendor_id = ${vendor.id} AND media_type = 'photo'
+    ORDER BY sort_order NULLS LAST, created_at
+  `;
+
+  const photos = mediaResult.rows;
 
   const hoursResult = await sql<DbHours>`
     SELECT lh.day_of_week, lh.open_time, lh.close_time
@@ -389,6 +404,29 @@ export default async function PublicVendorPage({ params }: PageProps) {
                       {vendor.hours_text}
                     </p>
                   )}
+                </div>
+              )}
+
+              {photos.length > 0 && (
+                <div className="mt-4">
+                  <h3 className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--dr-primary)]/90">
+                    Truck photos
+                  </h3>
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                    {photos.map((media, index) => (
+                      <div
+                        key={media.url + index}
+                        className="overflow-hidden rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)]"
+                      >
+                        <img
+                          src={media.url}
+                          alt="Truck photo"
+                          className="h-28 w-full object-cover sm:h-32"
+                          loading={index > 1 ? "lazy" : "eager"}
+                        />
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>

@@ -25,6 +25,15 @@ async function updateVendorProfile(formData: FormData) {
   const latitude = latitudeRaw ? Number(latitudeRaw) : null;
   const longitude = longitudeRaw ? Number(longitudeRaw) : null;
 
+  const maxImageSizeBytes = 5 * 1024 * 1024; // 5MB
+  const allowedImageTypes = [
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+    "image/svg+xml",
+  ];
+
   const currentUser = await getCurrentUser();
 
   if (!currentUser?.id) {
@@ -51,19 +60,9 @@ async function updateVendorProfile(formData: FormData) {
   let imageErrorCode: string | null = null;
 
   if (profileImageFile instanceof File && profileImageFile.size > 0) {
-    const maxSizeBytes = 5 * 1024 * 1024; // 5MB
-    const allowedTypes = [
-      "image/jpeg",
-      "image/png",
-      "image/webp",
-      "image/gif",
-      "image/svg+xml",
-    ];
-
     const contentType = (profileImageFile as any).type as string | undefined;
-
-    const isValidType = !contentType || allowedTypes.includes(contentType);
-    const isValidSize = profileImageFile.size <= maxSizeBytes;
+    const isValidType = !contentType || allowedImageTypes.includes(contentType);
+    const isValidSize = profileImageFile.size <= maxImageSizeBytes;
 
     if (isValidType && isValidSize) {
       const isOnVercel = process.env.VERCEL === "1";
@@ -190,6 +189,74 @@ async function updateVendorProfile(formData: FormData) {
     }
   }
 
+  // Optional: additional gallery photos for this vendor
+  const photoFiles = formData
+    .getAll("photos")
+    .filter((v): v is File => v instanceof File && v.size > 0);
+
+  if (photoFiles.length > 0) {
+    for (const file of photoFiles) {
+      const contentType = (file as any).type as string | undefined;
+      const isValidType = !contentType || allowedImageTypes.includes(contentType);
+      const isValidSize = file.size <= maxImageSizeBytes;
+
+      if (!isValidType || !isValidSize) {
+        continue;
+      }
+
+      const isOnVercel = process.env.VERCEL === "1";
+      const hasBlobToken =
+        !!process.env.BLOB_READ_WRITE_TOKEN ||
+        !!process.env.VERCEL_BLOB_READ_WRITE_TOKEN;
+
+      const originalName = file.name || "photo.png";
+      const extMatch = originalName.match(/\.[a-zA-Z0-9]+$/);
+      const ext = (extMatch ? extMatch[0] : ".png").toLowerCase();
+      const uniqueSuffix = randomUUID();
+      const fileName = `${vendorId}-photo-${uniqueSuffix}${ext}`;
+
+      const arrayBuffer = await file.arrayBuffer();
+      let photoUrl: string | null = null;
+
+      if (isOnVercel) {
+        if (!hasBlobToken) {
+          // Skip storing photos if blob storage isn't configured
+          continue;
+        }
+
+        const blob = await put(`vendor-photos/${fileName}`, arrayBuffer, {
+          access: "public",
+          contentType: contentType || "application/octet-stream",
+        });
+
+        photoUrl = blob.url;
+      } else {
+        const buffer = Buffer.from(arrayBuffer);
+        const uploadsDir = path.join(
+          process.cwd(),
+          "public",
+          "vendor-photos"
+        );
+        await fs.mkdir(uploadsDir, { recursive: true });
+
+        const targetPath = `/vendor-photos/${fileName}`;
+
+        const fileNameOnDisk = targetPath.replace(/^\/+/, "");
+        const fullPath = path.join(process.cwd(), "public", fileNameOnDisk);
+        await fs.writeFile(fullPath, buffer);
+
+        photoUrl = targetPath;
+      }
+
+      if (photoUrl) {
+        await sql`
+          INSERT INTO vendor_media (id, vendor_id, media_type, url, sort_order)
+          VALUES (${randomUUID()}, ${vendorId}, 'photo', ${photoUrl}, 0)
+        `;
+      }
+    }
+  }
+
   redirect(
     imageErrorCode
       ? `/vendor/profile?imageError=${encodeURIComponent(imageErrorCode)}`
@@ -202,6 +269,45 @@ async function signOutVendor() {
 
   await destroySession();
   redirect("/");
+}
+
+async function deleteVendorPhoto(formData: FormData) {
+  "use server";
+
+  const currentUser = await getCurrentUser();
+
+  if (!currentUser?.id) {
+    redirect("/login");
+  }
+
+  const photoIdRaw = formData.get("photoId");
+  const photoId =
+    typeof photoIdRaw === "string"
+      ? photoIdRaw
+      : photoIdRaw
+      ? photoIdRaw.toString()
+      : null;
+
+  if (!photoId) {
+    redirect("/vendor/profile");
+  }
+
+  const ownedResult = await sql`
+    SELECT vm.id
+    FROM vendor_media vm
+    JOIN vendors v ON v.id = vm.vendor_id
+    WHERE vm.id = ${photoId} AND v.owner_user_id = ${currentUser.id}
+    LIMIT 1
+  `;
+
+  if (ownedResult.rowCount && ownedResult.rows[0]?.id) {
+    await sql`
+      DELETE FROM vendor_media
+      WHERE id = ${photoId}
+    `;
+  }
+
+  redirect("/vendor/profile");
 }
 
 export default async function VendorProfileManagePage({
@@ -258,6 +364,7 @@ export default async function VendorProfileManagePage({
   const vendorId = vendor?.id as string | undefined;
 
   let hoursByDay: Record<number, { open_time: any; close_time: any }> = {};
+  let photos: any[] = [];
 
   if (vendorId) {
     const hoursResult = await sql`
@@ -277,6 +384,15 @@ export default async function VendorProfileManagePage({
         };
       }
     }
+
+    const mediaResult = await sql`
+      SELECT id, url, media_type, sort_order
+      FROM vendor_media
+      WHERE vendor_id = ${vendorId} AND media_type = 'photo'
+      ORDER BY sort_order NULLS LAST, created_at
+    `;
+
+    photos = mediaResult.rows;
   }
 
   const dayLabels = [
@@ -524,6 +640,70 @@ export default async function VendorProfileManagePage({
                     className="w-full rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)] px-3 py-2 text-sm text-[var(--dr-text)] placeholder:text-[#bdbdbd] focus:border-[var(--dr-primary)] focus:outline-none"
                   />
                 </div>
+              </div>
+            </div>
+
+            <div className="rounded-3xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
+              <h2 className="text-sm font-semibold text-[var(--dr-text)]">
+                Truck photos
+              </h2>
+              <p className="mt-1 text-xs text-[#757575]">
+                Upload extra photos of your truck or food. These will appear
+                on your public Food Truck Profile for customers.
+              </p>
+
+              <div className="mt-4 space-y-2 text-sm">
+                <div className="space-y-1 text-xs">
+                  <label className="text-xs font-medium uppercase tracking-[0.18em] text-[#757575]">
+                    Upload photos
+                  </label>
+                  <input
+                    type="file"
+                    name="photos"
+                    accept="image/*"
+                    multiple
+                    className="block text-[0.7rem] text-[#616161] file:mr-2 file:rounded-full file:border file:border-[#e0e0e0] file:bg-white file:px-2 file:py-1 file:text-[0.7rem] file:font-semibold file:uppercase file:tracking-[0.16em] file:text-[var(--dr-primary)] hover:file:border-[var(--dr-primary)] hover:file:bg-[var(--dr-primary)]/5"
+                  />
+                  <p className="text-[0.7rem] text-[#9e9e9e]">
+                    You can select multiple images at once. Supported types:
+                    JPEG, PNG, WEBP, GIF, SVG up to 5MB each.
+                  </p>
+                </div>
+
+                {photos.length > 0 && (
+                  <div className="space-y-2 pt-3">
+                    <p className="text-[0.7rem] font-medium uppercase tracking-[0.18em] text-[#757575]">
+                      Current photos
+                    </p>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                      {photos.map((photo, index) => (
+                        <div
+                          key={photo.id ?? photo.url ?? index}
+                          className="relative overflow-hidden rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)]"
+                        >
+                          <img
+                            src={photo.url}
+                            alt="Truck photo"
+                            className="h-24 w-full object-cover sm:h-28"
+                            loading={index > 1 ? "lazy" : "eager"}
+                          />
+                          <form
+                            action={deleteVendorPhoto}
+                            className="absolute right-1 top-1"
+                          >
+                            <input type="hidden" name="photoId" value={photo.id} />
+                            <button
+                              type="submit"
+                              className="rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-white hover:bg-black/80"
+                            >
+                              Remove
+                            </button>
+                          </form>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </section>
