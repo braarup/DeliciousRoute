@@ -1,0 +1,181 @@
+<script>
+// Custom tab switching for independent tab structure
+document.addEventListener('DOMContentLoaded', function() {
+  const tabButtons = [
+    { btn: document.getElementById('reels-tab'), tab: document.getElementById('reelsTab') },
+    { btn: document.getElementById('vendors-tab'), tab: document.getElementById('vendorsTab') },
+    { btn: document.getElementById('events-tab'), tab: document.getElementById('eventsTab') }
+  ];
+  tabButtons.forEach(({btn, tab}, idx) => {
+    btn.addEventListener('click', function() {
+      tabButtons.forEach(({btn: b, tab: t}) => {
+        t.style.display = 'none';
+        b.classList.remove('active');
+      });
+      tab.style.display = 'block';
+      btn.classList.add('active');
+    });
+  });
+});
+</script>
+<script>
+// Fetch and render vendor cards in the Food Venues tab
+document.addEventListener('DOMContentLoaded', function() {
+  const vendorsGrid = document.getElementById('vendorsGrid');
+  const vendorsLoading = document.getElementById('vendorsLoading');
+  if (!vendorsGrid) return;
+
+  fetch('/api/vendors')
+    .then(response => response.json())
+    .then(vendors => {
+      if (vendorsLoading) vendorsLoading.style.display = 'none';
+      if (!vendors || vendors.length === 0) {
+        vendorsGrid.innerHTML = '<div class="text-center text-muted py-5">No food venues found.</div>';
+        return;
+      }
+      vendorsGrid.innerHTML = '';
+      vendors.forEach(vendor => {
+        const card = document.createElement('div');
+        card.className = 'vendor-profile-card';
+        card.innerHTML = `
+          <div class="card h-100">
+            <div class="card-body d-flex align-items-center gap-3">
+              <img src="${vendor.logo_url || '/static/img/logo.png'}" class="vendor-logo rounded" width="64" height="64" alt="logo">
+              <div>
+                <h5 class="mb-1">${vendor.name || 'Untitled Venue'}</h5>
+                <div class="text-muted small">${vendor.cuisine || ''}</div>
+                <div class="text-muted small mt-1">${vendor.city || ''}${vendor.state ? ', ' + vendor.state : ''}</div>
+                <div class="mt-2">
+                  <a href="/vendor/${vendor.id}" class="btn btn-outline-primary btn-sm">View Profile</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+        vendorsGrid.appendChild(card);
+      });
+    })
+    .catch(error => {
+      if (vendorsLoading) vendorsLoading.style.display = 'none';
+      vendorsGrid.innerHTML = '<div class="text-center text-danger py-5">Failed to load food venues.</div>';
+      console.error('Error loading vendors:', error);
+    });
+});
+</script>
+{% extends 'base.html' %}
+{% block content %}
+<section class="py-3 bg-light border-bottom">
+  <div class="container">
+    <form id="searchForm" class="row g-3 align-items-end" onsubmit="return false;">
+      <!-- Food Venues Near -->
+<div class="col-12 col-md-8">
+  <label class="form-label">Food Venues Near</label>
+  <div class="input-group">
+    <input type="text" class="form-control" id="near" placeholder="ZIP, address, or city & state">
+    <button class="btn btn-outline-primary" id="useMyLocation" type="button" title="Use your location">
+      <i class="bi bi-geo-alt-fill"></i>
+    </button>
+  </div>
+</div>
+
+      <!-- Radius (miles) -->
+      <div class="col-12 col-md-4">
+        <label class="form-label mb-1">Radius (miles)</label>
+        <input type="number" min="1" step="1" class="form-control" id="radius" value="10">
+      </div>
+    </form>
+  </div>
+</section>
+
+{% if ads_body and ads_body|length > 0 %}
+<section class="container my-3">
+  <div id="bodyAdsCarousel" class="carousel slide" data-bs-ride="carousel">
+    <div class="carousel-inner">
+      {% for ad in ads_body %}
+        <div class="carousel-item {% if loop.first %}active{% endif %}">
+          {% if ad.link_url %}<a href="{{ ad.link_url }}" class="text-decoration-none">{% endif %}
+            <img src="{{ ad.image_url }}" class="d-block w-100 ad-banner" alt="{{ ad.title or 'Ad' }}">
+          {% if ad.link_url %}</a>{% endif %}
+          {% if ad.title %}
+            <div class="carousel-caption d-none d-md-block">
+              <h5>{{ ad.title }}</h5>
+            </div>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+    <button class="carousel-control-prev" type="button" data-bs-target="#bodyAdsCarousel" data-bs-slide="prev">
+      <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+      <span class="visually-hidden">Previous</span>
+    </button>
+    <button class="carousel-control-next" type="button" data-bs-target="#bodyAdsCarousel" data-bs-slide="next">
+      <span class="carousel-control-next-icon" aria-hidden="true"></span>
+      <span class="visually-hidden">Next</span>
+    </button>
+  </div>
+</section>
+{% endif %}
+
+<section class="container">
+<ul class="nav nav-tabs flex-nowrap" id="mainTabs" role="tablist" style="overflow-x: auto; white-space: nowrap;">
+<li class="nav-item" role="presentation">
+<button class="nav-link active" id="reels-tab" data-bs-toggle="tab" data-bs-target="#reels" type="button" role="tab">
+  <i class="bi bi-play-circle me-1"></i>Grub Reels
+</button>
+</li>
+<li class="nav-item" role="presentation">
+<button class="nav-link" id="vendors-tab" data-bs-toggle="tab" data-bs-target="#vendors" type="button" role="tab">
+  <i class="bi bi-truck me-1"></i>Food Venues
+</button>
+</li>
+<li class="nav-item" role="presentation">
+<button class="nav-link" id="events-tab" data-bs-toggle="tab" data-bs-target="#events" type="button" role="tab">
+  <i class="bi bi-calendar-event me-1"></i>Events
+</button>
+</li>
+</ul>
+<div class="tab-content" id="mainTabsContent" style="min-height: 540px; background: transparent !important; border: none !important; box-shadow: none !important;">
+  <div id="reelsTab" class="reels-tab" style="display: block;">
+    <div class="position-relative">
+      <div id="reelsScroll">
+        <div id="reelsGrid"></div>
+      </div>
+    </div>
+  </div>
+  <div id="vendorsTab" class="vendors-tab" style="display: none;">
+    <div id="vendorsContainer">
+      <div id="vendorsGrid" class="d-flex flex-column">
+        <!-- Vendor cards will be populated here by JavaScript -->
+      </div>
+    </div>
+  </div>
+  <div id="eventsTab" class="events-tab" style="display: none;">
+    <div id="eventsGrid" class="row g-3"></div>
+  </div>
+</div>
+</div>
+</section>
+
+
+<!-- Hours of Operation Modal -->
+<div class="modal fade" id="hoursModal" tabindex="-1" aria-labelledby="hoursModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="hoursModalLabel">
+          <i class="bi bi-clock-history me-2"></i>Hours of Operation
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <h6 id="hoursVendorName" class="mb-3 text-primary"></h6>
+        <ul class="list-group list-group-flush" id="hoursListContainer">
+          <!-- Hours will be populated here by JavaScript -->
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+{% endblock %}

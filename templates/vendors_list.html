@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+
+{% block title %}Food Venues - Delicious Route{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="row">
+        <div class="col-12">
+            <h2 class="h3 mb-4">
+                <i class="bi bi-truck me-2"></i>
+                Food Venues Near You
+            </h2>
+            
+            {% if vendors %}
+                <div class="row g-4">
+                    {% for vendor in vendors %}
+                    <div class="col-12 col-md-6 col-lg-4">
+                        <div class="card h-100 vendor-profile-card">
+                            <div class="card-body d-flex">
+                                <!-- Logo on the left -->
+                                <div class="flex-shrink-0 me-3">
+                                    <a href="{{ url_for('vendor_profile', vendor_id=vendor.id) }}" class="text-decoration-none">
+                                        <img src="{{ vendor.logo_url or '/static/img/logo.png' }}" 
+                                             alt="{{ vendor.name }}" 
+                                             class="vendor-logo rounded-circle"
+                                             width="80" height="80"
+                                             style="object-fit: cover;">
+                                    </a>
+                                </div>
+                                
+                                <!-- Business info on the right -->
+                                <div class="flex-grow-1 min-width-0">
+                                    <h5 class="card-title mb-2">
+                                        <a href="{{ url_for('vendor_profile', vendor_id=vendor.id) }}" 
+                                           class="text-decoration-none text-dark">
+                                            {{ vendor.name }}
+                                        </a>
+                                    </h5>
+                                    
+                                    <!-- Cuisine types -->
+                                    {% if vendor.cuisine_list %}
+                                    <div class="mb-2">
+                                        <small class="text-muted d-flex align-items-center flex-wrap">
+                                            <i class="bi bi-list-ul me-1"></i>
+                                            {% for cuisine in vendor.cuisine_list %}
+                                                <span class="me-1">{{ cuisine }}</span>
+                                                {% if not loop.last %}<span class="me-1">•</span>{% endif %}
+                                            {% endfor %}
+                                        </small>
+                                    </div>
+                                    {% endif %}
+                                    
+                                    <!-- Current location (only if open) -->
+                                    {% if vendor.display_location %}
+                                    <div class="mb-2">
+                                        <small class="text-success d-flex align-items-center">
+                                            <i class="bi bi-geo-alt-fill me-1"></i>
+                                            <span class="fw-semibold">{{ vendor.display_location }}</span>
+                                            <span class="ms-2 badge bg-success">Open Now</span>
+                                        </small>
+                                    </div>
+                                    {% elif vendor.is_currently_open %}
+                                    <div class="mb-2">
+                                        <small class="text-success d-flex align-items-center">
+                                            <i class="bi bi-clock me-1"></i>
+                                            <span class="badge bg-success">Open Now</span>
+                                        </small>
+                                    </div>
+                                    {% else %}
+                                    <div class="mb-2">
+                                        <small class="text-muted d-flex align-items-center">
+                                            <i class="bi bi-clock me-1"></i>
+                                            <span class="badge bg-secondary">Closed</span>
+                                        </small>
+                                    </div>
+                                    {% endif %}
+                                    
+                                    <!-- Hours of operation -->
+                                    {% if vendor.hours %}
+                                    <div class="mb-0">
+                                        <small class="text-muted">
+                                            <i class="bi bi-clock-history me-1"></i>
+                                            <span class="hours-preview">
+                                                {% set today = moment().format('dddd') %}
+                                                {% if today in vendor.hours %}
+                                                    <strong>Today:</strong> {{ vendor.hours[today] }}
+                                                {% else %}
+                                                    <strong>Hours vary</strong>
+                                                {% endif %}
+                                            </span>
+                                        </small>
+                                        
+                                        <!-- Expandable hours details -->
+                                        <div class="collapse mt-2" id="hours{{ vendor.id }}">
+                                            <div class="border rounded p-2 bg-light">
+                                                <div class="small">
+                                                    {% for day, hours in vendor.hours.items() %}
+                                                    <div class="d-flex justify-content-between mb-1">
+                                                        <span class="fw-medium">{{ day }}:</span>
+                                                        <span>{{ hours }}</span>
+                                                    </div>
+                                                    {% endfor %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <button class="btn btn-link btn-sm p-0 text-decoration-none small" 
+                                                type="button" 
+                                                data-bs-toggle="collapse" 
+                                                data-bs-target="#hours{{ vendor.id }}" 
+                                                aria-expanded="false">
+                                            <i class="bi bi-chevron-down"></i> View all hours
+                                        </button>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <div class="text-muted">
+                        <i class="bi bi-truck display-1 mb-3 d-block"></i>
+                        <h4>No food venues registered yet</h4>
+                        <p>Check back soon for delicious options!</p>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+.vendor-profile-card {
+    transition: all 0.2s ease;
+    border: 1px solid #dee2e6;
+}
+
+.vendor-profile-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.vendor-logo {
+    border: 2px solid #e9ecef;
+}
+
+.hours-preview {
+    display: inline-block;
+    max-width: 200px;
+}
+
+.min-width-0 {
+    min-width: 0;
+}
+
+@media (max-width: 576px) {
+    .vendor-logo {
+        width: 60px !important;
+        height: 60px !important;
+    }
+    
+    .hours-preview {
+        max-width: 150px;
+    }
+}
+</style>
+
+<script>
+// Add moment.js-like functionality for getting current day
+document.addEventListener('DOMContentLoaded', function() {
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const today = days[new Date().getDay()];
+    
+    // Update "Today" labels to show current day
+    document.querySelectorAll('.hours-preview').forEach(function(preview) {
+        const text = preview.innerHTML;
+        if (text.includes('Today:')) {
+            preview.innerHTML = text.replace('Today:', '<strong>' + today + ':</strong>');
+        }
+    });
+});
+</script>
+{% endblock %}

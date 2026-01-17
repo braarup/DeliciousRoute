@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="container my-5" style="max-width:520px;">
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <h2 class="h4 mb-3">Sign In</h2>
+      <form method="post">
+        <div class="mb-3">
+          <label class="form-label">Email</label>
+          <input type="email" class="form-control" name="email" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Password</label>
+          <input type="password" class="form-control" name="password" required>
+        </div>
+        <button class="btn btn-primary w-100" type="submit">
+          <i class="bi bi-box-arrow-in-right me-1"></i>Sign In
+        </button>
+        <div class="d-flex justify-content-center mt-2">
+          <a href="#" id="forgotPasswordLink" data-bs-toggle="modal" data-bs-target="#forgotPasswordModal" class="small">Forgot password?</a>
+        </div>
+      </form>
+<!-- Forgot Password Modal -->
+<div class="modal fade" id="forgotPasswordModal" tabindex="-1" aria-labelledby="forgotPasswordModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="forgotPasswordModalLabel">Reset Password</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="forgotPasswordForm">
+          <div class="mb-3">
+            <label for="resetEmail" class="form-label">Enter your email address</label>
+            <input type="email" class="form-control" id="resetEmail" name="resetEmail" required>
+          </div>
+          <div id="forgotPasswordMsg" class="mb-2 text-danger small" style="display:none;"></div>
+          <button type="submit" class="btn btn-primary w-100">Send Reset Link</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+// Handle forgot password form submission (frontend only, backend needed)
+document.addEventListener('DOMContentLoaded', function() {
+  const form = document.getElementById('forgotPasswordForm');
+  if (form) {
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+      const email = document.getElementById('resetEmail').value;
+      const msg = document.getElementById('forgotPasswordMsg');
+      msg.style.display = 'none';
+      fetch('/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          msg.classList.remove('text-danger');
+          msg.classList.add('text-success');
+          msg.textContent = 'If your email exists, a reset link has been sent.';
+        } else {
+          msg.classList.remove('text-success');
+          msg.classList.add('text-danger');
+          msg.textContent = 'Email address does not exist.';
+        }
+        msg.style.display = 'block';
+      })
+      .catch(() => {
+        msg.classList.remove('text-success');
+        msg.classList.add('text-danger');
+        msg.textContent = 'An error occurred. Please try again.';
+        msg.style.display = 'block';
+      });
+    });
+  }
+});
+
+</script>
+
+      <hr class="my-4">
+      <div class="text-center">
+        <div class="mb-2 fw-semibold">New here?</div>
+        <a class="btn btn-outline-success w-100 mb-2" href="{{ url_for('signup_vendor') }}">
+          <i class="bi bi-shop me-1"></i>Sign up as Vendor
+        </a>
+        <a class="btn btn-outline-secondary w-100" href="{{ url_for('signup_customer') }}">
+          <i class="bi bi-person-plus me-1"></i>Sign up as Customer
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

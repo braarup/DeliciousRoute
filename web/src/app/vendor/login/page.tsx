@@ -73,6 +73,14 @@ export default async function VendorLoginPage({
   return (
     <div className="min-h-screen bg-[var(--dr-neutral)] text-[var(--dr-text)]">
       <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4 py-10 sm:px-6 lg:px-8">
+        <header className="mb-6">
+          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[var(--dr-primary)]">
+            Vendor sign in
+          </p>
+          <h1 className="mt-2 text-2xl font-semibold text-[var(--dr-text)]">
+            Welcome back
+          </h1>
+          <p className="mt-1 text-sm text-[#616161]">
             Sign in to update your truck profile, hours, and location.
           </p>
         </header>
@@ -133,14 +141,6 @@ export default async function VendorLoginPage({
                   : "Email or password was incorrect. Please try again."}
               </p>
             ) : null}
-          </form>
-
-          <div className="mt-4 space-y-2 text-xs text-[#616161]">
-            <p>
-              <Link
-                href="/reset-password"
-                className="font-semibold text-[var(--dr-primary)] hover:underline"
-              >
                 Forgot your password?
               </Link>
             </p>

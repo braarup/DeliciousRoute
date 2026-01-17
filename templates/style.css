@@ -1,0 +1,415 @@
+/* Fullscreen video modal for mobile */
+#fullscreenVideoModal {
+  display: none;
+  position: fixed;
+  z-index: 2000;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0,0,0,0.95);
+  justify-content: center;
+  align-items: center;
+}
+#fullscreenVideoModal.active {
+  display: flex;
+}
+#fullscreenVideoModal video {
+  max-width: 100vw;
+  max-height: 100vh;
+  border-radius: 0;
+  background: #000;
+}
+#fullscreenVideoModal .close-btn {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  color: #fff;
+  font-size: 2rem;
+  background: none;
+  border: none;
+  z-index: 2010;
+}
+@media (min-width: 577px) {
+  #fullscreenVideoModal { display: none !important; }
+}
+/* Force Food Venues tab and children flush to top */
+#vendors.tab-pane,
+#vendors.tab-pane > #vendorsContainer,
+#vendors.tab-pane > #vendorsContainer > #vendorsGrid {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+  border-top: none !important;
+}
+/* Remove margin and padding from Food Venues tab pane */
+#vendors.tab-pane {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+/* --- Custom Styles Merged from index.html --- */
+/* Hide vertical scrollbars for vendorsContainer and tab-content */
+#vendorsContainer {
+  scrollbar-width: none !important;
+  scrollbar-width: thin;
+  scrollbar-color: #6c757d #f8f9fa;
+}
+#vendorsContainer::-webkit-scrollbar {
+  display: none !important;
+  width: 8px;
+}
+#vendorsContainer::-webkit-scrollbar-track {
+  background: #f8f9fa;
+  border-radius: 4px;
+}
+#vendorsContainer::-webkit-scrollbar-thumb {
+  background: #6c757d;
+  border-radius: 4px;
+}
+#mainTabsContent {
+  scrollbar-width: none !important;
+}
+#mainTabsContent::-webkit-scrollbar {
+  display: none !important;
+}
+
+/* Remove extra space above vendor cards */
+#vendorsGrid {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+/* Vendor Profile Cards Styles */
+.vendor-profile-card {
+  transition: all 0.2s ease;
+  margin-bottom: 1rem;
+}
+.vendor-profile-card .card {
+  border: 1px solid #dee2e6;
+  transition: all 0.2s ease;
+}
+.vendor-profile-card:hover .card {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+.vendor-logo {
+  border: 2px solid #e9ecef;
+}
+.hours-preview {
+  display: inline-block;
+  max-width: 200px;
+}
+.min-width-0 {
+  min-width: 0;
+}
+
+#reelsGrid {
+  display: flex;
+  flex-direction: row;
+  gap: 1rem;
+}
+.reel-card {
+  scroll-snap-align: start;
+  min-width: 300px;
+  max-width: 300px;
+  width: 300px;
+}
+.reel-video {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16/9;
+  border-radius: 10px;
+  background: #000;
+}
+  #reelsGrid {
+    flex-direction: row;
+    gap: 0.5rem;
+  }
+  .reel-card {
+    min-width: 220px;
+    max-width: 220px;
+    width: 220px;
+  }
+@media (max-width: 576px) {
+  .reel-card {
+    min-width: 98vw;
+    max-width: 98vw;
+    width: 98vw;
+    padding: 0.5rem 0.5rem !important;
+  }
+  .reel-video {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 56vw !important; /* 16:9 aspect ratio for full width */
+    max-height: 60vw !important;
+    border-radius: 10px;
+    background: #000;
+    display: block;
+    object-fit: contain;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .vendor-logo {
+    width: 60px !important;
+    height: 60px !important;
+  }
+  .hours-preview {
+    max-width: 150px;
+  }
+  #mainTabs {
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    border-bottom: 1px solid #dee2e6;
+  }
+  #mainTabs .nav-item {
+    flex: 0 0 auto;
+  }
+  #mainTabs .nav-link {
+    min-width: 110px;
+    text-align: center;
+    font-size: 85%;
+  }
+}
+:root {
+--header-h: 54px;
+}
+body { background-color: #f8f9fa; }
+.ad-banner { height: 124px; object-fit: cover; width: 100%; }
+#map, #vendorMap { height: 360px; }
+
+/* Cards */
+.card { border-radius: 1rem; }
+
+/* Mobile spacing tweaks */
+@media (max-width: 576px) {
+#map, #vendorMap { height: 300px; }
+}
+
+/* Keep the near field + icon perfectly flush */
+.input-group > .btn {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+/* Reset header to normal positioning */
+header {
+  position: relative; /* Normal document flow */
+}
+
+/* Remove fixed positioning from navigation container */
+header .container:first-child {
+  position: relative; /* Normal positioning */
+  transform: none; /* Remove transform */
+  width: auto; /* Auto width */
+  max-width: none; /* Remove max-width constraint */
+  z-index: auto; /* Normal z-index */
+  background: inherit; /* Inherit background */
+  box-shadow: none; /* Remove shadow */
+  border-bottom: none; /* Remove border */
+  padding: 0.5rem 15px; /* Keep normal padding */
+}
+
+/* Remove hamburger button special positioning */
+header .container:first-child button {
+  position: relative; /* Normal positioning */
+  z-index: auto; /* Normal z-index */
+}
+
+/* Reset body padding - no more fixed header offset */
+body {
+  padding-top: 0; /* Remove fixed header offset */
+}
+
+/* Reset off-canvas menu z-index to normal */
+.offcanvas {
+  z-index: 1045; /* Bootstrap default for off-canvas */
+}
+
+/* Reset backdrop z-index */
+.offcanvas-backdrop {
+  z-index: 1040; /* Bootstrap default for backdrop */
+}
+
+/* Slightly tighter labels so the bottoms line up cleanly */
+.form-label.mb-1 { margin-bottom: .25rem !important; }
+
+/* Edit logo button styling */
+.position-relative .btn.position-absolute {
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  min-width: auto;
+  z-index: 10;
+}
+
+.position-relative .btn.position-absolute:hover {
+  transform: translate(50%, -50%) scale(1.1);
+  transition: transform 0.2s ease;
+}
+
+
+/* Grub Reels styling - Vertical stacking */
+#reels, div#reels {
+  max-height: 70vh;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  scroll-snap-type: y mandatory;
+  -webkit-overflow-scrolling: touch;
+  width: 100% !important;
+  padding: 0.5rem 0;
+}
+
+#reelsGrid, div#reelsGrid {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.5rem !important;
+  width: 100% !important;
+}
+
+.reel-container, div#reelsGrid .reel-container {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  scroll-snap-align: start;
+}
+
+.reel-card {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  border-radius: 12px;
+  overflow: hidden;
+  background: white;
+  margin: 0 auto 0 auto;
+  scroll-snap-align: start;
+  padding: 1rem 1rem !important; /* Add padding for inner spacing */
+}
+
+.reel-video {
+  width: 50% !important;
+  max-width: 50% !important;
+  max-height: 40vh !important;
+  height: auto !important;
+  aspect-ratio: 16/9;
+  border-radius: 10px;
+  background: #000;
+  display: block;
+  object-fit: contain;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.like-btn, .save-btn {
+  min-width: 60px;
+}
+
+.like-btn i, .save-btn i {
+  transition: color 0.2s ease;
+}
+
+.like-btn.btn-danger i {
+  color: #dc3545;
+}
+
+.save-btn.btn-primary i {
+  color: #0d6efd;
+}
+
+/* Signup Encouragement Modal Styles */
+#signupEncourageModal .modal-header {
+  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+}
+
+#signupEncourageModal .signup-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+}
+
+#signupEncourageModal .signup-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+#signupEncourageModal .signup-card:active {
+  transform: translateY(0px);
+}
+
+#signupEncourageModal .display-1 {
+  animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+  0%, 20%, 50%, 80%, 100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-10px);
+  }
+  60% {
+    transform: translateY(-5px);
+  }
+}
+
+#signupEncourageModal .btn {
+  transition: all 0.2s ease;
+  pointer-events: none; /* Prevent double-click on button inside clickable card */
+}
+
+#signupEncourageModal .signup-card:hover .btn {
+  transform: scale(1.05);
+}
+
+/* AI Logo Creator Styles */
+.ai-logo-creator #logoPreview {
+  border: 2px dashed #dee2e6;
+  transition: all 0.3s ease;
+}
+
+.ai-logo-creator #logoPreview.show {
+  border-color: #198754;
+  background-color: #f8fff9;
+}
+
+.ai-logo-creator .current-logo img {
+  border: 2px solid #e9ecef;
+  transition: all 0.3s ease;
+}
+
+.ai-logo-creator .current-logo img:hover {
+  border-color: #6c757d;
+  transform: scale(1.05);
+}
+
+.ai-logo-creator #generatedLogo {
+  border: 1px solid #dee2e6;
+  border-radius: 0.5rem;
+  transition: all 0.3s ease;
+}
+
+.ai-logo-creator #generatedLogo:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.ai-logo-creator .btn-success {
+  background: linear-gradient(45deg, #198754, #20c997);
+  border: none;
+}
+
+.ai-logo-creator .btn-success:hover {
+  background: linear-gradient(45deg, #157347, #1aa179);
+  transform: translateY(-1px);
+}
+
+.ai-logo-creator .form-control, 
+.ai-logo-creator .form-select {
+  transition: all 0.2s ease;
+}
+
+.ai-logo-creator .form-control:focus, 
+.ai-logo-creator .form-select:focus {
+  box-shadow: 0 0 0 0.2rem rgba(25, 135, 84, 0.25);
+  border-color: #198754;
+}

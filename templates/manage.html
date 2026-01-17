@@ -1,0 +1,382 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="container my-4" style="max-width:900px;">
+<h2 class="h4 mb-3">Manage My Venue</h2>
+{% if vendor %}
+<div class="alert alert-info d-flex justify-content-between align-items-center">
+  <span>Managing: <strong>{{ vendor.name }}</strong></span>
+  <a href="{{ url_for('vendor_profile', vendor_id=vendor.id) }}" class="btn btn-outline-primary btn-sm">
+    <i class="bi bi-eye me-1"></i>View Public Profile
+  </a>
+</div>
+
+<!-- Business Information Section -->
+<div class="card mb-4">
+  <div class="card-header">
+    <h3 class="h5 mb-0">
+      <i class="bi bi-building me-2"></i>Business Information
+    </h3>
+  </div>
+  <div class="card-body">
+    <form id="businessInfoForm">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label for="businessName" class="form-label">Business Name</label>
+          <input type="text" class="form-control" id="businessName" 
+                 value="{{ vendor.name or '' }}" required>
+        </div>
+        <div class="col-md-6">
+          <label for="cuisine" class="form-label">Cuisine Types</label>
+          <input type="text" class="form-control" id="cuisine" 
+                 value="{{ vendor.cuisine or '' }}" 
+                 placeholder="e.g. Mexican, Tacos, Street Food">
+          <div class="form-text">Separate multiple cuisines with commas</div>
+        </div>
+        <div class="col-md-6">
+          <label for="firstName" class="form-label">Owner First Name</label>
+          <input type="text" class="form-control" id="firstName" 
+                 value="{{ vendor.first_name or '' }}" required>
+        </div>
+        <div class="col-md-6">
+          <label for="lastName" class="form-label">Owner Last Name</label>
+          <input type="text" class="form-control" id="lastName" 
+                 value="{{ vendor.last_name or '' }}" required>
+        </div>
+        <div class="col-12">
+          <label for="description" class="form-label">Description</label>
+          <textarea class="form-control" id="description" rows="3" 
+                    placeholder="Tell customers about your venue...">{{ vendor.description or '' }}</textarea>
+        </div>
+        <div class="col-md-6">
+          <label for="website" class="form-label">Website</label>
+          <input type="url" class="form-control" id="website" 
+                 value="{{ vendor.website or '' }}" 
+                 placeholder="https://yourwebsite.com">
+        </div>
+        <div class="col-md-6">
+          <label for="social_facebook" class="form-label">Facebook</label>
+          <input type="text" class="form-control" id="social_facebook" 
+                 value="{{ vendor.social_facebook or '' }}" 
+                 placeholder="facebook.com/yourpage">
+        </div>
+        <div class="col-md-6">
+          <label for="social_instagram" class="form-label">Instagram</label>
+          <input type="text" class="form-control" id="social_instagram" 
+                 value="{{ vendor.social_instagram or '' }}" 
+                 placeholder="@yourusername">
+        </div>
+        <div class="col-md-6">
+          <label for="social_twitter" class="form-label">Twitter</label>
+          <input type="text" class="form-control" id="social_twitter" 
+                 value="{{ vendor.social_twitter or '' }}" 
+                 placeholder="@yourusername">
+        </div>
+        <div class="col-12">
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-check-lg me-1"></i>Update Business Info
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Hours of Operation Section -->
+<div class="card mb-4">
+  <div class="card-header">
+    <h3 class="h5 mb-0">
+      <i class="bi bi-clock me-2"></i>Hours of Operation
+    </h3>
+  </div>
+  <div class="card-body">
+    <form id="hoursForm">
+      <div class="row g-3">
+        {% set days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] %}
+        {% for day in days %}
+        <div class="col-12">
+          <div class="row align-items-center g-2">
+            <div class="col-md-2">
+              <label class="form-label fw-medium">{{ day }}</label>
+            </div>
+            <div class="col-md-3">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" 
+                       id="closed{{ loop.index0 }}" name="day{{ loop.index0 }}_closed">
+                <label class="form-check-label" for="closed{{ loop.index0 }}">
+                  Closed
+                </label>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <input type="time" class="form-control" 
+                     id="open{{ loop.index0 }}" name="day{{ loop.index0 }}_open"
+                     placeholder="Open time">
+            </div>
+            <div class="col-md-1 text-center">
+              <span class="text-muted">to</span>
+            </div>
+            <div class="col-md-3">
+              <input type="time" class="form-control" 
+                     id="close{{ loop.index0 }}" name="day{{ loop.index0 }}_close"
+                     placeholder="Close time">
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+        <div class="col-12">
+          <button type="submit" class="btn btn-success">
+            <i class="bi bi-clock me-1"></i>Update Hours
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Location Management Section -->
+<div class="card mb-4">
+  <div class="card-body">
+    <h3 class="h5">Location</h3>
+    <p class="text-muted mb-2">Click the button below to set your current GPS location.</p>
+    <button id="btnSetLocation" class="btn btn-success">
+      <i class="bi bi-geo-alt-fill me-1"></i>Set My Location
+    </button>
+    <span id="locationStatus" class="small text-muted ms-2"></span>
+  </div>
+</div>
+
+<!-- AI Ad Generator Section -->
+<div class="card mb-4">
+  <div class="card-body text-center">
+    <h3 class="h5">AI — Generate Ad Copy</h3>
+    <div class="py-5 display-6 text-muted">Coming Soon</div>
+  </div>
+</div>
+
+<!-- AI Logo Creator Section -->
+<div class="card mb-4 ai-logo-creator">
+  <div class="card-body text-center">
+    <h3 class="h5">
+      <i class="bi bi-palette me-2"></i>AI Logo Creator
+    </h3>
+    <div class="py-5 display-6 text-muted">Coming Soon</div>
+  </div>
+</div>
+
+{% else %}
+<div class="alert alert-warning">No vendor linked to this account.</div>
+{% endif %}
+</section>
+
+<!-- Pass vendor ID and location to JavaScript via data attributes -->
+<div id="vendorData" style="display: none;"
+  {% if vendor %}
+    data-vendor-id="{{ vendor.id }}"
+    data-lat="{{ vendor.lat if vendor.lat is not none else '' }}"
+    data-lng="{{ vendor.lng if vendor.lng is not none else '' }}"
+    data-address="{{ vendor.address|e if vendor.address else '' }}"
+  {% endif %}
+></div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+  // Define vendorDataEl and vendorId globally for all handlers
+  const vendorDataEl = document.getElementById('vendorData');
+  const vendorId = vendorDataEl ? parseInt(vendorDataEl.getAttribute('data-vendor-id')) : null;
+  // --- Business Info Form Submission ---
+  const businessInfoForm = document.getElementById('businessInfoForm');
+  if (businessInfoForm) {
+    businessInfoForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const vendorDataEl = document.getElementById('vendorData');
+      const vendorId = vendorDataEl ? parseInt(vendorDataEl.getAttribute('data-vendor-id')) : null;
+      if (!vendorId) {
+        alert('Error: Vendor ID is missing. Please reload the page or contact support.');
+        return;
+      }
+      const name = document.getElementById('businessName').value;
+      const cuisine = document.getElementById('cuisine').value;
+      const first_name = document.getElementById('firstName').value;
+      const last_name = document.getElementById('lastName').value;
+      const description = document.getElementById('description').value;
+      const website = document.getElementById('website').value;
+      const social_facebook = document.getElementById('social_facebook').value;
+      const social_instagram = document.getElementById('social_instagram').value;
+      const social_twitter = document.getElementById('social_twitter').value;
+      try {
+        const resp = await fetch(`/api/vendors/${vendorId}/update`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, cuisine, first_name, last_name, description, website, social_facebook, social_instagram, social_twitter })
+        });
+        const data = await resp.json();
+        if (data.ok) {
+          alert('Business info updated!');
+        } else {
+          alert(data.error || 'Failed to update business info.');
+        }
+      } catch (err) {
+        alert('Error updating business info.');
+      }
+    });
+  }
+
+  // --- Hours Form Submission ---
+  const hoursForm = document.getElementById('hoursForm');
+  if (hoursForm) {
+    hoursForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const vendorDataEl = document.getElementById('vendorData');
+      const vendorId = vendorDataEl ? parseInt(vendorDataEl.getAttribute('data-vendor-id')) : null;
+      if (!vendorId) {
+        alert('Error: Vendor ID is missing. Please reload the page or contact support.');
+        return;
+      }
+      const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+      const hours = {};
+      for (let i = 0; i < days.length; i++) {
+        const is_closed = document.getElementById(`closed${i}`).checked;
+        const open_time = document.getElementById(`open${i}`).value;
+        const close_time = document.getElementById(`close${i}`).value;
+        hours[i] = {
+          is_closed,
+          open_time: is_closed ? null : open_time,
+          close_time: is_closed ? null : close_time
+        };
+      }
+      try {
+        const resp = await fetch(`/api/vendors/${vendorId}/hours`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ hours })
+        });
+        const data = await resp.json();
+        if (data.ok) {
+          alert('Hours updated!');
+        } else {
+          alert(data.error || 'Failed to update hours.');
+        }
+      } catch (err) {
+        alert('Error updating hours.');
+      }
+    });
+  }
+document.addEventListener('DOMContentLoaded', function() {
+  // vendorDataEl and vendorId are declared once at the top of this script block
+  if (!vendorId) return;
+
+  // Set My Location button handler
+  const btnSetLocation = document.getElementById('btnSetLocation');
+  const locationStatus = document.getElementById('locationStatus');
+  if (btnSetLocation) {
+    btnSetLocation.addEventListener('click', function() {
+      if (!navigator.geolocation) {
+        locationStatus.textContent = 'Geolocation is not supported by your browser.';
+        return;
+      }
+      locationStatus.textContent = 'Getting your location...';
+      navigator.geolocation.getCurrentPosition(async function(position) {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        let address = '';
+        try {
+          // Use Google Maps Geocoding API to get address
+          const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=AIzaSyAHZ8LGh3EX5n1pRRqD4ya8rhFqaVZr8OY`;
+          const geocodeResp = await fetch(geocodeUrl);
+          const geocodeData = await geocodeResp.json();
+          if (geocodeData.status === 'OK' && geocodeData.results.length > 0) {
+            address = geocodeData.results[0].formatted_address;
+          }
+        } catch (err) {
+          // If geocoding fails, just leave address blank
+        }
+        try {
+          const response = await fetch('/api/vendor/location', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ lat, lng, address })
+          });
+          const data = await response.json();
+          if (data.ok) {
+            locationStatus.textContent = 'Location saved!';
+          } else {
+            locationStatus.textContent = data.error || 'Failed to save location.';
+          }
+        } catch (err) {
+          locationStatus.textContent = 'Error saving location.';
+        }
+      }, function(error) {
+        locationStatus.textContent = 'Unable to get your location.';
+      });
+    });
+  }
+
+  // ...existing code for business info form, etc...
+
+  // --- Populate Hours Form ---
+  // vendorDataEl and vendorId are declared once at the top of this script block
+  async function populateHoursForm() {
+    if (!vendorId) return;
+    try {
+      const resp = await fetch(`/api/vendors/${vendorId}/hours`);
+      const data = await resp.json();
+      if (data.ok && data.hours) {
+        const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        for (let i = 0; i < days.length; i++) {
+          const day = days[i];
+          const closedEl = document.getElementById(`closed${i}`);
+          const openEl = document.getElementById(`open${i}`);
+          const closeEl = document.getElementById(`close${i}`);
+          if (data.hours[day] === 'Closed') {
+            closedEl.checked = true;
+            openEl.value = '';
+            closeEl.value = '';
+            openEl.disabled = true;
+            closeEl.disabled = true;
+          } else if (data.hours[day]) {
+            closedEl.checked = false;
+            openEl.disabled = false;
+            closeEl.disabled = false;
+            // Parse "HH:MM AM/PM to HH:MM AM/PM"
+            const match = data.hours[day].match(/(\d{1,2}:\d{2} [AP]M) to (\d{1,2}:\d{2} [AP]M)/);
+            if (match) {
+              openEl.value = to24Hour(match[1]);
+              closeEl.value = to24Hour(match[2]);
+            } else {
+              openEl.value = '';
+              closeEl.value = '';
+            }
+          } else {
+            closedEl.checked = false;
+            openEl.value = '';
+            closeEl.value = '';
+            openEl.disabled = false;
+            closeEl.disabled = false;
+          }
+        }
+      }
+    } catch (err) {
+      // Ignore errors
+    }
+  }
+  function to24Hour(time12h) {
+    const [time, modifier] = time12h.split(' ');
+    let [hours, minutes] = time.split(':');
+    hours = parseInt(hours, 10);
+    if (modifier === 'PM' && hours !== 12) hours += 12;
+    if (modifier === 'AM' && hours === 12) hours = 0;
+    return `${hours.toString().padStart(2, '0')}:${minutes}`;
+  }
+  // Call on load
+  populateHoursForm();
+  // After successful update, re-populate
+  const hoursForm = document.getElementById('hoursForm');
+  if (hoursForm) {
+    hoursForm.addEventListener('submit', async function(e) {
+      setTimeout(populateHoursForm, 500);
+    });
+  }
+});
+</script>
+{% endblock %}

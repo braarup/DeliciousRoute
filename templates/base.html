@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Delicious Route</title>
+
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+  <!-- Google Maps JavaScript API (replace YOUR_API_KEY) -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places"></script>
+</head>
+<body>
+<header class="border-bottom bg-white">
+  <div class="container py-2 d-flex align-items-center justify-content-between">
+    <!-- Clickable header back to home -->
+    <a href="{{ url_for('index') }}" class="d-flex align-items-center gap-2 text-decoration-none text-dark">
+      <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Delicious Route" width="40" height="40">
+      <h1 class="h4 mb-0">Delicious Route</h1>
+    </a>
+
+    <!-- Welcome Message and Hamburger Menu -->
+    <div class="d-flex align-items-center gap-3">
+      {% if current_user.is_authenticated and user_first_name %}
+        <div class="text-primary fw-semibold d-none d-sm-block">
+          Welcome, {{ user_first_name }}!!!
+        </div>
+      {% endif %}
+      
+      <!-- Hamburger for off-canvas -->
+      <button class="btn btn-outline-secondary p-2" type="button"
+              data-bs-toggle="offcanvas" data-bs-target="#mainMenu"
+              aria-controls="mainMenu" aria-label="Menu">
+        <i class="bi bi-list" style="font-size: 1.25rem;"></i>
+      </button>
+    </div>
+  </div>
+
+<!-- Ads Carousel just below header -->
+<div id="adsCarousel" class="carousel slide" data-bs-ride="carousel">
+  <div class="carousel-inner">
+    {% for ad in ads_header or [] %}
+      <div class="carousel-item {% if loop.first %}active{% endif %}">
+        {% if ad.link_url %}<a href="{{ ad.link_url }}" class="text-decoration-none">{% endif %}
+          <img src="{{ ad.image_url }}" class="d-block w-100 ad-banner" alt="{{ ad.title or 'Ad' }}">
+        {% if ad.link_url %}</a>{% endif %}
+        {% if ad.title %}
+          <div class="carousel-caption d-none d-md-block">
+            <h5>{{ ad.title }}</h5>
+          </div>
+        {% endif %}
+      </div>
+    {% endfor %}
+  </div>
+  <button class="carousel-control-prev" type="button" data-bs-target="#adsCarousel" data-bs-slide="prev">
+    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+    <span class="visually-hidden">Previous</span>
+  </button>
+  <button class="carousel-control-next" type="button" data-bs-target="#adsCarousel" data-bs-slide="next">
+    <span class="carousel-control-next-icon" aria-hidden="true"></span>
+    <span class="visually-hidden">Next</span>
+  </button>
+</div>
+</header>
+
+<!-- Off-canvas Right Menu -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="mainMenu" aria-labelledby="mainMenuLabel">
+  <div class="offcanvas-header">
+    <h5 class="offcanvas-title" id="mainMenuLabel">Menu</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+  </div>
+  <div class="offcanvas-body">
+    <div class="list-group" id="menuLinks">
+      <a class="list-group-item list-group-item-action" href="{{ url_for('about') }}">
+        <i class="bi bi-info-circle me-2"></i>About Us
+      </a>
+      <a class="list-group-item list-group-item-action" href="{{ url_for('contact') }}">
+        <i class="bi bi-envelope me-2"></i>Contact Delicious Route
+      </a>
+
+      {% if current_user.is_authenticated %}
+        {% if current_user.role == 'vendor' %}
+          <a class="list-group-item list-group-item-action" href="{{ url_for('profile') }}">
+            <i class="bi bi-person me-2"></i>My Profile
+          </a>
+          <a class="list-group-item list-group-item-action" href="{{ url_for('manage') }}">
+            <i class="bi bi-gear me-2"></i>Manage My Venue
+          </a>
+          <a class="list-group-item list-group-item-action" href="{{ url_for('logout') }}">
+            <i class="bi bi-box-arrow-right me-2"></i>Logout
+          </a>
+        {% elif current_user.role == 'customer' %}
+          <a class="list-group-item list-group-item-action" href="{{ url_for('profile') }}">
+            <i class="bi bi-person me-2"></i>My Profile
+          </a>
+          <a class="list-group-item list-group-item-action" href="{{ url_for('logout') }}">
+            <i class="bi bi-box-arrow-right me-2"></i>Logout
+          </a>
+        {% endif %}
+      {% else %}
+        <a class="list-group-item list-group-item-action" href="{{ url_for('login') }}">
+          <i class="bi bi-box-arrow-in-right me-2"></i>Login/Sign Up
+        </a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<main>
+  <!-- Google Map placeholder (can be moved to specific pages/templates as needed) -->
+  <div id="googleMap" style="width:100%;height:400px;display:none;"></div>
+  {% block content %}{% endblock %}
+</main>
+
+<footer class="border-top mt-4 py-4 text-center small text-muted">
+  © {{ 2025 }} Delicious Route • Find street food you love.<br>
+  <a href="#" class="text-decoration-underline" data-bs-toggle="modal" data-bs-target="#termsModal">Terms of Service</a>
+  &nbsp;|&nbsp;
+  <a href="#" class="text-decoration-underline" data-bs-toggle="modal" data-bs-target="#privacyModal">Privacy Policy</a>
+</footer>
+
+<!-- Terms of Service Modal -->
+<div class="modal fade" id="termsModal" tabindex="-1" aria-labelledby="termsModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="termsModalLabel">Terms of Service</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" style="max-height:70vh; overflow-y:auto;">
+        {% include 'terms_content.html' %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Privacy Policy Modal -->
+<div class="modal fade" id="privacyModal" tabindex="-1" aria-labelledby="privacyModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title" id="privacyModalLabel">Privacy Policy</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" style="max-height:70vh; overflow-y:auto;">
+        {% include 'privacy_content.html' %}
+      </div>
+    </div>
+  </div>
+</div>
+</footer>
+
+<!-- Global authentication data for JavaScript -->
+<div id="auth-data" 
+     data-authenticated="{{ current_user.is_authenticated|tojson }}"
+     data-user-role="{{ current_user.role if current_user.is_authenticated else '' }}"
+     style="display: none;"></div>
+
+
+<script type="text/javascript">
+  // Extract authentication status from data attributes
+  (function() {
+    const authData = document.getElementById('auth-data');
+    window.isAuthenticated = JSON.parse(authData.getAttribute('data-authenticated'));
+    window.userRole = authData.getAttribute('data-user-role') || null;
+  })();
+
+  // Google Maps basic loader (shows map if #googleMap is present)
+  window.initGoogleMap = function(lat = 37.7749, lng = -122.4194, zoom = 12) {
+    const mapDiv = document.getElementById('googleMap');
+    if (!mapDiv) return;
+    mapDiv.style.display = 'block';
+    const map = new google.maps.Map(mapDiv, {
+      center: { lat, lng },
+      zoom: zoom
+    });
+    return map;
+  }
+</script>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Handle menu link clicks
+    const menuLinks = document.querySelectorAll('#menuLinks a');
+    
+    menuLinks.forEach(link => {
+      link.addEventListener('click', function(e) {
+        const href = this.getAttribute('href');
+        
+        // Check if it's a valid navigation link
+        if (href && href !== '#' && !href.startsWith('javascript:')) {
+          // Small delay to allow click animation
+          setTimeout(() => {
+            const offcanvasEl = document.getElementById('mainMenu');
+            if (offcanvasEl) {
+              const offcanvas = bootstrap.Offcanvas.getInstance(offcanvasEl);
+              if (offcanvas) {
+                offcanvas.hide();
+              }
+            }
+            
+            // Navigate to the link after closing menu
+            setTimeout(() => {
+              window.location.href = href;
+            }, 150);
+          }, 50);
+          
+          // Prevent default to handle navigation manually
+          e.preventDefault();
+        }
+      });
+    });
+  });
+</script>
+
+<!-- Signup Encouragement Modal -->
+<div class="modal fade" id="signupEncourageModal" tabindex="-1" aria-labelledby="signupEncourageModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="signupEncourageModalLabel">
+          <i class="bi bi-heart me-2"></i>Join DeliciousRoute!
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body text-center">
+        <div class="mb-4">
+          <i class="bi bi-star-fill text-warning display-1 mb-3"></i>
+          <h4>Love what you see?</h4>
+          <p class="text-muted">Sign up to fave food venues, save your favorite grub reels, and never miss out on delicious discoveries!</p>
+        </div>
+        
+        <div class="row g-3">
+          <div class="col-6">
+            <div class="card h-100 border-primary signup-card" onclick="window.location.href='/signup/customer'">
+              <div class="card-body text-center">
+                <i class="bi bi-person-plus-fill text-primary mb-2" style="font-size: 2rem;"></i>
+                <h6>Food Lover?</h6>
+                <p class="small text-muted mb-3">Discover and save your favorite food venues</p>
+                <span class="btn btn-primary btn-sm">
+                  <i class="bi bi-heart me-1"></i>Sign up as Customer
+                </span>
+              </div>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="card h-100 border-success signup-card" onclick="window.location.href='/signup/vendor'">
+              <div class="card-body text-center">
+                <i class="bi bi-truck text-success mb-2" style="font-size: 2rem;"></i>
+                <h6>Food Venue Owner?</h6>
+                <p class="small text-muted mb-3">Share your delicious creations and connect with customers</p>
+                <span class="btn btn-success btn-sm">
+                  <i class="bi bi-shop me-1"></i>Sign up as Vendor
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer justify-content-center border-0">
+        <p class="small text-muted mb-0">
+          Already have an account? 
+          <a href="/login" class="text-decoration-none">
+            <i class="bi bi-box-arrow-in-right me-1"></i>Sign in here
+          </a>
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="{{ url_for('static', filename='js/main.js') }}?v=202509038"></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=202509038">
+  {% block scripts %}{% endblock %}
+</body>
+  <!-- Bootstrap 5 JS Bundle (includes Popper) -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+</html>

@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="container my-5" style="max-width:640px;">
+<div class="card shadow-sm">
+<div class="card-body">
+<h2 class="h4 mb-3">Customer Sign Up</h2>
+<form method="post">
+<div class="row g-3">
+<div class="col-12">
+<label class="form-label">Full Name *</label>
+<input name="name" class="form-control" required>
+</div>
+<div class="col-12 col-md-6">
+<label class="form-label">Email *</label>
+<input type="email" name="email" class="form-control" required>
+</div>
+<div class="col-12 col-md-6">
+<label class="form-label">Password *</label>
+<input type="password" name="password" class="form-control" required>
+</div>
+</div>
+<button class="btn btn-secondary mt-3 w-100" type="submit">
+  <i class="bi bi-person-plus me-1"></i>Create Customer Account
+</button>
+</form>
+<div class="text-center mt-3">
+<a href="{{ url_for('login') }}">Already have an account? Sign in</a>
+</div>
+</div>
+</div>
+</section>
+{% endblock %}

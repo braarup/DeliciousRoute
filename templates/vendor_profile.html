@@ -1,0 +1,426 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<section class="container my-4">
+<div class="row g-4">
+<div class="col-12 col-lg-4">
+<div class="card h-100">
+<div class="card-body">
+<div class="d-flex align-items-center gap-3 mb-3">
+<div class="position-relative">
+<img src="{{ vendor.logo_url or url_for('static', filename='img/logo.png') }}" width="64" height="64" class="rounded" alt="logo" id="vendorLogo">
+{% if is_owner %}
+<button class="btn btn-sm btn-primary position-absolute top-0 end-0" id="editLogoBtn" 
+        style="transform: translate(50%, -50%); border-radius: 50%; padding: 4px 6px;" 
+        title="Change logo" data-vendor-id="{{ vendor.id }}">
+  <i class="bi bi-pencil" style="font-size: 10px;"></i>
+</button>
+{% endif %}
+</div>
+<div>
+<h2 class="h4 mb-1">{{ vendor.name }}</h2>
+<div class="text-muted small">{{ vendor.cuisine }}</div>
+{% if vendor.first_name and vendor.last_name %}
+<div class="text-muted small mt-1">Owner: {{ vendor.first_name }} {{ vendor.last_name }}</div>
+{% endif %}
+</div>
+</div>
+
+<p>{{ vendor.description }}</p>
+<div class="mb-1">
+    {% if vendor.website %}
+        <a href="{{ vendor.website }}" target="_blank">Website</a>
+    {% endif %}
+    <span class="mx-2">|</span>
+    <a href="{{ url_for('vendor_menus', vendor_id=vendor.id) }}">Menu</a>
+    <span class="mx-2">|</span>
+    <a href="{{ url_for('vendor_photos', vendor_id=vendor.id) }}">Photos</a>
+</div>
+{% if vendor.socials %}<p class="mb-1">Social: {{ vendor.socials }}</p>{% endif %}
+
+<!-- Hours of Operation -->
+{% if vendor.hours %}
+<div class="mt-3">
+    <h6 class="mb-2"><i class="bi bi-clock me-1"></i>Hours of Operation</h6>
+    <table class="table table-sm table-borderless mb-0" style="max-width: 320px;">
+        <tbody>
+            {% for day, hours in vendor.hours.items() %}
+            <tr>
+                <td class="text-muted small" style="width: 110px;">{{ day }}</td>
+                <td class="small">{{ hours }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<!-- Like and Save Counters -->
+<div class="row g-2 mb-3">
+  <div class="col-6">
+    <div class="d-grid">
+      <button class="btn btn-outline-warning btn-sm like-btn" 
+              data-vendor-id="{{ vendor.id }}" 
+              title="Fave this venue">
+        <i class="bi bi-star me-1"></i>
+        <span class="like-count">{{ vendor.like_count or 0 }}</span> Faved
+      </button>
+    </div>
+  </div>
+  <div class="col-6">
+    <div class="d-grid">
+      <button class="btn btn-outline-primary btn-sm save-btn" 
+              data-vendor-id="{{ vendor.id }}" 
+              title="Save this venue">
+        <i class="bi bi-bookmark me-1"></i>
+        <span class="save-count">{{ vendor.save_count or 0 }}</span> Saves
+      </button>
+    </div>
+  </div>
+</div>
+
+{% if vendor.lat and vendor.lng %}
+<a class="btn btn-primary w-100" target="_blank"
+href="https://www.google.com/maps/dir/?api=1&destination={{ vendor.lat }},{{ vendor.lng }}">
+<i class="bi bi-geo-alt me-1"></i>Get Directions
+</a>
+<div class="text-muted small mt-2">Last updated: {{ vendor.last_updated or '—' }}</div>
+{% else %}
+<div class="alert alert-warning">Location not yet set.</div>
+{% endif %}
+</div>
+</div>
+</div>
+<div class="col-12 col-lg-8">
+<div id="vendorMap" class="rounded shadow-sm mb-3" 
+     {% if vendor.lat and vendor.lng %}
+     data-lat="{{ vendor.lat }}" 
+     data-lng="{{ vendor.lng }}" 
+     data-vendor-name="{{ vendor.name|e }}"
+     {% endif %}
+></div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const mapElement = document.getElementById('vendorMap');
+    const lat = mapElement.getAttribute('data-lat');
+    const lng = mapElement.getAttribute('data-lng');
+    const vendorName = mapElement.getAttribute('data-vendor-name');
+    
+    let map;
+    if (lat && lng) {
+        map = L.map('vendorMap').setView([parseFloat(lat), parseFloat(lng)], 15);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+        L.marker([parseFloat(lat), parseFloat(lng)]).addTo(map).bindPopup(vendorName);
+    } else {
+        map = L.map('vendorMap').setView([34.05, -118.25], 10);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+    }
+});
+</script>
+
+
+<h3 class="h5 mt-4">
+  Grub Reels 
+  {% if is_owner %}
+  <button class="btn btn-sm btn-success ms-2" data-bs-toggle="modal" data-bs-target="#uploadReelModal">
+    <i class="bi bi-camera-video me-1"></i>Upload Reel
+  </button>
+  {% endif %}
+</h3>
+<!-- Grub Reels Container with vertical stacking -->
+<div id="reels" class="mt-3" style="overflow-y: auto; overflow-x: hidden; max-height: 70vh;">
+    <div id="reelsGrid" style="display: flex; flex-direction: column; gap: 0.5rem; width: 100%;">
+        <div class="text-center text-muted w-100" style="margin-top: 2rem;">
+            Loading Grub Reels...
+        </div>
+    </div>
+</div>
+</div>
+</div>
+</section>
+
+{% if is_owner %}
+<!-- Hidden file input -->
+<input type="file" id="logoFileInput" accept="image/*" style="display: none;">
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const editBtn = document.getElementById('editLogoBtn');
+    const fileInput = document.getElementById('logoFileInput');
+    const logoImg = document.getElementById('vendorLogo');
+    
+    if (editBtn && fileInput && logoImg) {
+        editBtn.addEventListener('click', function() {
+            fileInput.click();
+        });
+        
+        fileInput.addEventListener('change', async function() {
+            if (this.files && this.files[0]) {
+                const file = this.files[0];
+                const vendorId = editBtn.getAttribute('data-vendor-id');
+                
+                // Show loading state
+                const originalHtml = editBtn.innerHTML;
+                editBtn.disabled = true;
+                editBtn.innerHTML = '<i class="bi bi-arrow-repeat spinner-border spinner-border-sm" style="font-size: 8px;"></i>';
+                
+                try {
+                    const formData = new FormData();
+                    formData.append('photo', file);
+                    
+                    const response = await fetch(`/api/vendors/${vendorId}/logo`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (response.ok && data.ok) {
+                        // Update the image src
+                        logoImg.src = data.logo_url + '?' + new Date().getTime(); // Cache busting
+                        
+                        // Show success feedback
+                        editBtn.innerHTML = '<i class="bi bi-check" style="font-size: 10px; color: #28a745;"></i>';
+                        setTimeout(() => {
+                            editBtn.innerHTML = originalHtml;
+                        }, 2000);
+                    } else {
+                        throw new Error(data.error || 'Upload failed');
+                    }
+                } catch (error) {
+                    alert('Failed to upload image: ' + error.message);
+                    editBtn.innerHTML = originalHtml;
+                } finally {
+                    editBtn.disabled = false;
+                    fileInput.value = ''; // Reset file input
+                }
+            }
+        });
+    }
+});
+</script>
+{% endif %}
+
+{% if is_owner %}
+<!-- Upload Reel Modal -->
+<div class="modal fade" id="uploadReelModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Upload Grub Reel</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="uploadReelForm" enctype="multipart/form-data">
+          <div class="mb-3">
+            <label for="reelVideo" class="form-label">Video File</label>
+            <input type="file" class="form-control" id="reelVideo" name="video" accept="video/mp4,video/mov,video/avi" required>
+            <div class="form-text">MP4, MOV, or AVI format. Max 50MB.</div>
+          </div>
+          <div class="mb-3">
+            <label for="reelCaption" class="form-label">Caption</label>
+            <textarea class="form-control" id="reelCaption" name="caption" rows="3" maxlength="500" placeholder="Describe your delicious creation..."></textarea>
+            <div class="form-text"><span id="captionCount">0</span>/500 characters</div>
+          </div>
+          <div class="alert alert-info">
+            <i class="bi bi-info-circle me-1"></i>
+            You can only upload one Grub Reel at a time. Previous uploads will be replaced.
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-success" id="submitReelBtn" data-vendor-id="{{ vendor.id }}">
+          <i class="bi bi-upload me-1"></i>Upload Reel
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Upload Reel JavaScript -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const captionInput = document.getElementById('reelCaption');
+    const captionCount = document.getElementById('captionCount');
+    const submitBtn = document.getElementById('submitReelBtn');
+    const uploadForm = document.getElementById('uploadReelForm');
+    
+    // Caption counter
+    if (captionInput && captionCount) {
+        captionInput.addEventListener('input', function() {
+            captionCount.textContent = this.value.length;
+        });
+    }
+    
+    // Upload functionality
+    if (submitBtn && uploadForm) {
+        submitBtn.addEventListener('click', async function() {
+            const formData = new FormData(uploadForm);
+            const vendorId = submitBtn.getAttribute('data-vendor-id');
+            
+            // Show loading state
+            const originalHtml = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="bi bi-arrow-repeat spinner-border spinner-border-sm me-1"></i>Uploading...';
+            
+            try {
+                const response = await fetch(`/api/vendors/${vendorId}/reel`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.ok) {
+                    // Close modal and reload page to show new reel
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('uploadReelModal'));
+                    modal.hide();
+                    location.reload();
+                } else {
+                    throw new Error(data.error || 'Upload failed');
+                }
+            } catch (error) {
+                alert('Failed to upload reel: ' + error.message);
+                submitBtn.innerHTML = originalHtml;
+                submitBtn.disabled = false;
+            }
+        });
+    }
+});
+</script>
+
+<!-- Initialize horizontal reels scrolling -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize horizontal scrolling for reels
+    if (typeof initReelsHorizontalScrolling === 'function') {
+        initReelsHorizontalScrolling();
+    }
+    
+    // Initialize vendor like/save functionality
+    initVendorLikeSave();
+    
+    // Load and render reels for this vendor
+    loadVendorReels();
+});
+
+// Function to load reels for the current vendor
+function loadVendorReels() {
+    fetch('/api/reels')
+        .then(response => response.json())
+        .then(reels => {
+            renderReels(reels);
+            initReelsNavigation();
+        })
+        .catch(error => {
+            console.error('Error loading reels:', error);
+            const grid = document.getElementById('reelsGrid');
+            if (grid) {
+                grid.innerHTML = '<div class="text-center text-muted w-100">Error loading Grub Reels. Please refresh the page.</div>';
+            }
+        });
+}
+
+function initVendorLikeSave() {
+    const likeBtn = document.querySelector('.like-btn');
+    const saveBtn = document.querySelector('.save-btn');
+    
+    if (likeBtn) {
+        likeBtn.addEventListener('click', async function() {
+            const vendorId = this.getAttribute('data-vendor-id');
+            const likeCount = this.querySelector('.like-count');
+            const icon = this.querySelector('i');
+            
+            // Disable button during request
+            this.disabled = true;
+            
+            try {
+                const response = await fetch(`/api/vendors/${vendorId}/like`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.ok) {
+                    // Update like count
+                    likeCount.textContent = data.likes;
+                    
+                    // Toggle button appearance
+                    if (data.liked) {
+                        this.classList.remove('btn-outline-warning');
+                        this.classList.add('btn-warning');
+                        icon.classList.add('bi-star-fill');
+                        icon.classList.remove('bi-star');
+                    } else {
+                        this.classList.add('btn-outline-warning');
+                        this.classList.remove('btn-warning');
+                        icon.classList.remove('bi-star-fill');
+                        icon.classList.add('bi-star');
+                    }
+                } else {
+                    alert('Failed to update fave');
+                }
+            } catch (error) {
+                console.error('Error faving vendor:', error);
+                alert('Failed to update fave');
+            } finally {
+                this.disabled = false;
+            }
+        });
+    }
+    
+    if (saveBtn) {
+        saveBtn.addEventListener('click', async function() {
+            const vendorId = this.getAttribute('data-vendor-id');
+            const saveCount = this.querySelector('.save-count');
+            const icon = this.querySelector('i');
+            
+            // Disable button during request
+            this.disabled = true;
+            
+            try {
+                const response = await fetch(`/api/vendors/${vendorId}/save`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.ok) {
+                    // Update save count
+                    saveCount.textContent = data.saves;
+                    
+                    // Toggle button appearance
+                    if (data.saved) {
+                        this.classList.remove('btn-outline-primary');
+                        this.classList.add('btn-primary');
+                        icon.classList.add('bi-bookmark-fill');
+                        icon.classList.remove('bi-bookmark');
+                    } else {
+                        this.classList.add('btn-outline-primary');
+                        this.classList.remove('btn-primary');
+                        icon.classList.remove('bi-bookmark-fill');
+                        icon.classList.add('bi-bookmark');
+                    }
+                } else {
+                    alert('Failed to update save');
+                }
+            } catch (error) {
+                console.error('Error saving vendor:', error);
+                alert('Failed to update save');
+            } finally {
+                this.disabled = false;
+            }
+        });
+    }
+}
+</script>
+{% endif %}
+
+{% endblock %}

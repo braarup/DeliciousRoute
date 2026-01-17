@@ -1,0 +1,526 @@
+{% extends 'base.html' %}
+{% if show_location_modal %}
+<!-- Location Update Modal -->
+<div class="modal fade" id="locationUpdateModal" tabindex="-1" aria-labelledby="locationUpdateModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="locationUpdateModalLabel">Update Your Venue Location</h5>
+      </div>
+      <div class="modal-body">
+        <p>Would you like to update your venue's location now?</p>
+        <div id="geoStatus" class="mb-2 text-muted small"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="skipLocationBtn">Skip</button>
+        <button type="button" class="btn btn-primary" id="updateLocationBtn">Update Location</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Info Modal for Skipping -->
+<div class="modal fade" id="locationInfoModal" tabindex="-1" aria-labelledby="locationInfoModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="locationInfoModalLabel">Location Not Updated</h5>
+      </div>
+      <div class="modal-body">
+        <p>You can update your venue's location anytime in <strong>Manage My Venue</strong>.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" id="infoOkBtn">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% block content %}
+{% if show_location_modal %}
+<!-- Location Update Modal -->
+<div class="modal fade" id="locationUpdateModal" tabindex="-1" aria-labelledby="locationUpdateModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="locationUpdateModalLabel">Update Your Venue Location</h5>
+      </div>
+      <div class="modal-body">
+        <p>Would you like to update your venue's location now?</p>
+        <div id="geoStatus" class="mb-2 text-muted small"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="skipLocationBtn">Skip</button>
+        <button type="button" class="btn btn-primary" id="updateLocationBtn">Update Location</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Info Modal for Skipping -->
+<div class="modal fade" id="locationInfoModal" tabindex="-1" aria-labelledby="locationInfoModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="locationInfoModalLabel">Location Not Updated</h5>
+      </div>
+      <div class="modal-body">
+        <p>You can update your venue's location anytime in <strong>Manage My Venue</strong>.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" id="infoOkBtn">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+<section class="container my-4" style="max-width:960px;">
+  <div class="row g-4">
+    <!-- Left: Profile image + upload -->
+    <div class="col-12 col-md-4">
+      <div class="card h-100">
+        <div class="card-body text-center">
+          {% set img_src = None %}
+          {% if vendor and vendor.logo_url %}
+            {% set img_src = vendor.logo_url %}
+          {% elif user.profile_img %}
+            {% set img_src = user.profile_img %}
+          {% else %}
+            {% set img_src = url_for('static', filename='img/logo.png') %}
+          {% endif %}
+
+          <div class="position-relative d-inline-block mb-3">
+            <img src="{{ img_src }}" alt="Profile" class="rounded" style="width: 180px; height: 180px; object-fit: cover;" id="profileImage">
+            <button class="btn btn-sm btn-primary position-absolute top-0 end-0" id="editProfileBtn" 
+                    style="transform: translate(50%, -50%); border-radius: 50%; padding: 4px 6px;" 
+                    title="Change picture" data-user-id="{{ user.id }}">
+              <i class="bi bi-pencil" style="font-size: 10px;"></i>
+            </button>
+          </div>
+
+          <div class="small text-muted mt-2">Click the edit icon to change your profile picture</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Info -->
+    <div class="col-12 col-md-8">
+      <div class="card h-100">
+        <div class="card-body">
+          <h2 class="h5 mb-3">Profile</h2>
+
+          <div class="mb-2"><strong>Name:</strong> {{ user.name }}</div>
+          <div class="mb-2"><strong>Email:</strong> {{ user.email }}</div>
+          <div class="mb-3"><span class="badge bg-secondary text-uppercase">{{ user.role }}</span></div>
+
+          {% if vendor %}
+            <hr>
+            <h3 class="h6 text-muted mb-3">Vendor Info</h3>
+            <div class="mb-2"><strong>Venue:</strong> {{ vendor.name }}</div>
+            <div class="mb-2"><strong>Cuisine:</strong> {{ vendor.cuisine or '—' }}</div>
+            <div class="mb-2"><strong>Description:</strong> {{ vendor.description or '—' }}</div>
+            <div class="mb-2"><strong>Website:</strong>
+              {% if vendor.website %}<a href="{{ vendor.website }}" target="_blank">{{ vendor.website }}</a>{% else %}—{% endif %}
+            </div>
+            <div class="mb-2"><strong>Socials:</strong> {{ vendor.socials or '—' }}</div>
+
+            <a class="btn btn-outline-primary mt-3" href="{{ url_for('manage') }}">
+              <i class="bi bi-gear me-1"></i>Manage My Venue
+            </a>
+          {% endif %}
+
+          <!-- Faved/Saved Vendors Section for all users -->
+          <hr>
+          <h3 class="h6 text-muted mb-3">My Food Venue Collections</h3>
+          <div class="row g-2">
+            <div class="col-6">
+              <button class="btn btn-outline-warning w-100 d-flex align-items-center justify-content-between vendor-collection-btn" 
+                      data-collection="faved" 
+                      data-user-id="{{ user.id }}"
+                      title="View your faved food venues">
+                <div class="d-flex align-items-center">
+                  <i class="bi bi-star-fill me-2"></i>
+                  <span>Faved</span>
+                </div>
+                <span class="badge bg-warning text-dark faved-count">-</span>
+              </button>
+            </div>
+            <div class="col-6">
+              <button class="btn btn-outline-primary w-100 d-flex align-items-center justify-content-between vendor-collection-btn" 
+                      data-collection="saved" 
+                      data-user-id="{{ user.id }}"
+                      title="View your saved food venues">
+                <div class="d-flex align-items-center">
+                  <i class="bi bi-bookmark-fill me-2"></i>
+                  <span>Saved</span>
+                </div>
+                <span class="badge bg-primary saved-count">-</span>
+              </button>
+            </div>
+          </div>
+
+          {% if not vendor %}
+            <div class="alert alert-info mt-3">
+              This is a customer account. Stay tuned for saved favorites, notifications, and more.
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Vendor Collection Modal -->
+<!-- TEST BUTTON: Directly open the vendor collection modal -->
+<div class="container my-3">
+  <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#vendorCollectionModal">
+    TEST: Open Vendor Collection Modal
+  </button>
+</div>
+<div class="modal fade" id="vendorCollectionModal" tabindex="-1" aria-labelledby="vendorCollectionModalLabel" aria-hidden="true">
+<!-- Fallback trigger for modal if JS fails -->
+<button id="vendorCollectionModalFallbackBtn" type="button" class="d-none" data-bs-toggle="modal" data-bs-target="#vendorCollectionModal"></button>
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="vendorCollectionModalLabel">
+          <i class="bi bi-star-fill me-2" id="collectionIcon"></i>
+          <span id="collectionTitle">My Faved Food Venues</span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div id="collectionLoading" class="text-center py-4">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+          <p class="mt-2 text-muted">Loading your food venues...</p>
+        </div>
+        <div id="collectionContent" class="d-none">
+          <div id="collectionVendors"></div>
+        </div>
+        <div id="collectionEmpty" class="text-center py-4 d-none">
+          <i class="bi bi-heart display-1 text-muted mb-3"></i>
+          <h4 class="text-muted">No food venues yet</h4>
+          <p class="text-muted">Start exploring and <span id="emptyActionText">faving</span> food venues to see them here!</p>
+          <button class="btn btn-primary" data-bs-dismiss="modal" onclick="window.location.href='/'">
+            <i class="bi bi-search me-1"></i>Discover Food Venues
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden file input -->
+<input type="file" id="profileFileInput" accept="image/*" style="display: none;">
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Location update modal logic for vendors
+ 
+  const locationModal = new bootstrap.Modal(document.getElementById('locationUpdateModal'));
+  const infoModal = new bootstrap.Modal(document.getElementById('locationInfoModal'));
+  locationModal.show();
+  const updateBtn = document.getElementById('updateLocationBtn');
+  const skipBtn = document.getElementById('skipLocationBtn');
+  const geoStatus = document.getElementById('geoStatus');
+  updateBtn.onclick = function() {
+    geoStatus.textContent = 'Getting your location...';
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(async function(pos) {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        geoStatus.textContent = 'Updating location...';
+        // Call API to update location
+        try {
+          const response = await fetch('/api/vendor/location', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({lat, lng})
+          });
+          const data = await response.json();
+          if (response.ok && data.ok) {
+            geoStatus.textContent = 'Location updated! Redirecting...';
+            setTimeout(() => { window.location.href = `/profile`; }, 1200);
+          } else {
+            geoStatus.textContent = 'Failed to update location.';
+          }
+        } catch (e) {
+          geoStatus.textContent = 'Error updating location.';
+        }
+      }, function(err) {
+        geoStatus.textContent = 'Could not get location: ' + err.message;
+      });
+    } else {
+      geoStatus.textContent = 'Geolocation not supported.';
+    }
+  };
+  skipBtn.onclick = function() {
+    locationModal.hide();
+    infoModal.show();
+  };
+  document.getElementById('infoOkBtn').onclick = function() {
+    infoModal.hide();
+  window.location.href = `/profile`;
+  };
+
+    const editBtn = document.getElementById('editProfileBtn');
+    const fileInput = document.getElementById('profileFileInput');
+    const profileImg = document.getElementById('profileImage');
+    
+    // Profile picture upload functionality
+    if (editBtn && fileInput && profileImg) {
+        editBtn.addEventListener('click', function() {
+            fileInput.click();
+        });
+        
+        fileInput.addEventListener('change', async function() {
+            if (this.files && this.files[0]) {
+                const file = this.files[0];
+                const userId = editBtn.getAttribute('data-user-id');
+                
+                // Show loading state
+                const originalHtml = editBtn.innerHTML;
+                editBtn.disabled = true;
+                editBtn.innerHTML = '<i class="bi bi-arrow-repeat spinner-border spinner-border-sm" style="font-size: 8px;"></i>';
+                
+                try {
+                    const formData = new FormData();
+                    formData.append('photo', file);
+                    
+                    const response = await fetch(`/api/users/${userId}/profile-picture`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (response.ok && data.ok) {
+                        // Update the image src
+                        profileImg.src = data.profile_img_url + '?' + new Date().getTime(); // Cache busting
+                        
+                        // Show success feedback
+                        editBtn.innerHTML = '<i class="bi bi-check" style="font-size: 10px; color: #28a745;"></i>';
+                        setTimeout(() => {
+                            editBtn.innerHTML = originalHtml;
+                        }, 2000);
+                    } else {
+                        throw new Error(data.error || 'Upload failed');
+                    }
+                } catch (error) {
+                    alert('Failed to upload image: ' + error.message);
+                    editBtn.innerHTML = originalHtml;
+                } finally {
+                    editBtn.disabled = false;
+                    fileInput.value = ''; // Reset file input
+                }
+            }
+        });
+    }
+
+
+  // Vendor collection functionality with debug output
+  const collectionButtons = document.querySelectorAll('.vendor-collection-btn');
+  let collectionModal;
+  document.addEventListener('DOMContentLoaded', function() {
+    const collectionModalEl = document.getElementById('vendorCollectionModal');
+    if (collectionModalEl) {
+      collectionModal = new bootstrap.Modal(collectionModalEl);
+    } else {
+      console.warn('Vendor Collection Modal element not found in DOM.');
+    }
+  });
+  const collectionIcon = document.getElementById('collectionIcon');
+  const collectionTitle = document.getElementById('collectionTitle');
+  const collectionLoading = document.getElementById('collectionLoading');
+  const collectionContent = document.getElementById('collectionContent');
+  const collectionEmpty = document.getElementById('collectionEmpty');
+  const collectionVendors = document.getElementById('collectionVendors');
+  const emptyActionText = document.getElementById('emptyActionText');
+
+  // Load collection counts on page load
+  loadCollectionCounts();
+
+  // Handle collection button clicks
+  collectionButtons.forEach(button => {
+    button.addEventListener('click', async function() {
+      const collection = this.getAttribute('data-collection');
+      const userId = this.getAttribute('data-user-id');
+      console.log('Collection button clicked:', collection, 'User ID:', userId);
+
+      // Update modal header
+      if (collection === 'faved') {
+        collectionIcon.className = 'bi bi-star-fill me-2 text-warning';
+        collectionTitle.textContent = 'My Faved Food Venues';
+        emptyActionText.textContent = 'faving';
+      } else {
+        collectionIcon.className = 'bi bi-bookmark-fill me-2 text-primary';
+        collectionTitle.textContent = 'My Saved Food Venues';
+        emptyActionText.textContent = 'saving';
+      }
+
+      // Show modal and loading state
+      if (collectionModal) {
+        try {
+          collectionModal.show();
+        } catch (e) {
+          alert('Failed to show modal: ' + e.message);
+          document.getElementById('vendorCollectionModalFallbackBtn').click();
+        }
+      } else {
+        alert('Modal not initialized.');
+        document.getElementById('vendorCollectionModalFallbackBtn').click();
+      }
+      showLoadingState();
+
+      try {
+        const endpoint = collection === 'faved' ? 'faved-vendors' : 'saved-vendors';
+        const response = await fetch(`/api/users/${userId}/${endpoint}`);
+        let vendors = [];
+        let errorMsg = '';
+        try {
+          vendors = await response.json();
+        } catch (jsonErr) {
+          errorMsg = 'Could not parse response.';
+        }
+        console.log('API response:', vendors);
+        if (!response.ok) {
+          errorMsg = vendors.error || `HTTP ${response.status}`;
+        }
+        if (errorMsg) {
+          showErrorState(errorMsg);
+          document.querySelector('#collectionEmpty h4').textContent = 'Error Loading Data';
+          document.querySelector('#collectionEmpty p').textContent = errorMsg;
+          return;
+        }
+        if (Array.isArray(vendors) && vendors.length > 0) {
+          renderVendorCollection(vendors, collection);
+        } else {
+          showErrorState('No vendors found or you are not authorized.');
+          document.querySelector('#collectionEmpty h4').textContent = 'No Data';
+          document.querySelector('#collectionEmpty p').textContent = 'No vendors found or you are not authorized.';
+        }
+      } catch (error) {
+        console.error('Error loading vendor collection:', error);
+        showErrorState(error.message);
+        document.querySelector('#collectionEmpty h4').textContent = 'Exception';
+        document.querySelector('#collectionEmpty p').textContent = error.message;
+      }
+    });
+  });
+
+    function showLoadingState() {
+        collectionLoading.classList.remove('d-none');
+        collectionContent.classList.add('d-none');
+        collectionEmpty.classList.add('d-none');
+    }
+
+    function renderVendorCollection(vendors, collection) {
+        collectionLoading.classList.add('d-none');
+        
+        if (vendors.length === 0) {
+            collectionEmpty.classList.remove('d-none');
+            collectionContent.classList.add('d-none');
+            return;
+        }
+
+        collectionContent.classList.remove('d-none');
+        collectionEmpty.classList.add('d-none');
+
+        const actionDate = collection === 'faved' ? 'faved_at' : 'saved_at';
+        const actionText = collection === 'faved' ? 'Faved' : 'Saved';
+
+        collectionVendors.innerHTML = vendors.map(vendor => `
+            <div class="card mb-3">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <img src="${vendor.logo_url || '/static/img/logo.png'}" 
+                             alt="${escapeHtml(vendor.name)}" 
+                             class="rounded-circle me-3"
+                             width="60" height="60"
+                             style="object-fit: cover;">
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1">${escapeHtml(vendor.name)}</h6>
+                            <p class="text-muted small mb-1">${escapeHtml(vendor.cuisine || 'Various cuisines')}</p>
+                            <small class="text-muted">
+                                <i class="bi bi-clock me-1"></i>
+                                ${actionText} ${formatDate(vendor[actionDate])}
+                            </small>
+                        </div>
+                        <div class="d-flex flex-column align-items-end">
+                            <div class="d-flex gap-2 mb-2">
+                                <span class="badge bg-warning text-dark">
+                                    <i class="bi bi-star-fill me-1"></i>${vendor.like_count || 0}
+                                </span>
+                                <span class="badge bg-primary">
+                                    <i class="bi bi-bookmark-fill me-1"></i>${vendor.save_count || 0}
+                                </span>
+                            </div>
+                            <a href="/vendor/${vendor.id}" class="btn btn-sm btn-primary">
+                                <i class="bi bi-eye me-1"></i>View Profile
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function showErrorState(message) {
+        collectionLoading.classList.add('d-none');
+        collectionContent.classList.add('d-none');
+        collectionEmpty.classList.remove('d-none');
+        document.querySelector('#collectionEmpty h4').textContent = 'Error Loading Data';
+        document.querySelector('#collectionEmpty p').textContent = message;
+    }
+
+    async function loadCollectionCounts() {
+        const userId = document.querySelector('[data-user-id]')?.getAttribute('data-user-id');
+        if (!userId) return;
+
+        try {
+            // Load faved count
+            const favedResponse = await fetch(`/api/users/${userId}/faved-vendors`);
+            const favedVendors = await favedResponse.json();
+            if (favedResponse.ok) {
+                document.querySelector('.faved-count').textContent = favedVendors.length;
+            }
+
+            // Load saved count  
+            const savedResponse = await fetch(`/api/users/${userId}/saved-vendors`);
+            const savedVendors = await savedResponse.json();
+            if (savedResponse.ok) {
+                document.querySelector('.saved-count').textContent = savedVendors.length;
+            }
+        } catch (error) {
+            console.error('Error loading collection counts:', error);
+            document.querySelectorAll('.faved-count, .saved-count').forEach(el => {
+                el.textContent = '0';
+            });
+        }
+    }
+
+    function formatDate(dateString) {
+        if (!dateString) return 'Recently';
+        const date = new Date(dateString);
+        const now = new Date();
+        const diffTime = Math.abs(now - date);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays === 1) return 'yesterday';
+        if (diffDays < 7) return `${diffDays} days ago`;
+        if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+        if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`;
+        return `${Math.floor(diffDays / 365)} years ago`;
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+});
+</script>
+{% endblock %}
