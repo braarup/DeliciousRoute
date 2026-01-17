@@ -35,6 +35,13 @@ type DbLocation = {
   lng: number | null;
 };
 
+type DbReel = {
+  id: string;
+  caption: string | null;
+  video_url: string;
+  created_at: any;
+};
+
 type DbMedia = {
   url: string;
   media_type: string;
@@ -121,6 +128,19 @@ export default async function PublicVendorPage({ params }: PageProps) {
   `;
 
   const location = locationResult.rows[0] ?? null;
+
+  const reelsResult = await sql<DbReel>`
+    SELECT r.id, r.caption, rm.video_url, r.created_at
+    FROM reels r
+    JOIN reel_media rm ON rm.reel_id = r.id
+    WHERE r.vendor_id = ${vendor.id}
+      AND r.status = 'published'
+      AND r.created_at > (now() - interval '24 hours')
+    ORDER BY r.created_at DESC
+    LIMIT 1
+  `;
+
+  const activeReel = reelsResult.rows[0] ?? null;
 
   const mediaResult = await sql<DbMedia>`
     SELECT url, media_type, sort_order
@@ -487,21 +507,47 @@ export default async function PublicVendorPage({ params }: PageProps) {
             </div>
 
             <section
-              aria-label="Vendor reels placeholder"
+              aria-label="Vendor Grub Reel"
               className="rounded-3xl border border-[#e0e0e0] bg-white p-4 text-sm text-[#424242] shadow-sm"
             >
               <div className="flex items-center justify-between gap-2">
                 <h3 className="text-sm font-semibold text-[var(--dr-text)]">
                   Grub Reels
                 </h3>
-                <span className="rounded-full bg-[var(--dr-accent)]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--dr-accent)]">
-                  Coming soon
-                </span>
+                {activeReel ? (
+                  <span className="rounded-full bg-[var(--dr-primary)]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--dr-primary)]">
+                    Live · 24 hrs
+                  </span>
+                ) : (
+                  <span className="rounded-full bg-[var(--dr-accent)]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--dr-accent)]">
+                    No active reel
+                  </span>
+                )}
               </div>
-              <p className="mt-2 text-xs text-[#616161]">
-                In a future version, this section will surface short-form video reels for this vendor, similar to the original
-                Delicious Route prototype.
-              </p>
+              {activeReel ? (
+                <div className="mt-2 space-y-2">
+                  <div className="overflow-hidden rounded-2xl bg-black/5">
+                    <video
+                      src={activeReel.video_url}
+                      controls
+                      playsInline
+                      className="h-56 w-full rounded-2xl bg-black object-cover"
+                    />
+                  </div>
+                  {activeReel.caption && (
+                    <p className="text-xs text-[#424242]">{activeReel.caption}</p>
+                  )}
+                  <p className="text-[11px] text-[#757575]">
+                    Grub Reels are short-lived highlights that expire 24 hours
+                    after upload.
+                  </p>
+                </div>
+              ) : (
+                <p className="mt-2 text-xs text-[#616161]">
+                  This vendor hasn&apos;t posted a Grub Reel yet. Check back
+                  later for fresh clips from their truck.
+                </p>
+              )}
             </section>
           </section>
         </main>

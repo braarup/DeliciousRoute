@@ -34,6 +34,13 @@ async function updateVendorProfile(formData: FormData) {
     "image/svg+xml",
   ];
 
+  const maxReelSizeBytes = 50 * 1024 * 1024; // 50MB
+  const allowedReelTypes = [
+    "video/mp4",
+    "video/webm",
+    "video/quicktime",
+  ];
+
   const currentUser = await getCurrentUser();
 
   if (!currentUser?.id) {
@@ -257,6 +264,79 @@ async function updateVendorProfile(formData: FormData) {
     }
   }
 
+  // Optional: Grub Reel upload (single active reel per vendor)
+  const reelFile = formData.get("grubReel");
+  const reelCaption = (formData.get("grubReelCaption") || "").toString().trim();
+
+  if (reelFile instanceof File && reelFile.size > 0) {
+    const reelType = (reelFile as any).type as string | undefined;
+    const isValidReelType = !!reelType && allowedReelTypes.includes(reelType);
+    const isValidReelSize = reelFile.size <= maxReelSizeBytes;
+
+    if (isValidReelType && isValidReelSize) {
+      const isOnVercel = process.env.VERCEL === "1";
+      const hasBlobToken =
+        !!process.env.BLOB_READ_WRITE_TOKEN ||
+        !!process.env.VERCEL_BLOB_READ_WRITE_TOKEN;
+
+      const originalName = reelFile.name || "reel.mp4";
+      const extMatch = originalName.match(/\.[a-zA-Z0-9]+$/);
+      const ext = (extMatch ? extMatch[0] : ".mp4").toLowerCase();
+      const uniqueSuffix = randomUUID();
+      const fileName = `${vendorId}-reel-${uniqueSuffix}${ext}`;
+
+      const arrayBuffer = await reelFile.arrayBuffer();
+      let videoUrl: string | null = null;
+
+      if (isOnVercel) {
+        if (hasBlobToken) {
+          const blob = await put(`vendor-reels/${fileName}`, arrayBuffer, {
+            access: "public",
+            contentType: reelType || "application/octet-stream",
+          });
+          videoUrl = blob.url;
+        }
+      } else {
+        const buffer = Buffer.from(arrayBuffer);
+        const uploadsDir = path.join(process.cwd(), "public", "vendor-reels");
+        await fs.mkdir(uploadsDir, { recursive: true });
+
+        const targetPath = `/vendor-reels/${fileName}`;
+        const fileNameOnDisk = targetPath.replace(/^\/+/, "");
+        const fullPath = path.join(process.cwd(), "public", fileNameOnDisk);
+        await fs.writeFile(fullPath, buffer);
+
+        videoUrl = targetPath;
+      }
+
+      if (videoUrl) {
+        // Remove any existing reels for this vendor (only one active reel)
+        await sql`
+          DELETE FROM reels
+          WHERE vendor_id = ${vendorId}
+        `;
+
+        const reelId = randomUUID();
+
+        await sql`
+          INSERT INTO reels (id, vendor_id, created_by_user_id, caption, status, created_at)
+          VALUES (${reelId}, ${vendorId}, ${currentUser.id}, ${reelCaption || null}, 'published', now())
+        `;
+
+        await sql`
+          INSERT INTO reel_media (id, reel_id, video_url)
+          VALUES (${randomUUID()}, ${reelId}, ${videoUrl})
+        `;
+
+        // Optional cleanup of expired reels globally
+        await sql`
+          DELETE FROM reels
+          WHERE created_at < (now() - interval '24 hours')
+        `;
+      }
+    }
+  }
+
   redirect(
     imageErrorCode
       ? `/vendor/profile?imageError=${encodeURIComponent(imageErrorCode)}`
@@ -365,6 +445,7 @@ export default async function VendorProfileManagePage({
 
   let hoursByDay: Record<number, { open_time: any; close_time: any }> = {};
   let photos: any[] = [];
+  let currentReel: any | null = null;
 
   if (vendorId) {
     const hoursResult = await sql`
@@ -393,6 +474,18 @@ export default async function VendorProfileManagePage({
     `;
 
     photos = mediaResult.rows;
+
+    const reelResult = await sql`
+      SELECT r.id, r.caption, r.created_at
+      FROM reels r
+      WHERE r.vendor_id = ${vendorId}
+        AND r.status = 'published'
+        AND r.created_at > (now() - interval '24 hours')
+      ORDER BY r.created_at DESC
+      LIMIT 1
+    `;
+
+    currentReel = reelResult.rows[0] ?? null;
   }
 
   const dayLabels = [
@@ -747,6 +840,71 @@ export default async function VendorProfileManagePage({
                         </div>
                       ))}
                     </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-3xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
+              <h2 className="text-sm font-semibold text-[var(--dr-text)]">
+                Grub Reel
+              </h2>
+              <p className="mt-1 text-xs text-[#757575]">
+                Upload a short vertical video to feature on the Grub Reels tab
+                and your vendor profile. Each reel stays live for 24 hours,
+                then disappears.
+              </p>
+
+              <div className="mt-4 space-y-3 text-sm">
+                <div className="space-y-1 text-xs">
+                  <label
+                    htmlFor="grubReel"
+                    className="text-xs font-medium uppercase tracking-[0.18em] text-[#757575]"
+                  >
+                    Upload Grub Reel
+                  </label>
+                  <input
+                    id="grubReel"
+                    type="file"
+                    name="grubReel"
+                    accept="video/mp4,video/webm,video/quicktime"
+                    className="block text-[0.7rem] text-[#616161] file:mr-2 file:rounded-full file:border file:border-[#e0e0e0] file:bg-white file:px-2 file:py-1 file:text-[0.7rem] file:font-semibold file:uppercase file:tracking-[0.16em] file:text-[var(--dr-primary)] hover:file:border-[var(--dr-primary)] hover:file:bg-[var(--dr-primary)]/5"
+                  />
+                  <p className="text-[0.7rem] text-[#9e9e9e]">
+                    Allowed types: MP4, WebM, or QuickTime (MOV) up to 50MB.
+                    Uploading a new reel replaces any previous one.
+                  </p>
+                </div>
+
+                <div className="space-y-1 text-xs">
+                  <label
+                    htmlFor="grubReelCaption"
+                    className="text-xs font-medium uppercase tracking-[0.18em] text-[#757575]"
+                  >
+                    Reel caption (optional)
+                  </label>
+                  <input
+                    id="grubReelCaption"
+                    name="grubReelCaption"
+                    type="text"
+                    placeholder="e.g. Midnight birria tacos on 6th Street tonight"
+                    className="w-full rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)] px-3 py-2 text-sm text-[var(--dr-text)] placeholder:text-[#bdbdbd] focus:border-[var(--dr-primary)] focus:outline-none"
+                  />
+                </div>
+
+                {currentReel && (
+                  <div className="mt-2 rounded-2xl bg-[var(--dr-neutral)] px-3 py-2 text-[11px] text-[#616161]">
+                    <p className="font-semibold text-[var(--dr-text)]">
+                      Active Grub Reel
+                    </p>
+                    <p className="mt-1">
+                      Your latest reel is live in Grub Reels and on your
+                      profile. It will be removed automatically 24 hours after
+                      upload.
+                    </p>
+                    {currentReel.caption && (
+                      <p className="mt-1 italic">“{currentReel.caption}”</p>
+                    )}
                   </div>
                 )}
               </div>

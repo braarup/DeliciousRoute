@@ -375,32 +375,48 @@ function VendorsTab({ search, onSearchChange, vendors }: VendorsTabProps) {
 }
 
 function GrubReelsTab() {
-  const reels = [
-    {
-      id: 1,
-      title: "Midnight Birria Tacos",
-      vendor: "La Calle Roja",
-      city: "Austin",
-      length: "0:23",
-      vendorId: "la-calle-roja",
-    },
-    {
-      id: 2,
-      title: "Smash burger sizzle cam",
-      vendor: "Chrome & Cheddar",
-      city: "Portland",
-      length: "0:18",
-      vendorId: "chrome-and-cheddar",
-    },
-    {
-      id: 3,
-      title: "Plant-based mac & cheese pull",
-      vendor: "Glow Bowl",
-      city: "Los Angeles",
-      length: "0:35",
-      vendorId: "glow-bowl",
-    },
-  ];
+  const [reels, setReels] = useState<
+    Array<{
+      id: string;
+      vendorId: string;
+      caption: string | null;
+      createdAt: string;
+      vendorName: string;
+      city: string;
+    }>
+  >([]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadReels() {
+      try {
+        const res = await fetch("/api/reels");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled && Array.isArray(data.reels)) {
+          setReels(
+            data.reels.map((r: any) => ({
+              id: String(r.id),
+              vendorId: String(r.vendorId),
+              caption: r.caption ?? null,
+              createdAt: typeof r.createdAt === "string" ? r.createdAt : new Date(r.createdAt).toISOString(),
+              vendorName: r.vendorName ?? "",
+              city: r.city ?? "",
+            }))
+          );
+        }
+      } catch (err) {
+        console.error("Failed to load reels", err);
+      }
+    }
+
+    loadReels();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <section
@@ -423,37 +439,47 @@ function GrubReelsTab() {
       </div>
 
       <div className="mt-1 grid gap-3 sm:grid-cols-3">
-        {reels.map((reel) => (
-          <Link
-            key={reel.id}
-            href={`/vendor/${reel.vendorId}`}
-            className="group flex flex-col justify-between rounded-2xl border border-[#e0e0e0] bg-[radial-gradient(circle_at_0_0,#e53935_0,transparent_55%),radial-gradient(circle_at_100%_100%,#ff7043_0,transparent_55%)] p-[1px] text-xs text-[var(--dr-text)] shadow-sm"
-          >
-            <article className="flex flex-1 flex-col justify-between rounded-[1.05rem] bg-white/95 p-2.5">
-              <div>
-                <div className="flex items-center justify-between text-[10px] text-[#757575]">
-                  <span>{reel.length}</span>
-                  <span className="rounded-full bg-black/40 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-[0.18em] text-slate-200">
-                    Reel
+        {reels.length === 0 ? (
+          <p className="col-span-full text-xs text-[#757575]">
+            No Grub Reels are live right now. Check back soon!
+          </p>
+        ) : (
+          reels.map((reel) => (
+            <Link
+              key={reel.id}
+              href={`/vendor/${reel.vendorId}`}
+              className="group flex flex-col justify-between rounded-2xl border border-[#e0e0e0] bg-[radial-gradient(circle_at_0_0,#e53935_0,transparent_55%),radial-gradient(circle_at_100%_100%,#ff7043_0,transparent_55%)] p-[1px] text-xs text-[var(--dr-text)] shadow-sm"
+            >
+              <article className="flex flex-1 flex-col justify-between rounded-[1.05rem] bg-white/95 p-2.5">
+                <div>
+                  <div className="flex items-center justify-between text-[10px] text-[#757575]">
+                    <span>Live · 24 hrs</span>
+                    <span className="rounded-full bg-black/40 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-[0.18em] text-slate-200">
+                      Reel
+                    </span>
+                  </div>
+                  <h3 className="mt-2 line-clamp-2 text-[11px] font-semibold text-[var(--dr-text)]">
+                    {reel.caption || `Grub Reel from ${reel.vendorName || "this truck"}`}
+                  </h3>
+                </div>
+                <div className="mt-3 flex items-center justify-between text-[10px] text-[#616161]">
+                  <p>
+                    {reel.vendorName}
+                    {reel.city && (
+                      <>
+                        <span className="mx-1">•</span>
+                        {reel.city}
+                      </>
+                    )}
+                  </p>
+                  <span className="text-[11px] text-[var(--dr-primary)]">
+                    View vendor
                   </span>
                 </div>
-                <h3 className="mt-2 line-clamp-2 text-[11px] font-semibold text-[var(--dr-text)]">
-                  {reel.title}
-                </h3>
-              </div>
-              <div className="mt-3 flex items-center justify-between text-[10px] text-[#616161]">
-                <p>
-                  {reel.vendor}
-                  <span className="mx-1">•</span>
-                  {reel.city}
-                </p>
-                <span className="text-[11px] text-[var(--dr-primary)]">
-                  View vendor
-                </span>
-              </div>
-            </article>
-          </Link>
-        ))}
+              </article>
+            </Link>
+          ))
+        )}
       </div>
     </section>
   );
