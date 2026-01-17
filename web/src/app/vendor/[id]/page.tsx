@@ -563,10 +563,6 @@ export default async function PublicVendorPage({ params }: PageProps) {
                   {activeReel.caption && (
                     <p className="text-xs text-[#424242]">{activeReel.caption}</p>
                   )}
-                  <p className="text-[11px] text-[#757575]">
-                    Grub Reels are short-lived highlights that expire 24 hours
-                    after upload.
-                  </p>
                 </div>
               ) : (
                 <p className="mt-2 text-xs text-[#616161]">
