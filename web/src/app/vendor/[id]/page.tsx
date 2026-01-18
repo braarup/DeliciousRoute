@@ -316,18 +316,18 @@ export default async function PublicVendorPage({ params }: PageProps) {
   return (
     <div className="min-h-screen bg-[var(--dr-neutral)] text-[var(--dr-text)]">
       <div className="mx-auto flex min-h-screen max-w-5xl flex-col px-4 pb-10 pt-4 sm:px-6 lg:px-8 lg:pt-6">
-        <header className="relative overflow-hidden rounded-3xl border border-[#e0e0e0] bg-white/95 px-3 py-3 shadow-sm">
+        <header className="relative overflow-hidden rounded-3xl border border-[#e0e0e0] px-3 py-3 shadow-sm">
           {headerImage && (
-            <div className="pointer-events-none absolute inset-0 -z-10">
+            <div className="pointer-events-none absolute inset-0 z-0">
               <img
                 src={headerImage}
                 alt="Vendor header"
                 className="h-full w-full object-cover"
               />
-              <div className="absolute inset-0 bg-white/70" />
+              <div className="absolute inset-0 bg-white/65" />
             </div>
           )}
-          <div className="flex items-center justify-between gap-4">
+          <div className="relative z-10 flex items-center justify-between gap-4">
             <div className="flex items-start gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--dr-primary)]">
