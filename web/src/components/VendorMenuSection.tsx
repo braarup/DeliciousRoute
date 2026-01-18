@@ -15,6 +15,7 @@ export type VendorMenuItem = {
 
 interface Props {
   items: VendorMenuItem[];
+  id?: string;
 }
 
 const formatPrice = (priceCents: number | null) => {
@@ -104,12 +105,15 @@ function DietaryIcons({ item }: { item: VendorMenuItem }) {
   return <div className="flex flex-wrap items-center gap-1">{icons}</div>;
 }
 
-export function VendorMenuSection({ items }: Props) {
+export function VendorMenuSection({ items, id }: Props) {
   const [selectedItem, setSelectedItem] = useState<VendorMenuItem | null>(null);
 
   if (!items || items.length === 0) {
     return (
-      <section className="rounded-3xl border border-[#e0e0e0] bg-white p-4 text-sm text-[#424242] shadow-sm">
+      <section
+        id={id}
+        className="rounded-3xl border border-[#e0e0e0] bg-white p-4 text-sm text-[#424242] shadow-sm"
+      >
         <h3 className="text-sm font-semibold text-[var(--dr-text)]">Menu</h3>
         <p className="mt-1 text-xs text-[#757575]">
           This vendor hasn&apos;t added menu items yet.
@@ -124,7 +128,10 @@ export function VendorMenuSection({ items }: Props) {
 
   return (
     <>
-      <section className="rounded-3xl border border-[#e0e0e0] bg-white p-4 text-sm text-[#424242] shadow-sm">
+      <section
+        id={id}
+        className="rounded-3xl border border-[#e0e0e0] bg-white p-4 text-sm text-[#424242] shadow-sm"
+      >
         <div className="flex items-center justify-between gap-2">
           <h3 className="text-sm font-semibold text-[var(--dr-text)]">Menu</h3>
           <span className="text-[11px] text-[#9e9e9e]">
