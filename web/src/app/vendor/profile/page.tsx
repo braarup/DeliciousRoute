@@ -18,7 +18,10 @@ async function updateVendorProfile(formData: FormData) {
   const city = (formData.get("city") || "").toString().trim();
   const tagline = (formData.get("tagline") || "").toString().trim();
   const website = (formData.get("website") || "").toString().trim();
-  const socials = (formData.get("socials") || "").toString().trim();
+  const facebook = (formData.get("facebook") || "").toString().trim();
+  const instagram = (formData.get("instagram") || "").toString().trim();
+  const tiktok = (formData.get("tiktok") || "").toString().trim();
+  const xHandle = (formData.get("x") || "").toString().trim();
   const latitudeRaw = (formData.get("latitude") || "").toString().trim();
   const longitudeRaw = (formData.get("longitude") || "").toString().trim();
 
@@ -54,7 +57,7 @@ async function updateVendorProfile(formData: FormData) {
     LIMIT 1
   `;
   const vendorRow = vendorResult.rows[0] as
-    | { id: string; profile_image_path: string | null }
+    | { id: string; profile_image_path: string | null; header_image_path: string | null }
     | undefined;
   const vendorId = vendorRow?.id as string | undefined;
 
@@ -63,7 +66,9 @@ async function updateVendorProfile(formData: FormData) {
   }
 
   const profileImageFile = formData.get("profileImage");
+  const headerImageFile = formData.get("headerImage");
   let profileImagePath: string | null = null;
+  let headerImagePath: string | null = null;
   let imageErrorCode: string | null = null;
   let photoErrorCode: string | null = null;
   let reelErrorCode: string | null = null;
@@ -116,6 +121,54 @@ async function updateVendorProfile(formData: FormData) {
     }
   }
 
+  if (headerImageFile instanceof File && headerImageFile.size > 0) {
+    const contentType = (headerImageFile as any).type as string | undefined;
+    const isValidType = !contentType || allowedImageTypes.includes(contentType);
+    const isValidSize = headerImageFile.size <= maxImageSizeBytes;
+
+    if (isValidType && isValidSize) {
+      const isOnVercel = process.env.VERCEL === "1";
+      const hasBlobToken =
+        !!process.env.BLOB_READ_WRITE_TOKEN ||
+        !!process.env.VERCEL_BLOB_READ_WRITE_TOKEN;
+
+      const originalName = headerImageFile.name || "header.png";
+      const extMatch = originalName.match(/\.[a-zA-Z0-9]+$/);
+      const ext = (extMatch ? extMatch[0] : ".png").toLowerCase();
+      const uniqueSuffix = randomUUID();
+      const fileName = `${vendorId}-header-${uniqueSuffix}${ext}`;
+
+      const arrayBuffer = await headerImageFile.arrayBuffer();
+
+      if (isOnVercel) {
+        if (!hasBlobToken) {
+          imageErrorCode = imageErrorCode ?? "storage_unavailable";
+        } else {
+          const blob = await put(`vendor-header-images/${fileName}`, arrayBuffer, {
+            access: "public",
+            contentType: contentType || "application/octet-stream",
+          });
+
+          headerImagePath = blob.url;
+        }
+      } else {
+        const buffer = Buffer.from(arrayBuffer);
+        const uploadsDir = path.join(process.cwd(), "public", "vendor-header-images");
+        await fs.mkdir(uploadsDir, { recursive: true });
+
+        const targetPath = `/vendor-header-images/${fileName}`;
+
+        const fileNameOnDisk = targetPath.replace(/^\/+/, "");
+        const fullPath = path.join(process.cwd(), "public", fileNameOnDisk);
+        await fs.writeFile(fullPath, buffer);
+
+        headerImagePath = targetPath;
+      }
+    } else {
+      imageErrorCode = imageErrorCode ?? "invalid_image";
+    }
+  }
+
   await sql`
     UPDATE vendors
     SET
@@ -125,8 +178,12 @@ async function updateVendorProfile(formData: FormData) {
       primary_region = ${city || null},
       tagline = ${tagline || null},
       website_url = ${website || null},
-      instagram_url = ${socials || null},
+      instagram_url = ${instagram || null},
+      facebook_url = ${facebook || null},
+      tiktok_url = ${tiktok || null},
+      x_url = ${xHandle || null},
       profile_image_path = COALESCE(${profileImagePath}, profile_image_path),
+      header_image_path = COALESCE(${headerImagePath}, header_image_path),
       updated_at = now()
     WHERE id = ${vendorId}
   `;
@@ -449,7 +506,11 @@ export default async function VendorProfileManagePage({
       v.tagline,
       v.website_url,
       v.instagram_url,
+      v.facebook_url,
+      v.tiktok_url,
+      v.x_url,
       v.profile_image_path,
+      v.header_image_path,
       vl.lat AS default_lat,
       vl.lng AS default_lng
     FROM vendors v
@@ -773,6 +834,23 @@ export default async function VendorProfileManagePage({
                   </div>
                 </div>
               </div>
+
+              <div className="mt-4 space-y-1 text-xs">
+                <p className="text-[0.7rem] font-medium uppercase tracking-[0.18em] text-[#757575]">
+                  Header image (banner)
+                </p>
+                <input
+                  type="file"
+                  name="headerImage"
+                  accept="image/*"
+                  className="block text-[0.7rem] text-[#616161] file:mr-2 file:rounded-full file:border file:border-[#e0e0e0] file:bg-white file:px-2 file:py-1 file:text-[0.7rem] file:font-semibold file:uppercase file:tracking-[0.16em] file:text-[var(--dr-primary)] hover:file:border-[var(--dr-primary)] hover:file:bg-[var(--dr-primary)]/5"
+                />
+                <p className="text-[0.7rem] text-[#9e9e9e]">
+                  Recommended size: at least 1440×240 pixels, in a wide
+                  landscape format (16:3). JPEG or PNG, up to 5MB. This image
+                  appears behind your Food Truck Profile header.
+                </p>
+              </div>
             </div>
 
             <div className="rounded-3xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
@@ -803,17 +881,68 @@ export default async function VendorProfileManagePage({
 
                 <div className="space-y-1">
                   <label
-                    htmlFor="socials"
+                    htmlFor="facebook"
                     className="text-xs font-medium uppercase tracking-[0.18em] text-[#757575]"
                   >
-                    Social handles
+                    Facebook URL
                   </label>
                   <input
-                    id="socials"
-                    name="socials"
-                    type="text"
-                    placeholder="@instagram, @tiktok, etc."
+                    id="facebook"
+                    name="facebook"
+                    type="url"
+                    placeholder="https://facebook.com/yourtruck"
+                    defaultValue={(vendor as any)?.facebook_url ?? ""}
+                    className="w-full rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)] px-3 py-2 text-sm text-[var(--dr-text)] placeholder:text-[#bdbdbd] focus:border-[var(--dr-primary)] focus:outline-none"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label
+                    htmlFor="instagram"
+                    className="text-xs font-medium uppercase tracking-[0.18em] text-[#757575]"
+                  >
+                    Instagram URL
+                  </label>
+                  <input
+                    id="instagram"
+                    name="instagram"
+                    type="url"
+                    placeholder="https://instagram.com/yourtruck"
                     defaultValue={vendor?.instagram_url ?? ""}
+                    className="w-full rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)] px-3 py-2 text-sm text-[var(--dr-text)] placeholder:text-[#bdbdbd] focus:border-[var(--dr-primary)] focus:outline-none"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label
+                    htmlFor="tiktok"
+                    className="text-xs font-medium uppercase tracking-[0.18em] text-[#757575]"
+                  >
+                    TikTok URL
+                  </label>
+                  <input
+                    id="tiktok"
+                    name="tiktok"
+                    type="url"
+                    placeholder="https://www.tiktok.com/@yourtruck"
+                    defaultValue={(vendor as any)?.tiktok_url ?? ""}
+                    className="w-full rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)] px-3 py-2 text-sm text-[var(--dr-text)] placeholder:text-[#bdbdbd] focus:border-[var(--dr-primary)] focus:outline-none"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label
+                    htmlFor="x"
+                    className="text-xs font-medium uppercase tracking-[0.18em] text-[#757575]"
+                  >
+                    X (Twitter) URL
+                  </label>
+                  <input
+                    id="x"
+                    name="x"
+                    type="url"
+                    placeholder="https://x.com/yourtruck"
+                    defaultValue={(vendor as any)?.x_url ?? ""}
                     className="w-full rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)] px-3 py-2 text-sm text-[var(--dr-text)] placeholder:text-[#bdbdbd] focus:border-[var(--dr-primary)] focus:outline-none"
                   />
                 </div>

@@ -20,6 +20,11 @@ type DbVendor = {
   hours_text: string | null;
   website_url: string | null;
   instagram_url: string | null;
+  facebook_url: string | null;
+  tiktok_url: string | null;
+  x_url: string | null;
+  profile_image_path: string | null;
+  header_image_path: string | null;
 };
 
 type DbHours = {
@@ -65,7 +70,7 @@ export default async function PublicVendorPage({ params }: PageProps) {
 
   if (shortIdFromSlug && shortIdFromSlug.length <= 16) {
     const byIdResult = await sql<DbVendor>`
-      SELECT id, name, description, cuisine_style, primary_region, tagline, hours_text, website_url, instagram_url, profile_image_path
+      SELECT id, name, description, cuisine_style, primary_region, tagline, hours_text, website_url, instagram_url, facebook_url, tiktok_url, x_url, profile_image_path, header_image_path
       FROM vendors
       WHERE LEFT(id::text, 8) = ${shortIdFromSlug}
       LIMIT 1
@@ -75,7 +80,7 @@ export default async function PublicVendorPage({ params }: PageProps) {
 
   if (!vendor) {
     const allResult = await sql<DbVendor>`
-      SELECT id, name, description, cuisine_style, primary_region, tagline, hours_text, website_url, instagram_url, profile_image_path
+      SELECT id, name, description, cuisine_style, primary_region, tagline, hours_text, website_url, instagram_url, facebook_url, tiktok_url, x_url, profile_image_path, header_image_path
       FROM vendors
     `;
 
@@ -304,35 +309,109 @@ export default async function PublicVendorPage({ params }: PageProps) {
     ? `https://www.google.com/maps/dir/?api=1&destination=${latNumber},${lngNumber}`
     : null;
 
+  const headerImage = vendor.header_image_path;
+
   return (
     <div className="min-h-screen bg-[var(--dr-neutral)] text-[var(--dr-text)]">
       <div className="mx-auto flex min-h-screen max-w-5xl flex-col px-4 pb-10 pt-4 sm:px-6 lg:px-8 lg:pt-6">
-        <header className="flex items-center justify-between gap-4 border-b border-[#e0e0e0] bg-white/90 px-3 py-3 shadow-sm">
-          <div className="flex items-center gap-3">
-            <Link
-              href="/vendors"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[#e0e0e0] bg-white text-sm font-semibold text-[var(--dr-text)] hover:bg-[var(--dr-neutral)]"
-            >
-              ←
-            </Link>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--dr-primary)]">
-                Food truck profile
-              </p>
-              <h1 className="text-lg font-semibold leading-snug text-[var(--dr-text)] sm:text-xl">
-                {vendor.name || "Untitled venue"}
-              </h1>
-              {vendor.primary_region && (
-                <p className="text-xs text-[#757575]">{vendor.primary_region}</p>
-              )}
+        <header className="relative overflow-hidden rounded-3xl border border-[#e0e0e0] bg-white/95 px-3 py-3 shadow-sm">
+          {headerImage && (
+            <div className="pointer-events-none absolute inset-0 -z-10">
+              <img
+                src={headerImage}
+                alt="Vendor header"
+                className="h-full w-full object-cover"
+              />
+              <div className="absolute inset-0 bg-white/85" />
+            </div>
+          )}
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <Link
+                href="/vendors"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[#e0e0e0] bg-white text-sm font-semibold text-[var(--dr-text)] hover:bg-[var(--dr-neutral)]"
+              >
+                2
+              </Link>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--dr-primary)]">
+                  Food truck profile
+                </p>
+                <h1 className="text-lg font-semibold leading-snug text-[var(--dr-text)] sm:text-xl">
+                  {vendor.name || "Untitled venue"}
+                </h1>
+                {vendor.primary_region && (
+                  <p className="text-xs text-[#757575]">{vendor.primary_region}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <div className="hidden items-center gap-1 sm:flex">
+                {vendor.website_url && (
+                  <a
+                    href={vendor.website_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--dr-text)] shadow-sm hover:bg-[var(--dr-neutral)]"
+                    aria-label="Website"
+                  >
+                    WWW
+                  </a>
+                )}
+                {vendor.facebook_url && (
+                  <a
+                    href={vendor.facebook_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-[10px] font-semibold text-[#1877F2] shadow-sm hover:bg-[var(--dr-neutral)]"
+                    aria-label="Facebook"
+                  >
+                    f
+                  </a>
+                )}
+                {vendor.instagram_url && (
+                  <a
+                    href={vendor.instagram_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-[10px] font-semibold text-[#E4405F] shadow-sm hover:bg-[var(--dr-neutral)]"
+                    aria-label="Instagram"
+                  >
+                    IG
+                  </a>
+                )}
+                {vendor.tiktok_url && (
+                  <a
+                    href={vendor.tiktok_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-[10px] font-semibold text-[#000000] shadow-sm hover:bg-[var(--dr-neutral)]"
+                    aria-label="TikTok"
+                  >
+                    TT
+                  </a>
+                )}
+                {vendor.x_url && (
+                  <a
+                    href={vendor.x_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-[10px] font-semibold text-[#000000] shadow-sm hover:bg-[var(--dr-neutral)]"
+                    aria-label="X"
+                  >
+                    X
+                  </a>
+                )}
+              </div>
+              <Link
+                href="/"
+                className="hidden items-center justify-center rounded-full border border-[#e0e0e0] bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--dr-text)] hover:bg-[var(--dr-neutral)] sm:inline-flex"
+              >
+                Back to home
+              </Link>
             </div>
           </div>
-          <Link
-            href="/"
-            className="hidden items-center justify-center rounded-full border border-[#e0e0e0] bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--dr-text)] hover:bg-[var(--dr-neutral)] sm:inline-flex"
-          >
-            Back to home
-          </Link>
         </header>
 
         <main className="mt-5 grid flex-1 gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1.6fr)]">
@@ -343,9 +422,7 @@ export default async function PublicVendorPage({ params }: PageProps) {
                 <div className="flex items-start gap-3">
                   <div className="h-11 w-11 overflow-hidden rounded-full border border-[#e0e0e0] bg-[var(--dr-neutral)]">
                     <img
-                      src={
-                        (vendor as any).profile_image_path || "/icon_01.png"
-                      }
+                      src={vendor.profile_image_path || "/icon_01.png"}
                       alt="Vendor profile"
                       className="h-full w-full object-cover"
                     />
@@ -391,44 +468,6 @@ export default async function PublicVendorPage({ params }: PageProps) {
                 <p className="text-sm leading-relaxed text-[#424242]">
                   {vendor.description}
                 </p>
-              )}
-
-              <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-[var(--dr-primary)]">
-                {vendor.website_url && (
-                  <a
-                    href={vendor.website_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-medium hover:underline"
-                  >
-                    Website
-                  </a>
-                )}
-                {vendor.website_url && vendor.instagram_url && (
-                  <span className="text-[#bdbdbd]">|</span>
-                )}
-                {vendor.instagram_url && (
-                  <a
-                    href={vendor.instagram_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[#616161] hover:text-[var(--dr-primary)]"
-                  >
-                    Social
-                  </a>
-                )}
-              </div>
-
-              {vendor.instagram_url && (
-                <a
-                  href={vendor.instagram_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-3 inline-flex items-center gap-2 rounded-full bg-[var(--dr-primary)] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white shadow-sm shadow-[var(--dr-primary)]/50 hover:bg-[var(--dr-accent)]"
-                >
-                  Follow this vendor
-                  <span aria-hidden>↗</span>
-                </a>
               )}
 
               {(Object.keys(hoursByDay).length > 0 || vendor.hours_text) && (
