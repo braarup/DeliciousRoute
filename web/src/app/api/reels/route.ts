@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { sql } from "@vercel/postgres";
 import { getCurrentUser } from "@/lib/auth";
 import { slugifyVendorName } from "@/lib/slug";
-import { slugifyVendorName } from "@/lib/slug";
 
 export async function GET() {
   try {
