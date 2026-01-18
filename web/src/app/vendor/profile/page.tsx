@@ -1102,7 +1102,7 @@ export default async function VendorProfileManagePage({
         </form>
 
         {photos.length > 0 && (
-          <div className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1.1fr)]">
+          <div className="mt-4 lg:-mt-4 grid gap-5 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1.1fr)]">
             <section className="rounded-3xl border border-[#e0e0e0] bg-white p-5 text-sm shadow-sm">
               <h2 className="text-sm font-semibold text-[var(--dr-text)]">
                 Current truck photos
