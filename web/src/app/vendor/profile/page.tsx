@@ -456,6 +456,9 @@ async function addMenuItem(formData: FormData) {
   const isVegan = !!formData.get("menuItemVegan");
   const isVegetarian = !!formData.get("menuItemVegetarian");
 
+  const fromManageMenuModal =
+    (formData.get("fromManageMenuModal") || "").toString() === "1";
+
   const vendorResult = await sql`
     SELECT id
     FROM vendors
@@ -487,6 +490,8 @@ async function addMenuItem(formData: FormData) {
     `;
   }
 
+  const menuItemId = randomUUID();
+
   await sql`
     INSERT INTO menu_items (
       id,
@@ -500,7 +505,7 @@ async function addMenuItem(formData: FormData) {
       is_vegan,
       is_vegetarian
     ) VALUES (
-      ${randomUUID()},
+      ${menuItemId},
       ${menuId},
       ${title},
       ${description || null},
@@ -513,7 +518,20 @@ async function addMenuItem(formData: FormData) {
     )
   `;
 
-  redirect("/vendor/profile");
+  if (!fromManageMenuModal) {
+    redirect("/vendor/profile");
+  }
+
+  return {
+    id: menuItemId,
+    name: title,
+    description: description || null,
+    price_cents: priceCents,
+    is_gluten_free: isGlutenFree,
+    is_spicy: isSpicy,
+    is_vegan: isVegan,
+    is_vegetarian: isVegetarian,
+  };
 }
 
 async function deleteMenuItem(formData: FormData) {
@@ -555,7 +573,14 @@ async function deleteMenuItem(formData: FormData) {
       )
   `;
 
-  redirect("/vendor/profile");
+  const fromManageMenuModal =
+    (formData.get("fromManageMenuModal") || "").toString() === "1";
+
+  if (!fromManageMenuModal) {
+    redirect("/vendor/profile");
+  }
+
+  return { ok: true };
 }
 
 async function deleteVendorPhoto(formData: FormData) {

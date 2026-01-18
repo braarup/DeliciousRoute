@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, FormEvent } from "react";
 
 export type VendorManageMenuItem = {
   id: string;
@@ -15,8 +15,11 @@ export type VendorManageMenuItem = {
 
 interface Props {
   items: VendorManageMenuItem[];
-  addMenuItem: (formData: FormData) => void | Promise<void>;
-  deleteMenuItem: (formData: FormData) => void | Promise<void>;
+  // Server actions from the vendor manage page; they may return data.
+  // Use broad types here so changes to the server-side return shape
+  // don't break the client component.
+  addMenuItem: (formData: FormData) => any;
+  deleteMenuItem: (formData: FormData) => any;
 }
 
 const formatPrice = (priceCents: number | null) => {
@@ -31,6 +34,44 @@ export function VendorManageMenuSection({
   deleteMenuItem,
 }: Props) {
   const [isOpen, setIsOpen] = useState(false);
+  const [menuItems, setMenuItems] = useState<VendorManageMenuItem[]>(items);
+  const [isSaving, setIsSaving] = useState(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement | null>(null);
+
+  const handleAddItem = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!formRef.current) return;
+
+    const formData = new FormData(formRef.current);
+    formData.set("fromManageMenuModal", "1");
+    setIsSaving(true);
+    setFeedback(null);
+
+    try {
+      const result = (await addMenuItem(formData)) as any;
+
+      if (result && result.id) {
+        setMenuItems((prev) => [...prev, result as VendorManageMenuItem]);
+        formRef.current.reset();
+        setFeedback("Item added. You can add another or close this window when you're done.");
+      }
+    } catch (error) {
+      setFeedback("There was a problem saving this item. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeleteItem = async (id: string) => {
+    const formData = new FormData();
+    formData.set("menuItemId", id);
+    formData.set("fromManageMenuModal", "1");
+
+    await deleteMenuItem(formData);
+    setMenuItems((prev) => prev.filter((item) => item.id !== id));
+  };
 
   return (
     <div className="rounded-3xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
@@ -43,10 +84,10 @@ export function VendorManageMenuSection({
             Add a few of your signature dishes. These show on your
             public profile with dietary icons.
           </p>
-          {items.length > 0 && (
+          {menuItems.length > 0 && (
             <p className="mt-1 text-[11px] text-[#9e9e9e]">
-              You currently have {items.length} menu item
-              {items.length === 1 ? "" : "s"}.
+              You currently have {menuItems.length} menu item
+              {menuItems.length === 1 ? "" : "s"}.
             </p>
           )}
         </div>
@@ -90,7 +131,11 @@ export function VendorManageMenuSection({
 
             <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1.1fr)]">
               <div className="space-y-3 text-sm">
-                <div className="space-y-2 text-xs">
+                <form
+                  ref={formRef}
+                  onSubmit={handleAddItem}
+                  className="space-y-2 text-xs"
+                >
                   <div className="space-y-1">
                     <label
                       htmlFor="menuItemTitle"
@@ -184,26 +229,29 @@ export function VendorManageMenuSection({
                   <div className="pt-1">
                     <button
                       type="submit"
-                      formAction={addMenuItem}
-                      className="inline-flex items-center justify-center rounded-full bg-[var(--dr-primary)] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white shadow-sm shadow-[var(--dr-primary)]/50 hover:bg-[var(--dr-accent)]"
+                      disabled={isSaving}
+                      className="inline-flex items-center justify-center rounded-full bg-[var(--dr-primary)] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white shadow-sm shadow-[var(--dr-primary)]/50 hover:bg-[var(--dr-accent)] disabled:cursor-not-allowed disabled:opacity-70"
                     >
-                      Add item
+                      {isSaving ? "Saving..." : "Add item"}
                     </button>
+                    {feedback && (
+                      <p className="mt-1 text-[11px] text-[#616161]">{feedback}</p>
+                    )}
                   </div>
-                </div>
+                </form>
               </div>
 
               <div className="space-y-2 text-xs">
                 <p className="text-[0.7rem] font-medium uppercase tracking-[0.18em] text-[#757575]">
                   Current menu
                 </p>
-                {items.length === 0 ? (
+                {menuItems.length === 0 ? (
                   <p className="text-[11px] text-[#9e9e9e]">
                     No items yet. Add your first dish on the left.
                   </p>
                 ) : (
                   <ul className="mt-2 space-y-2">
-                    {items.map((item) => (
+                    {menuItems.map((item) => (
                       <li
                         key={item.id}
                         className="flex items-start justify-between gap-3 rounded-2xl bg-[var(--dr-neutral)] px-3 py-2"
@@ -247,10 +295,8 @@ export function VendorManageMenuSection({
                             </span>
                           )}
                           <button
-                            type="submit"
-                            formAction={deleteMenuItem}
-                            name="menuItemId"
-                            value={item.id}
+                            type="button"
+                            onClick={() => handleDeleteItem(item.id)}
                             className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#9e9e9e] hover:text-red-500"
                           >
                             Remove
