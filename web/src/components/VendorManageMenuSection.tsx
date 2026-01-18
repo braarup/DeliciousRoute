@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef, FormEvent } from "react";
+import { useState, useRef, FormEvent, useEffect } from "react";
+import { createPortal } from "react-dom";
 
 export type VendorManageMenuItem = {
   id: string;
@@ -38,6 +39,11 @@ export function VendorManageMenuSection({
   const [isSaving, setIsSaving] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleAddItem = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -100,8 +106,9 @@ export function VendorManageMenuSection({
         </button>
       </div>
 
-      {isOpen && (
-        <div className="fixed inset-0 z-40 flex flex-col bg-white">
+      {mounted && isOpen &&
+        createPortal(
+          <div className="fixed inset-0 z-40 flex flex-col bg-white">
           <div className="flex items-center justify-between border-b border-[#e0e0e0] bg-[var(--dr-neutral)]/80 px-4 py-3 text-xs text-[#757575]">
             <button
               type="button"
@@ -309,8 +316,9 @@ export function VendorManageMenuSection({
               </div>
             </div>
           </div>
-        </div>
-      )}
+        </div>,
+          document.body
+        )}
     </div>
   );
 }
