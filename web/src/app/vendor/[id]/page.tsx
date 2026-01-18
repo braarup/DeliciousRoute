@@ -328,13 +328,7 @@ export default async function PublicVendorPage({ params }: PageProps) {
             </div>
           )}
           <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <Link
-                href="/vendors"
-                className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[#e0e0e0] bg-white text-sm font-semibold text-[var(--dr-text)] hover:bg-[var(--dr-neutral)]"
-              >
-                2
-              </Link>
+            <div className="flex items-start gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--dr-primary)]">
                   Food truck profile
