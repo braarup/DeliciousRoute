@@ -327,7 +327,7 @@ export default async function PublicVendorPage({ params }: PageProps) {
               <div className="absolute inset-0 bg-white/65" />
             </div>
           )}
-          <div className="relative z-10 flex items-center justify-between gap-4">
+          <div className="relative z-10 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-start gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--dr-primary)]">
@@ -342,8 +342,8 @@ export default async function PublicVendorPage({ params }: PageProps) {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <div className="hidden items-center gap-1 sm:flex">
+            <div className="flex items-center gap-2 sm:justify-end">
+              <div className="flex flex-wrap items-center gap-1">
                 {vendor.website_url && (
                   <a
                     href={vendor.website_url}
