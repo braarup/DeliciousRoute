@@ -389,7 +389,7 @@ export default async function PublicVendorPage({ params }: PageProps) {
                       aria-hidden="true"
                     >
                       <path
-                        d="M14 4h2.5a1 1 0 0 1 1 1v2h-3v3.5h3V20h-3.5v-5.5H11V11h3V7a3 3 0 0 1 3-3h-3Z"
+                        d="M12 4c-2.2 0-4 1.8-4 4v2H6v3h2v7h3v-7h2.2l.8-3H11V8a1 1 0 0 1 1-1h3V4h-3Z"
                         className="fill-current"
                       />
                     </svg>
