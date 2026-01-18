@@ -126,27 +126,27 @@ export function VendorMenuSection({ items }: Props) {
       </button>
 
       {isOpen && (
-        <div className="fixed inset-0 z-40 flex items-start justify-center bg-black/40 px-4 py-10">
-          <div className="relative w-full max-w-3xl rounded-3xl bg-white p-5 text-sm text-[#424242] shadow-xl">
-            <div className="mb-4 flex items-center justify-between gap-2 text-xs text-[#757575]">
-              <button
-                type="button"
-                onClick={handleClose}
-                className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#757575] hover:text-[var(--dr-primary)]"
-              >
-                <span aria-hidden>←</span>
-                <span>Back</span>
-              </button>
-              <button
-                type="button"
-                onClick={handleClose}
-                className="text-lg leading-none text-[#9e9e9e] hover:text-[#616161]"
-                aria-label="Close menu"
-              >
-                ×
-              </button>
-            </div>
+        <div className="fixed inset-0 z-40 flex flex-col bg-white">
+          <div className="flex items-center justify-between border-b border-[#e0e0e0] bg-[var(--dr-neutral)]/80 px-4 py-3 text-xs text-[#757575]">
+            <button
+              type="button"
+              onClick={handleClose}
+              className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#757575] hover:text-[var(--dr-primary)]"
+            >
+              <span aria-hidden>←</span>
+              <span>Back</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleClose}
+              className="text-lg leading-none text-[#9e9e9e] hover:text-[#616161]"
+              aria-label="Close menu"
+            >
+              ×
+            </button>
+          </div>
 
+          <div className="flex-1 overflow-y-auto px-4 pb-6 pt-4 text-sm text-[#424242]">
             <h2 className="text-sm font-semibold text-[var(--dr-text)]">
               Menu
             </h2>
@@ -154,7 +154,7 @@ export function VendorMenuSection({ items }: Props) {
               Browse this truck&apos;s dishes and details.
             </p>
 
-            <div className="mt-3 max-h-96 space-y-2 overflow-y-auto pr-1">
+            <div className="mt-3 space-y-2">
               {items.map((item) => (
                 <div
                   key={item.id}
