@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactElement } from "react";
 
 export type VendorMenuItem = {
   id: string;
@@ -24,7 +24,7 @@ const formatPrice = (priceCents: number | null) => {
 };
 
 function DietaryIcons({ item }: { item: VendorMenuItem }) {
-  const icons: JSX.Element[] = [];
+  const icons: ReactElement[] = [];
 
   if (item.is_gluten_free) {
     icons.push(
