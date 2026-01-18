@@ -106,6 +106,10 @@ CREATE TABLE menu_items (
   description TEXT,
   price_cents INT,
   is_available BOOLEAN DEFAULT TRUE,
+  is_gluten_free BOOLEAN DEFAULT FALSE,
+  is_spicy BOOLEAN DEFAULT FALSE,
+  is_vegan BOOLEAN DEFAULT FALSE,
+  is_vegetarian BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -226,6 +230,13 @@ CREATE TABLE ad_clicks (
   user_id UUID REFERENCES users(id) ON DELETE SET NULL,
   clicked_at TIMESTAMPTZ DEFAULT now()
 );
+
+-- Backfill dietary flags on existing menu_items tables, if present
+ALTER TABLE IF EXISTS menu_items
+  ADD COLUMN IF NOT EXISTS is_gluten_free BOOLEAN DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS is_spicy BOOLEAN DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS is_vegan BOOLEAN DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS is_vegetarian BOOLEAN DEFAULT FALSE;
 
 -- INDEXES & CONSTRAINTS
 

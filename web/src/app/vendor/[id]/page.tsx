@@ -3,6 +3,7 @@ import { sql } from "@vercel/postgres";
 import { unstable_noStore as noStore } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
 import { FavoriteButton } from "@/components/FavoriteButton";
+import { VendorMenuSection } from "@/components/VendorMenuSection";
 import { slugifyVendorName } from "@/lib/slug";
 
 interface PageProps {
@@ -54,6 +55,17 @@ type DbMedia = {
   url: string;
   media_type: string;
   sort_order: number | null;
+};
+
+type DbMenuItem = {
+  id: string;
+  name: string;
+  description: string | null;
+  price_cents: number | null;
+  is_gluten_free: boolean | null;
+  is_spicy: boolean | null;
+  is_vegan: boolean | null;
+  is_vegetarian: boolean | null;
 };
 
 export default async function PublicVendorPage({ params }: PageProps) {
@@ -170,6 +182,28 @@ export default async function PublicVendorPage({ params }: PageProps) {
   `;
 
   const photos = mediaResult.rows;
+
+  const menuResult = await sql<{ id: string }>`
+    SELECT id
+    FROM menus
+    WHERE vendor_id = ${vendor.id} AND is_active = true
+    LIMIT 1
+  `;
+
+  let menuItems: DbMenuItem[] = [];
+
+  const menuId = menuResult.rows[0]?.id as string | undefined;
+
+  if (menuId) {
+    const itemsResult = await sql<DbMenuItem>`
+      SELECT id, name, description, price_cents, is_gluten_free, is_spicy, is_vegan, is_vegetarian
+      FROM menu_items
+      WHERE menu_id = ${menuId} AND is_available = true
+      ORDER BY created_at
+    `;
+
+    menuItems = itemsResult.rows;
+  }
 
   const hoursResult = await sql<DbHours>`
     SELECT lh.day_of_week, lh.open_time, lh.close_time
@@ -600,8 +634,9 @@ export default async function PublicVendorPage({ params }: PageProps) {
             </div>
           </section>
 
-          {/* Right column: location & map stub */}
+          {/* Right column: menu, location & reel */}
           <section className="space-y-4">
+            <VendorMenuSection items={menuItems} />
             <div className="rounded-3xl border border-[#e0e0e0] bg-white p-4 text-sm text-[#424242] shadow-sm">
               <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--dr-primary)]/90">
                 Location

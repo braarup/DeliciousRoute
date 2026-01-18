@@ -428,6 +428,135 @@ async function signOutVendor() {
   redirect("/");
 }
 
+async function addMenuItem(formData: FormData) {
+  "use server";
+
+  const currentUser = await getCurrentUser();
+
+  if (!currentUser?.id) {
+    redirect("/login");
+  }
+
+  const title = (formData.get("menuItemTitle") || "").toString().trim();
+  const description = (formData.get("menuItemDescription") || "").toString().trim();
+  const priceRaw = (formData.get("menuItemPrice") || "").toString().trim();
+
+  if (!title) {
+    redirect("/vendor/profile");
+  }
+
+  const priceNumber = priceRaw ? Number(priceRaw.replace(/[^0-9.]/g, "")) : NaN;
+  const priceCents = Number.isFinite(priceNumber)
+    ? Math.round(priceNumber * 100)
+    : null;
+
+  const isGlutenFree = !!formData.get("menuItemGlutenFree");
+  const isSpicy = !!formData.get("menuItemSpicy");
+  const isVegan = !!formData.get("menuItemVegan");
+  const isVegetarian = !!formData.get("menuItemVegetarian");
+
+  const vendorResult = await sql`
+    SELECT id
+    FROM vendors
+    WHERE owner_user_id = ${currentUser.id}
+    ORDER BY created_at DESC
+    LIMIT 1
+  `;
+
+  const vendorId = vendorResult.rows[0]?.id as string | undefined;
+
+  if (!vendorId) {
+    redirect("/vendor/profile");
+  }
+
+  const menuResult = await sql`
+    SELECT id
+    FROM menus
+    WHERE vendor_id = ${vendorId} AND is_active = true
+    LIMIT 1
+  `;
+
+  let menuId = menuResult.rows[0]?.id as string | undefined;
+
+  if (!menuId) {
+    menuId = randomUUID();
+    await sql`
+      INSERT INTO menus (id, vendor_id, name, is_active)
+      VALUES (${menuId}, ${vendorId}, 'Main Menu', true)
+    `;
+  }
+
+  await sql`
+    INSERT INTO menu_items (
+      id,
+      menu_id,
+      name,
+      description,
+      price_cents,
+      is_available,
+      is_gluten_free,
+      is_spicy,
+      is_vegan,
+      is_vegetarian
+    ) VALUES (
+      ${randomUUID()},
+      ${menuId},
+      ${title},
+      ${description || null},
+      ${priceCents},
+      true,
+      ${isGlutenFree},
+      ${isSpicy},
+      ${isVegan},
+      ${isVegetarian}
+    )
+  `;
+
+  redirect("/vendor/profile");
+}
+
+async function deleteMenuItem(formData: FormData) {
+  "use server";
+
+  const currentUser = await getCurrentUser();
+
+  if (!currentUser?.id) {
+    redirect("/login");
+  }
+
+  const rawId = formData.get("menuItemId");
+  const menuItemId =
+    typeof rawId === "string" ? rawId : rawId ? rawId.toString() : null;
+
+  if (!menuItemId) {
+    redirect("/vendor/profile");
+  }
+
+  const vendorResult = await sql`
+    SELECT id
+    FROM vendors
+    WHERE owner_user_id = ${currentUser.id}
+    ORDER BY created_at DESC
+    LIMIT 1
+  `;
+
+  const vendorId = vendorResult.rows[0]?.id as string | undefined;
+
+  if (!vendorId) {
+    redirect("/vendor/profile");
+  }
+
+  await sql`
+    DELETE FROM menu_items
+    WHERE id = ${menuItemId}
+      AND menu_id IN (
+        SELECT id FROM menus WHERE vendor_id = ${vendorId}
+      )
+  `;
+
+  redirect("/vendor/profile");
+}
+
 async function deleteVendorPhoto(formData: FormData) {
   "use server";
 
@@ -527,6 +656,16 @@ export default async function VendorProfileManagePage({
   let hoursByDay: Record<number, { open_time: any; close_time: any }> = {};
   let photos: any[] = [];
   let currentReel: any | null = null;
+  let menuItems: Array<{
+    id: string;
+    name: string;
+    description: string | null;
+    price_cents: number | null;
+    is_gluten_free: boolean | null;
+    is_spicy: boolean | null;
+    is_vegan: boolean | null;
+    is_vegetarian: boolean | null;
+  }> = [];
 
   if (vendorId) {
     const hoursResult = await sql`
@@ -567,6 +706,35 @@ export default async function VendorProfileManagePage({
     `;
 
     currentReel = reelResult.rows[0] ?? null;
+
+    const menuResult = await sql<{ id: string }>`
+      SELECT id
+      FROM menus
+      WHERE vendor_id = ${vendorId} AND is_active = true
+      LIMIT 1
+    `;
+
+    const menuId = menuResult.rows[0]?.id as string | undefined;
+
+    if (menuId) {
+      const itemsResult = await sql<{
+        id: string;
+        name: string;
+        description: string | null;
+        price_cents: number | null;
+        is_gluten_free: boolean | null;
+        is_spicy: boolean | null;
+        is_vegan: boolean | null;
+        is_vegetarian: boolean | null;
+      }>`
+        SELECT id, name, description, price_cents, is_gluten_free, is_spicy, is_vegan, is_vegetarian
+        FROM menu_items
+        WHERE menu_id = ${menuId} AND is_available = true
+        ORDER BY created_at
+      `;
+
+      menuItems = itemsResult.rows;
+    }
   }
 
   const dayLabels = [
@@ -675,6 +843,12 @@ export default async function VendorProfileManagePage({
       : reelErrorCodeFromQuery === "storage_unavailable"
       ? "Grub Reel upload is not available yet in this deployment. Ask your admin to configure Vercel Blob."
       : null;
+
+  const formatPrice = (priceCents: number | null) => {
+    if (priceCents == null) return "";
+    const dollars = (priceCents / 100).toFixed(2);
+    return `$${dollars}`;
+  };
 
   return (
     <div className="min-h-screen bg-[var(--dr-neutral)] text-[var(--dr-text)]">
@@ -1022,6 +1196,184 @@ export default async function VendorProfileManagePage({
 
           {/* Right: hours and location */}
           <section className="space-y-4">
+            <div className="rounded-3xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
+              <h2 className="text-sm font-semibold text-[var(--dr-text)]">
+                Menu items
+              </h2>
+              <p className="mt-1 text-xs text-[#757575]">
+                Add a few of your signature dishes. These show on your
+                public profile with dietary icons.
+              </p>
+
+              <div className="mt-4 space-y-3 text-sm">
+                <div className="space-y-2 text-xs">
+                  <div className="space-y-1">
+                    <label
+                      htmlFor="menuItemTitle"
+                      className="text-xs font-medium uppercase tracking-[0.18em] text-[#757575]"
+                    >
+                      Dish name
+                    </label>
+                    <input
+                      id="menuItemTitle"
+                      name="menuItemTitle"
+                      type="text"
+                      placeholder="e.g. Vegan taco plate"
+                      className="w-full rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)] px-3 py-2 text-sm text-[var(--dr-text)] placeholder:text-[#bdbdbd] focus:border-[var(--dr-primary)] focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label
+                      htmlFor="menuItemDescription"
+                      className="text-xs font-medium uppercase tracking-[0.18em] text-[#757575]"
+                    >
+                      Short description
+                    </label>
+                    <textarea
+                      id="menuItemDescription"
+                      name="menuItemDescription"
+                      rows={2}
+                      placeholder="3 vegan street tacos served with corn tortillas..."
+                      className="w-full resize-none rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)] px-3 py-2 text-sm text-[var(--dr-text)] placeholder:text-[#bdbdbd] focus:border-[var(--dr-primary)] focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] items-end gap-3">
+                    <div className="space-y-1">
+                      <label
+                        htmlFor="menuItemPrice"
+                        className="text-xs font-medium uppercase tracking-[0.18em] text-[#757575]"
+                      >
+                        Price
+                      </label>
+                      <input
+                        id="menuItemPrice"
+                        name="menuItemPrice"
+                        type="text"
+                        placeholder="$12.00"
+                        className="w-full rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)] px-3 py-2 text-sm text-[var(--dr-text)] placeholder:text-[#bdbdbd] focus:border-[var(--dr-primary)] focus:outline-none"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <p className="text-[0.7rem] font-medium uppercase tracking-[0.18em] text-[#757575]">
+                        Dietary tags
+                      </p>
+                      <div className="flex flex-wrap gap-2 text-[0.7rem] text-[#616161]">
+                        <label className="inline-flex items-center gap-1">
+                          <input
+                            type="checkbox"
+                            name="menuItemGlutenFree"
+                            className="h-3 w-3 text-[var(--dr-primary)] focus:ring-[var(--dr-primary)]"
+                          />
+                          <span>Gluten free</span>
+                        </label>
+                        <label className="inline-flex items-center gap-1">
+                          <input
+                            type="checkbox"
+                            name="menuItemSpicy"
+                            className="h-3 w-3 text-[var(--dr-primary)] focus:ring-[var(--dr-primary)]"
+                          />
+                          <span>Spicy</span>
+                        </label>
+                        <label className="inline-flex items-center gap-1">
+                          <input
+                            type="checkbox"
+                            name="menuItemVegan"
+                            className="h-3 w-3 text-[var(--dr-primary)] focus:ring-[var(--dr-primary)]"
+                          />
+                          <span>Vegan</span>
+                        </label>
+                        <label className="inline-flex items-center gap-1">
+                          <input
+                            type="checkbox"
+                            name="menuItemVegetarian"
+                            className="h-3 w-3 text-[var(--dr-primary)] focus:ring-[var(--dr-primary)]"
+                          />
+                          <span>Vegetarian</span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-1">
+                    <button
+                      type="submit"
+                      formAction={addMenuItem}
+                      className="inline-flex items-center justify-center rounded-full bg-[var(--dr-primary)] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white shadow-sm shadow-[var(--dr-primary)]/50 hover:bg-[var(--dr-accent)]"
+                    >
+                      Add item
+                    </button>
+                  </div>
+                </div>
+
+                {menuItems.length > 0 && (
+                  <div className="border-t border-[#eeeeee] pt-3 text-xs">
+                    <p className="text-[0.7rem] font-medium uppercase tracking-[0.18em] text-[#757575]">
+                      Current menu
+                    </p>
+                    <ul className="mt-2 space-y-2">
+                      {menuItems.map((item) => (
+                        <li
+                          key={item.id}
+                          className="flex items-start justify-between gap-3 rounded-2xl bg-[var(--dr-neutral)] px-3 py-2"
+                        >
+                          <div className="min-w-0 text-[11px] text-[#424242]">
+                            <p className="font-semibold text-[var(--dr-text)]">
+                              {item.name}
+                            </p>
+                            {item.description && (
+                              <p className="mt-0.5 line-clamp-2 text-[11px] text-[#616161]">
+                                {item.description}
+                              </p>
+                            )}
+                            <div className="mt-1 flex flex-wrap items-center gap-1 text-[10px] text-[#757575]">
+                              {item.is_gluten_free && (
+                                <span className="rounded-full bg-white/80 px-2 py-0.5">
+                                  Gluten free
+                                </span>
+                              )}
+                              {item.is_spicy && (
+                                <span className="rounded-full bg-white/80 px-2 py-0.5">
+                                  Spicy
+                                </span>
+                              )}
+                              {item.is_vegan && (
+                                <span className="rounded-full bg-white/80 px-2 py-0.5">
+                                  Vegan
+                                </span>
+                              )}
+                              {item.is_vegetarian && (
+                                <span className="rounded-full bg-white/80 px-2 py-0.5">
+                                  Vegetarian
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex flex-col items-end gap-1 text-[11px]">
+                            {item.price_cents != null && (
+                              <span className="font-semibold text-[var(--dr-accent)]">
+                                {formatPrice(item.price_cents)}
+                              </span>
+                            )}
+                            <button
+                              type="submit"
+                              formAction={deleteMenuItem}
+                              name="menuItemId"
+                              value={item.id}
+                              className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#9e9e9e] hover:text-red-500"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </div>
             <div className="rounded-3xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
               <h2 className="text-sm font-semibold text-[var(--dr-text)]">
                 Hours of operation
