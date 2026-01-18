@@ -15,7 +15,6 @@ export type VendorMenuItem = {
 
 interface Props {
   items: VendorMenuItem[];
-  id?: string;
 }
 
 const formatPrice = (priceCents: number | null) => {
@@ -105,73 +104,37 @@ function DietaryIcons({ item }: { item: VendorMenuItem }) {
   return <div className="flex flex-wrap items-center gap-1">{icons}</div>;
 }
 
-export function VendorMenuSection({ items, id }: Props) {
-  const [selectedItem, setSelectedItem] = useState<VendorMenuItem | null>(null);
+export function VendorMenuSection({ items }: Props) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<VendorMenuItem | null>(
+    null
+  );
 
   if (!items || items.length === 0) {
-    return (
-      <section
-        id={id}
-        className="rounded-3xl border border-[#e0e0e0] bg-white p-4 text-sm text-[#424242] shadow-sm"
-      >
-        <h3 className="text-sm font-semibold text-[var(--dr-text)]">Menu</h3>
-        <p className="mt-1 text-xs text-[#757575]">
-          This vendor hasn&apos;t added menu items yet.
-        </p>
-      </section>
-    );
+    return null;
   }
 
-  const handleClose = () => setSelectedItem(null);
-
-  const visibleItems = items;
+  const handleClose = () => {
+    setIsOpen(false);
+    setSelectedItem(null);
+  };
 
   return (
     <>
-      <section
-        id={id}
-        className="rounded-3xl border border-[#e0e0e0] bg-white p-4 text-sm text-[#424242] shadow-sm"
+      <button
+        type="button"
+        onClick={() => {
+          setIsOpen(true);
+          setSelectedItem(items[0] ?? null);
+        }}
+        className="inline-flex items-center justify-center rounded-full border border-[var(--dr-primary)]/40 bg-white/80 px-4 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--dr-primary)] shadow-sm hover:bg-[var(--dr-primary)] hover:text-white"
       >
-        <div className="flex items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold text-[var(--dr-text)]">Menu</h3>
-          <span className="text-[11px] text-[#9e9e9e]">
-            {items.length} item{items.length === 1 ? "" : "s"}
-          </span>
-        </div>
-        <div className="mt-3 max-h-72 space-y-2 overflow-y-auto pr-1">
-          {visibleItems.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => setSelectedItem(item)}
-              className="w-full rounded-2xl border border-[#eeeeee] bg-[var(--dr-neutral)] px-3 py-2 text-left text-xs text-[#424242] hover:border-[var(--dr-accent)] hover:bg-white"
-            >
-              <div className="flex items-center justify-between gap-2">
-                <p className="truncate text-[13px] font-semibold text-[var(--dr-text)]">
-                  {item.name}
-                </p>
-                {item.price_cents != null && (
-                  <p className="whitespace-nowrap text-[13px] font-semibold text-[var(--dr-accent)]">
-                    {formatPrice(item.price_cents)}
-                  </p>
-                )}
-              </div>
-              <div className="mt-1 flex flex-wrap items-center gap-1">
-                <DietaryIcons item={item} />
-              </div>
-              {item.description && (
-                <p className="mt-1 line-clamp-2 text-[11px] text-[#616161]">
-                  {item.description}
-                </p>
-              )}
-            </button>
-          ))}
-        </div>
-      </section>
+        Menu
+      </button>
 
-      {selectedItem && (
+      {isOpen && (
         <div className="fixed inset-0 z-40 flex items-start justify-center bg-black/40 px-4 py-10">
-          <div className="relative w-full max-w-2xl rounded-3xl bg-white p-5 text-sm text-[#424242] shadow-xl">
+          <div className="relative w-full max-w-3xl rounded-3xl bg-white p-5 text-sm text-[#424242] shadow-xl">
             <div className="mb-4 flex items-center justify-between gap-2 text-xs text-[#757575]">
               <button
                 type="button"
@@ -185,29 +148,77 @@ export function VendorMenuSection({ items, id }: Props) {
                 type="button"
                 onClick={handleClose}
                 className="text-lg leading-none text-[#9e9e9e] hover:text-[#616161]"
-                aria-label="Close menu item details"
+                aria-label="Close menu"
               >
                 ×
               </button>
             </div>
 
-            <h2 className="text-xl font-semibold text-[var(--dr-text)]">
-              {selectedItem.name}
-            </h2>
-            {selectedItem.description && (
-              <p className="mt-2 text-sm text-[#616161]">
-                {selectedItem.description}
-              </p>
-            )}
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1.2fr)]">
+              <div>
+                <h2 className="text-sm font-semibold text-[var(--dr-text)]">
+                  Menu
+                </h2>
+                <p className="mt-1 text-xs text-[#757575]">
+                  Tap a dish to see full details.
+                </p>
+                <div className="mt-3 max-h-80 space-y-2 overflow-y-auto pr-1">
+                  {items.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setSelectedItem(item)}
+                      className="w-full rounded-2xl border border-[#eeeeee] bg-[var(--dr-neutral)] px-3 py-2 text-left text-xs text-[#424242] hover:border-[var(--dr-accent)] hover:bg-white"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="truncate text-[13px] font-semibold text-[var(--dr-text)]">
+                          {item.name}
+                        </p>
+                        {item.price_cents != null && (
+                          <p className="whitespace-nowrap text-[13px] font-semibold text-[var(--dr-accent)]">
+                            {formatPrice(item.price_cents)}
+                          </p>
+                        )}
+                      </div>
+                      <div className="mt-1 flex flex-wrap items-center gap-1">
+                        <DietaryIcons item={item} />
+                      </div>
+                      {item.description && (
+                        <p className="mt-1 line-clamp-2 text-[11px] text-[#616161]">
+                          {item.description}
+                        </p>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-            {selectedItem.price_cents != null && (
-              <p className="mt-4 text-lg font-semibold text-[var(--dr-accent)]">
-                {formatPrice(selectedItem.price_cents)}
-              </p>
-            )}
-
-            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-              <DietaryIcons item={selectedItem} />
+              <div className="rounded-2xl bg-[var(--dr-neutral)] px-3 py-3 text-xs text-[#424242]">
+                {selectedItem ? (
+                  <>
+                    <p className="text-sm font-semibold text-[var(--dr-text)]">
+                      {selectedItem.name}
+                    </p>
+                    {selectedItem.price_cents != null && (
+                      <p className="mt-1 text-sm font-semibold text-[var(--dr-accent)]">
+                        {formatPrice(selectedItem.price_cents)}
+                      </p>
+                    )}
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <DietaryIcons item={selectedItem} />
+                    </div>
+                    {selectedItem.description && (
+                      <p className="mt-2 text-xs text-[#616161]">
+                        {selectedItem.description}
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-xs text-[#757575]">
+                    Select a menu item on the left to see more details here.
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         </div>

@@ -373,13 +373,8 @@ export default async function PublicVendorPage({ params }: PageProps) {
                 {vendor.primary_region && (
                   <p className="text-xs text-[#424242]">{vendor.primary_region}</p>
                 )}
-                <div className="mt-2 flex justify-center sm:justify-start">
-                  <a
-                    href="#menu"
-                    className="inline-flex items-center justify-center rounded-full border border-[var(--dr-primary)]/40 bg-white/80 px-4 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--dr-primary)] shadow-sm hover:bg-[var(--dr-primary)] hover:text-white"
-                  >
-                    Menu
-                  </a>
+                <div className="absolute bottom-3 right-3 z-10 sm:bottom-3 sm:left-1/2 sm:right-auto sm:-translate-x-1/2">
+                  <VendorMenuSection items={menuItems} />
                 </div>
               </div>
             </div>
@@ -642,9 +637,8 @@ export default async function PublicVendorPage({ params }: PageProps) {
             </div>
           </section>
 
-          {/* Right column: menu, location & reel */}
+          {/* Right column: location & reel */}
           <section className="space-y-4">
-            <VendorMenuSection id="menu" items={menuItems} />
             <div className="rounded-3xl border border-[#e0e0e0] bg-white p-4 text-sm text-[#424242] shadow-sm">
               <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--dr-primary)]/90">
                 Location
