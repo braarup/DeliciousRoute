@@ -309,7 +309,9 @@ export default async function PublicVendorPage({ params }: PageProps) {
     ? `https://www.google.com/maps/dir/?api=1&destination=${latNumber},${lngNumber}`
     : null;
 
-  const headerImage = vendor.header_image_path;
+  // Prefer a dedicated header image; fall back to profile image so
+  // the header never feels empty when a photo exists.
+  const headerImage = vendor.header_image_path || vendor.profile_image_path;
 
   return (
     <div className="min-h-screen bg-[var(--dr-neutral)] text-[var(--dr-text)]">
@@ -322,7 +324,7 @@ export default async function PublicVendorPage({ params }: PageProps) {
                 alt="Vendor header"
                 className="h-full w-full object-cover"
               />
-              <div className="absolute inset-0 bg-white/85" />
+              <div className="absolute inset-0 bg-white/70" />
             </div>
           )}
           <div className="flex items-center justify-between gap-4">
