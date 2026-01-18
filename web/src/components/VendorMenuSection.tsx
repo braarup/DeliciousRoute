@@ -106,9 +106,6 @@ function DietaryIcons({ item }: { item: VendorMenuItem }) {
 
 export function VendorMenuSection({ items }: Props) {
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<VendorMenuItem | null>(
-    null
-  );
 
   if (!items || items.length === 0) {
     return null;
@@ -116,17 +113,13 @@ export function VendorMenuSection({ items }: Props) {
 
   const handleClose = () => {
     setIsOpen(false);
-    setSelectedItem(null);
   };
 
   return (
     <>
       <button
         type="button"
-        onClick={() => {
-          setIsOpen(true);
-          setSelectedItem(items[0] ?? null);
-        }}
+        onClick={() => setIsOpen(true)}
         className="inline-flex items-center justify-center rounded-full border border-[var(--dr-primary)]/40 bg-white/80 px-4 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--dr-primary)] shadow-sm hover:bg-[var(--dr-primary)] hover:text-white"
       >
         Menu
@@ -154,71 +147,39 @@ export function VendorMenuSection({ items }: Props) {
               </button>
             </div>
 
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1.2fr)]">
-              <div>
-                <h2 className="text-sm font-semibold text-[var(--dr-text)]">
-                  Menu
-                </h2>
-                <p className="mt-1 text-xs text-[#757575]">
-                  Tap a dish to see full details.
-                </p>
-                <div className="mt-3 max-h-80 space-y-2 overflow-y-auto pr-1">
-                  {items.map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => setSelectedItem(item)}
-                      className="w-full rounded-2xl border border-[#eeeeee] bg-[var(--dr-neutral)] px-3 py-2 text-left text-xs text-[#424242] hover:border-[var(--dr-accent)] hover:bg-white"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="truncate text-[13px] font-semibold text-[var(--dr-text)]">
-                          {item.name}
-                        </p>
-                        {item.price_cents != null && (
-                          <p className="whitespace-nowrap text-[13px] font-semibold text-[var(--dr-accent)]">
-                            {formatPrice(item.price_cents)}
-                          </p>
-                        )}
-                      </div>
-                      <div className="mt-1 flex flex-wrap items-center gap-1">
-                        <DietaryIcons item={item} />
-                      </div>
-                      {item.description && (
-                        <p className="mt-1 line-clamp-2 text-[11px] text-[#616161]">
-                          {item.description}
-                        </p>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
+            <h2 className="text-sm font-semibold text-[var(--dr-text)]">
+              Menu
+            </h2>
+            <p className="mt-1 text-xs text-[#757575]">
+              Browse this truck&apos;s dishes and details.
+            </p>
 
-              <div className="rounded-2xl bg-[var(--dr-neutral)] px-3 py-3 text-xs text-[#424242]">
-                {selectedItem ? (
-                  <>
-                    <p className="text-sm font-semibold text-[var(--dr-text)]">
-                      {selectedItem.name}
+            <div className="mt-3 max-h-96 space-y-2 overflow-y-auto pr-1">
+              {items.map((item) => (
+                <div
+                  key={item.id}
+                  className="rounded-2xl border border-[#eeeeee] bg-[var(--dr-neutral)] px-3 py-2 text-xs text-[#424242]"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[13px] font-semibold text-[var(--dr-text)]">
+                      {item.name}
                     </p>
-                    {selectedItem.price_cents != null && (
-                      <p className="mt-1 text-sm font-semibold text-[var(--dr-accent)]">
-                        {formatPrice(selectedItem.price_cents)}
+                    {item.price_cents != null && (
+                      <p className="whitespace-nowrap text-[13px] font-semibold text-[var(--dr-accent)]">
+                        {formatPrice(item.price_cents)}
                       </p>
                     )}
-                    <div className="mt-2 flex flex-wrap items-center gap-2">
-                      <DietaryIcons item={selectedItem} />
-                    </div>
-                    {selectedItem.description && (
-                      <p className="mt-2 text-xs text-[#616161]">
-                        {selectedItem.description}
-                      </p>
-                    )}
-                  </>
-                ) : (
-                  <p className="text-xs text-[#757575]">
-                    Select a menu item on the left to see more details here.
-                  </p>
-                )}
-              </div>
+                  </div>
+                  <div className="mt-1 flex flex-wrap items-center gap-1">
+                    <DietaryIcons item={item} />
+                  </div>
+                  {item.description && (
+                    <p className="mt-1 text-[11px] text-[#616161]">
+                      {item.description}
+                    </p>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         </div>
