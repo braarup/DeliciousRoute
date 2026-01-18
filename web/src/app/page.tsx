@@ -8,6 +8,7 @@ type TabKey = "grub" | "vendors" | "events";
 
 type VendorsTabVendor = {
   id: string;
+  slug: string;
   name: string;
   cuisine: string;
   city: string;
@@ -321,7 +322,7 @@ function VendorsTab({ search, onSearchChange, vendors }: VendorsTabProps) {
           vendors.map((vendor) => (
             <Link
               key={vendor.id}
-              href={`/vendor/${vendor.id}`}
+              href={`/vendor/${vendor.slug}`}
               className="group flex flex-col gap-2 rounded-2xl border border-white/10 bg-slate-950/80 p-3 text-sm text-slate-200 shadow-sm shadow-black/40 hover:border-amber-400/60 hover:bg-slate-900/90"
             >
               <div className="flex items-start justify-between gap-2">
@@ -383,6 +384,7 @@ function GrubReelsTab() {
     Array<{
       id: string;
       vendorId: string;
+      vendorSlug: string;
       caption: string | null;
       createdAt: string;
       videoUrl: string;
@@ -406,6 +408,7 @@ function GrubReelsTab() {
             data.reels.map((r: any) => ({
               id: String(r.id),
               vendorId: String(r.vendorId),
+              vendorSlug: String(r.vendorSlug ?? r.vendorId),
               caption: r.caption ?? null,
               createdAt: typeof r.createdAt === "string" ? r.createdAt : new Date(r.createdAt).toISOString(),
               videoUrl: String(r.videoUrl),
@@ -488,7 +491,7 @@ function GrubReelsTab() {
                     initialFavorited={reel.isFavorited}
                   />
                   <Link
-                    href={`/vendor/${reel.vendorId}`}
+                    href={`/vendor/${reel.vendorSlug}`}
                     className="text-[11px] font-medium text-[var(--dr-primary)] hover:underline"
                   >
                     View

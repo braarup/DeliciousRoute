@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { FavoriteButton } from "./FavoriteButton";
+import { slugifyVendorName } from "@/lib/slug";
 
 export type FavoriteVendor = {
   id: string;
@@ -80,7 +81,7 @@ export function FavoriteTrucksSection({ favoriteVendors }: FavoriteTrucksSection
               {vendors.map((vendor) => (
                 <Link
                   key={vendor.id}
-                  href={`/vendor/${vendor.id}`}
+                  href={`/vendor/${slugifyVendorName(vendor.name, vendor.id)}`}
                   className="flex items-center gap-3 rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)] px-3 py-2 text-xs text-[var(--dr-text)] hover:border-[var(--dr-primary)]/60 hover:bg-white"
                   onClick={() => setIsOpen(false)}
                 >

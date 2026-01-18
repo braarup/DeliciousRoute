@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { sql } from "@vercel/postgres";
 import { getCurrentUser } from "@/lib/auth";
+import { slugifyVendorName } from "@/lib/slug";
 
 type DbVendorRow = {
   id: string;
@@ -239,6 +240,7 @@ export async function GET() {
     const openNow = isOpenNow(row.hoursByDay);
     return {
       id: row.id,
+      slug: slugifyVendorName(row.name ?? "Untitled venue", row.id),
       name: row.name ?? "Untitled venue",
       cuisine: row.cuisine_style ?? "Food truck",
       city: row.primary_region ?? "",

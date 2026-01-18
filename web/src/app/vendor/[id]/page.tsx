@@ -3,6 +3,7 @@ import { sql } from "@vercel/postgres";
 import { unstable_noStore as noStore } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
 import { FavoriteButton } from "@/components/FavoriteButton";
+import { slugifyVendorName } from "@/lib/slug";
 
 interface PageProps {
   // In this project, params is passed as a Promise (Next 16 PPR pattern)
@@ -52,24 +53,34 @@ type DbMedia = {
 
 export default async function PublicVendorPage({ params }: PageProps) {
   noStore();
-  const { id } = await params;
+  const { id: slug } = await params;
 
   const currentUser = await getCurrentUser();
+  const slugStr = String(slug ?? "");
+  const shortIdFromSlug = slugStr.includes("-")
+    ? slugStr.split("-").pop() ?? ""
+    : "";
 
-  const vendorResult = await sql<DbVendor>`
-    SELECT id, name, description, cuisine_style, primary_region, tagline, hours_text, website_url, instagram_url, profile_image_path
-    FROM vendors
-    WHERE id = ${id}
-    LIMIT 1
-  `;
+  let vendor: DbVendor | undefined;
 
-  console.log("PublicVendorPage vendor query", {
-    id,
-    rowCount: vendorResult.rows.length,
-    row: vendorResult.rows[0],
-  });
-  
-  const vendor = vendorResult.rows[0];
+  if (shortIdFromSlug && shortIdFromSlug.length <= 16) {
+    const byIdResult = await sql<DbVendor>`
+      SELECT id, name, description, cuisine_style, primary_region, tagline, hours_text, website_url, instagram_url, profile_image_path
+      FROM vendors
+      WHERE LEFT(id::text, 8) = ${shortIdFromSlug}
+      LIMIT 1
+    `;
+    vendor = byIdResult.rows[0];
+  }
+
+  if (!vendor) {
+    const allResult = await sql<DbVendor>`
+      SELECT id, name, description, cuisine_style, primary_region, tagline, hours_text, website_url, instagram_url, profile_image_path
+      FROM vendors
+    `;
+
+    vendor = allResult.rows.find((row) => slugifyVendorName(row.name) === slugStr);
+  }
 
   if (!vendor) {
     return (

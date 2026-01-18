@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { sql } from "@vercel/postgres";
 import { getCurrentUser } from "@/lib/auth";
+import { slugifyVendorName } from "@/lib/slug";
+import { slugifyVendorName } from "@/lib/slug";
 
 export async function GET() {
   try {
@@ -58,6 +60,7 @@ export async function GET() {
       city: (row.primary_region as string) ?? "",
       favoriteCount: favoriteCounts.get(row.vendor_id as string) ?? 0,
       isFavorited: userFavoriteVendorIds.has(row.vendor_id as string),
+      vendorSlug: slugifyVendorName(row.vendor_name as string | null | undefined, row.vendor_id as string),
     }));
 
     return NextResponse.json({ reels });

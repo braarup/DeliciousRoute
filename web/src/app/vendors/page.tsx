@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { sql } from "@vercel/postgres";
 import { unstable_noStore as noStore } from "next/cache";
+import { slugifyVendorName } from "@/lib/slug";
 
 type DbVendorRow = {
   id: string;
@@ -17,6 +18,7 @@ type DbVendorRow = {
 
 type VendorCard = {
   id: string;
+  slug: string;
   name: string | null;
   cuisine_style: string | null;
   primary_region: string | null;
@@ -190,6 +192,7 @@ export default async function VendorsListPage() {
     if (!entry) {
       entry = {
         id: row.id,
+        slug: slugifyVendorName(row.name),
         name: row.name,
         cuisine_style: row.cuisine_style,
         primary_region: row.primary_region,
@@ -254,7 +257,7 @@ export default async function VendorsListPage() {
             {vendors.map((vendor) => (
               <Link
                 key={vendor.id}
-                href={`/vendor/${vendor.id}`}
+                href={`/vendor/${vendor.slug}`}
                 className="vendor-profile-card flex h-full flex-col rounded-3xl border border-[#e0e0e0] bg-white p-4 text-sm text-[#424242] shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
               >
                 <div className="flex flex-1 items-start gap-3">
