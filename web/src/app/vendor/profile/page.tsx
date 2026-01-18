@@ -857,30 +857,9 @@ export default async function VendorProfileManagePage({
                     <p className="text-[0.7rem] font-medium uppercase tracking-[0.18em] text-[#757575]">
                       Current truck photos
                     </p>
-                    <div className="grid grid-cols-2 gap-2">
-                      {photos.map((photo, index) => (
-                        <div
-                          key={photo.id ?? photo.url ?? index}
-                          className="relative overflow-hidden rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)]"
-                        >
-                          <img
-                            src={photo.url}
-                            alt="Truck photo"
-                            className="h-20 w-full object-cover"
-                            loading={index > 1 ? "lazy" : "eager"}
-                          />
-                          <button
-                            type="submit"
-                            formAction={deleteVendorPhoto}
-                            name="photoId"
-                            value={photo.id}
-                            className="absolute right-1 top-1 rounded-full bg-black/70 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-white hover:bg-black/80"
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      ))}
-                    </div>
+                    <p className="text-[0.7rem] text-[#9e9e9e]">
+                      Scroll down to the gallery below to remove any of your existing photos.
+                    </p>
                   </div>
                 )}
               </div>
@@ -1123,7 +1102,7 @@ export default async function VendorProfileManagePage({
         </form>
 
         {photos.length > 0 && (
-          <div className="mt-2 hidden grid-cols-[minmax(0,1.3fr)_minmax(0,1.1fr)] gap-5 lg:grid">
+          <div className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1.1fr)]">
             <section className="rounded-3xl border border-[#e0e0e0] bg-white p-5 text-sm shadow-sm">
               <h2 className="text-sm font-semibold text-[var(--dr-text)]">
                 Current truck photos
