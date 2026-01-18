@@ -349,10 +349,29 @@ export default async function PublicVendorPage({ params }: PageProps) {
                     href={vendor.website_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--dr-text)] shadow-sm hover:bg-[var(--dr-neutral)]"
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/95 text-[10px] text-[var(--dr-text)] shadow-sm hover:bg-[var(--dr-neutral)]"
                     aria-label="Website"
                   >
-                    WWW
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      className="h-4 w-4"
+                      aria-hidden="true"
+                    >
+                      <circle
+                        cx="12"
+                        cy="12"
+                        r="9"
+                        className="fill-none stroke-current"
+                        strokeWidth="1.6"
+                      />
+                      <path
+                        d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"
+                        className="fill-none stroke-current"
+                        strokeWidth="1.4"
+                        strokeLinecap="round"
+                      />
+                    </svg>
                   </a>
                 )}
                 {vendor.facebook_url && (
@@ -360,10 +379,20 @@ export default async function PublicVendorPage({ params }: PageProps) {
                     href={vendor.facebook_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-[10px] font-semibold text-[#1877F2] shadow-sm hover:bg-[var(--dr-neutral)]"
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/95 text-[10px] text-[#1877F2] shadow-sm hover:bg-[var(--dr-neutral)]"
                     aria-label="Facebook"
                   >
-                    f
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      className="h-4 w-4"
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="M14 4h2.5a1 1 0 0 1 1 1v2h-3v3.5h3V20h-3.5v-5.5H11V11h3V7a3 3 0 0 1 3-3h-3Z"
+                        className="fill-current"
+                      />
+                    </svg>
                   </a>
                 )}
                 {vendor.instagram_url && (
@@ -371,10 +400,33 @@ export default async function PublicVendorPage({ params }: PageProps) {
                     href={vendor.instagram_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-[10px] font-semibold text-[#E4405F] shadow-sm hover:bg-[var(--dr-neutral)]"
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/95 text-[10px] text-[#E4405F] shadow-sm hover:bg-[var(--dr-neutral)]"
                     aria-label="Instagram"
                   >
-                    IG
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      className="h-4 w-4"
+                      aria-hidden="true"
+                    >
+                      <rect
+                        x="5"
+                        y="5"
+                        width="14"
+                        height="14"
+                        rx="4"
+                        className="fill-none stroke-current"
+                        strokeWidth="1.6"
+                      />
+                      <circle
+                        cx="12"
+                        cy="12"
+                        r="3.2"
+                        className="fill-none stroke-current"
+                        strokeWidth="1.6"
+                      />
+                      <circle cx="16" cy="8" r="0.9" className="fill-current" />
+                    </svg>
                   </a>
                 )}
                 {vendor.tiktok_url && (
@@ -382,10 +434,20 @@ export default async function PublicVendorPage({ params }: PageProps) {
                     href={vendor.tiktok_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-[10px] font-semibold text-[#000000] shadow-sm hover:bg-[var(--dr-neutral)]"
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/95 text-[10px] text-[#000000] shadow-sm hover:bg-[var(--dr-neutral)]"
                     aria-label="TikTok"
                   >
-                    TT
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      className="h-4 w-4"
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="M15 5.5c.6.8 1.5 1.4 2.5 1.6V10a5.5 5.5 0 0 1-3-1v4.1a4.4 4.4 0 1 1-3.6-4.3V11a2.4 2.4 0 1 0 1.6 2.3V4.5H15v1Z"
+                        className="fill-current"
+                      />
+                    </svg>
                   </a>
                 )}
                 {vendor.x_url && (
@@ -393,10 +455,20 @@ export default async function PublicVendorPage({ params }: PageProps) {
                     href={vendor.x_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-[10px] font-semibold text-[#000000] shadow-sm hover:bg-[var(--dr-neutral)]"
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/95 text-[10px] text-[#000000] shadow-sm hover:bg-[var(--dr-neutral)]"
                     aria-label="X"
                   >
-                    X
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      className="h-4 w-4"
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="M7 5h2l3 4 3.5-4H19l-4.5 5.3L19 19h-2l-3.2-4.3L9 19H7l4.6-5.4L7 5Z"
+                        className="fill-current"
+                      />
+                    </svg>
                   </a>
                 )}
               </div>
