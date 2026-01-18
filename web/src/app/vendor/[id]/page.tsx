@@ -324,7 +324,7 @@ export default async function PublicVendorPage({ params }: PageProps) {
                 alt="Vendor header"
                 className="h-full w-full object-cover"
               />
-              <div className="absolute inset-0 bg-white/65" />
+              <div className="absolute inset-0 bg-white/80" />
             </div>
           )}
           <div className="relative z-10 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -337,7 +337,7 @@ export default async function PublicVendorPage({ params }: PageProps) {
                   {vendor.name || "Untitled venue"}
                 </h1>
                 {vendor.primary_region && (
-                  <p className="text-xs text-[#757575]">{vendor.primary_region}</p>
+                  <p className="text-xs text-[#424242]">{vendor.primary_region}</p>
                 )}
               </div>
             </div>
