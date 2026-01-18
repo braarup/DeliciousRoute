@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, type ReactElement } from "react";
+import { useState, useEffect, type ReactElement } from "react";
+import { createPortal } from "react-dom";
 
 export type VendorMenuItem = {
   id: string;
@@ -106,6 +107,11 @@ function DietaryIcons({ item }: { item: VendorMenuItem }) {
 
 export function VendorMenuSection({ items }: Props) {
   const [isOpen, setIsOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   if (!items || items.length === 0) {
     return null;
@@ -125,8 +131,9 @@ export function VendorMenuSection({ items }: Props) {
         Menu
       </button>
 
-      {isOpen && (
-        <div className="fixed inset-0 z-40 flex flex-col bg-white">
+      {mounted && isOpen &&
+        createPortal(
+          <div className="fixed inset-0 z-40 flex flex-col bg-white">
           <div className="flex items-center justify-between border-b border-[#e0e0e0] bg-[var(--dr-neutral)]/80 px-4 py-3 text-xs text-[#757575]">
             <button
               type="button"
@@ -182,8 +189,9 @@ export function VendorMenuSection({ items }: Props) {
               ))}
             </div>
           </div>
-        </div>
-      )}
+        </div>,
+          document.body
+        )}
     </>
   );
 }
