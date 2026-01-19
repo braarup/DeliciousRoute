@@ -9,6 +9,7 @@ import fs from "fs/promises";
 import path from "path";
 import { put } from "@vercel/blob";
 import { destroySession, getCurrentUser } from "@/lib/auth";
+import { publishInstagramReel } from "@/lib/instagram";
 
 async function updateVendorProfile(formData: FormData) {
   "use server";
@@ -395,6 +396,14 @@ async function updateVendorProfile(formData: FormData) {
           INSERT INTO reel_media (id, reel_id, video_url)
           VALUES (${randomUUID()}, ${reelId}, ${videoUrl})
         `;
+
+        // Fire-and-forget: try to publish this reel to Instagram
+        publishInstagramReel({
+          videoUrl,
+          caption: reelCaption || null,
+        }).catch((error) => {
+          console.error("Instagram Reel publish failed", error);
+        });
 
         // Optional cleanup of expired reels globally
         await sql`
