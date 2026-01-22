@@ -4,7 +4,7 @@ const nextConfig: NextConfig = {
   experimental: {
     serverActions: {
       // Allow larger multipart form payloads for photo + video uploads
-      bodySizeLimit: "50mb",
+      bodySizeLimit: "5mb",
     },
   },
 };
