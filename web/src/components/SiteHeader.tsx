@@ -36,7 +36,7 @@ export function SiteHeader({ ctaHref, ctaLabel }: SiteHeaderProps) {
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--dr-primary)]">
                 Delicious Route
               </p>
-              <p className="text-xs text-[#616161]">Real-time food truck finder</p>
+              <p className="text-xs text-[#616161]">Real-time food trucks, street eats, and more</p>
             </div>
           </Link>
 
