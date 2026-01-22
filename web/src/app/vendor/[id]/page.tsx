@@ -361,6 +361,13 @@ export default async function PublicVendorPage({ params }: PageProps) {
               <div className="absolute inset-0 bg-white/80" />
             </div>
           )}
+          <Link
+            href="/"
+            aria-label="Back to home"
+            className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full border border-[#e0e0e0] bg-white text-base font-semibold text-[var(--dr-text)] hover:bg-[var(--dr-neutral)] sm:hidden"
+          >
+            <span aria-hidden>×</span>
+          </Link>
           <div className="relative z-10 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-start gap-3">
               <div>
@@ -509,13 +516,6 @@ export default async function PublicVendorPage({ params }: PageProps) {
                   </a>
                 )}
               </div>
-              <Link
-                href="/"
-                aria-label="Back to home"
-                className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[#e0e0e0] bg-white text-base font-semibold text-[var(--dr-text)] hover:bg-[var(--dr-neutral)] sm:hidden"
-              >
-                <span aria-hidden>×</span>
-              </Link>
               <Link
                 href="/"
                 className="hidden items-center justify-center rounded-full border border-[#e0e0e0] bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--dr-text)] hover:bg-[var(--dr-neutral)] sm:inline-flex"
