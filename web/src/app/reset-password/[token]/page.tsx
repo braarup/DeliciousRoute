@@ -2,13 +2,14 @@
 
 import { FormEvent, useState } from "react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 
-export default function ResetPasswordTokenPage({
-  params,
-}: {
-  params: { token: string };
-}) {
-  const { token } = params;
+export default function ResetPasswordTokenPage() {
+  const params = useParams<{ token?: string | string[] }>();
+  const rawToken = params?.token;
+  const token = Array.isArray(rawToken)
+    ? (rawToken[0] || "")
+    : (rawToken || "");
   const [status, setStatus] = useState<
     "idle" | "submitting" | "success" | "error" | "invalid"
   >("idle");
@@ -18,6 +19,12 @@ export default function ResetPasswordTokenPage({
     event.preventDefault();
     setStatus("submitting");
     setError(null);
+
+    if (!token) {
+      setStatus("invalid");
+      setError("This reset link is invalid. Please request a new one.");
+      return;
+    }
 
     const formData = new FormData(event.currentTarget);
     const password = (formData.get("password") || "").toString();
