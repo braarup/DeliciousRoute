@@ -37,7 +37,14 @@ export default function ResetPasswordTokenPage({
       });
 
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
+        const text = await res.text();
+        let data: any = {};
+        try {
+          data = text ? JSON.parse(text) : {};
+        } catch {
+          data = {};
+        }
+
         if (data?.error === "invalid_or_expired") {
           setStatus("invalid");
         } else if (data?.error === "weak_password") {
@@ -57,7 +64,12 @@ export default function ResetPasswordTokenPage({
           );
         } else {
           setStatus("error");
-          setError("Something went wrong. Please try again.");
+          const suffix = data?.error
+            ? ` (${String(data.error)})`
+            : ` (HTTP ${res.status})`;
+          setError(
+            `Something went wrong while updating your password${suffix}. Please try again.`
+          );
         }
         return;
       }
