@@ -1147,14 +1147,7 @@ export default async function VendorProfileManagePage({
   return (
     <div className="min-h-screen bg-[var(--dr-neutral)] text-[var(--dr-text)]">
       <div className="mx-auto flex min-h-screen max-w-5xl flex-col px-4 pb-10 pt-6 sm:px-6 lg:px-8">
-        <header className="relative mb-6 flex flex-col gap-3 sm:flex-row sm:items-baseline sm:justify-between">
-          <Link
-            href="/"
-            aria-label="Back to home"
-            className="absolute right-0 top-0 flex h-8 w-8 items-center justify-center rounded-full border border-[#e0e0e0] bg-white text-base font-semibold text-[#757575] shadow-sm hover:border-[var(--dr-primary)] hover:text-[var(--dr-primary)] sm:hidden"
-          >
-            ×
-          </Link>
+        <header className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-baseline sm:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[var(--dr-primary)]">
               Vendor profile
@@ -1167,7 +1160,7 @@ export default async function VendorProfileManagePage({
               Route.
             </p>
           </div>
-          <div className="hidden items-center gap-2 sm:flex">
+          <div className="flex items-center gap-2">
             <Link
               href="/"
               className="rounded-full border border-[#e0e0e0] bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#757575] hover:border-[var(--dr-primary)] hover:text-[var(--dr-primary)]"
