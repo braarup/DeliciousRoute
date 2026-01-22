@@ -16,7 +16,7 @@ export function LoginErrorNotice({ includeAlreadyRegistered }: { includeAlreadyR
     message = "An account already exists for that email. Please sign in instead.";
   } else if (error === "account_locked") {
     message =
-      "Your account has been temporarily locked after several failed sign-in attempts. Reset your password using the link below to unlock it.";
+      "Your account has been temporarily locked after several failed sign-in attempts. Please check your email for a password reset link to unlock it.";
   } else {
     message = "Email or password was incorrect. Please try again.";
   }
