@@ -252,3 +252,71 @@ export async function sendCustomerProfileChangeEmail(params: {
     console.error("Error sending customer profile change email", error);
   }
 }
+
+export async function sendSecurityIncidentReportEmail(params: {
+  reporterEmail?: string | null;
+  reporterName?: string | null;
+  accountEmail?: string | null;
+  role?: "vendor" | "customer" | "other" | null;
+  category: string;
+  description: string;
+  firstNoticedAt?: string | null;
+}) {
+  if (!resend) {
+    console.warn("RESEND_API_KEY not set; skipping security incident report email.");
+    return;
+  }
+
+  const securityTo =
+    process.env.SECURITY_REPORT_TO ||
+    process.env.SUPPORT_EMAIL ||
+    process.env.EMAIL_FROM ||
+    "security@deliciousroute.app";
+
+  const clean = (value: string | null | undefined) =>
+    (value || "").toString().trim();
+
+  const reporterEmail = clean(params.reporterEmail);
+  const reporterName = clean(params.reporterName);
+  const accountEmail = clean(params.accountEmail);
+  const firstNoticedAt = clean(params.firstNoticedAt);
+  const role = params.role || null;
+  const category = clean(params.category) || "Unspecified";
+  const description = clean(params.description);
+
+  const roleLabel = role === "vendor" ? "Vendor" : role === "customer" ? "Customer" : "Other / Not specified";
+
+  const lines: string[] = [];
+  lines.push("A new security incident was reported from the Delicious Route app.");
+  lines.push("");
+  lines.push(`Category: ${category}`);
+  lines.push(`Role: ${roleLabel}`);
+  if (accountEmail) {
+    lines.push(`Account email: ${accountEmail}`);
+  }
+  if (reporterName) {
+    lines.push(`Reporter name: ${reporterName}`);
+  }
+  if (reporterEmail) {
+    lines.push(`Reporter email: ${reporterEmail}`);
+  }
+  if (firstNoticedAt) {
+    lines.push(`First noticed at: ${firstNoticedAt}`);
+  }
+  lines.push("");
+  lines.push("Description:");
+  lines.push(description || "(No additional description provided.)");
+
+  const textBody = lines.join("\n");
+
+  try {
+    await resend.emails.send({
+      from: fromAddress,
+      to: securityTo,
+      subject: "New security incident report",
+      text: textBody,
+    });
+  } catch (error) {
+    console.error("Error sending security incident report email", error);
+  }
+}
