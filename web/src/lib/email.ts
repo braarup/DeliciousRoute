@@ -130,7 +130,7 @@ export async function sendVendorProfileChangeEmail(params: {
   const securityUrl =
     process.env.NEXT_PUBLIC_SECURITY_URL ||
     process.env.NEXT_PUBLIC_APP_BASE_URL ||
-    "https://deliciousroute.app/security";
+    "https://deliciousroute.com/security";
 
   const changesText = safeChanges.map((c) => `- ${c}`).join("\n");
   const changesHtml = safeChanges
@@ -205,7 +205,7 @@ export async function sendCustomerProfileChangeEmail(params: {
   const securityUrl =
     process.env.NEXT_PUBLIC_SECURITY_URL ||
     process.env.NEXT_PUBLIC_APP_BASE_URL ||
-    "https://deliciousroute.app/security";
+    "https://deliciousroute.com/security";
 
   const changesText = safeChanges.map((c) => `- ${c}`).join("\n");
   const changesHtml = safeChanges.map((c) => `<li>${c}</li>`).join("");
