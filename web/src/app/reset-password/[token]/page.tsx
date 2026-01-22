@@ -42,7 +42,14 @@ export default function ResetPasswordTokenPage({
           setStatus("invalid");
         } else if (data?.error === "weak_password") {
           setStatus("error");
-          setError("Password must be at least 8 characters long.");
+          setError(
+            "Password must be at least 8 characters long and include at least one uppercase letter, one number, and one special character."
+          );
+        } else if (data?.error === "recent_password") {
+          setStatus("error");
+          setError(
+            "Your new password cannot be the same as any of your last 3 passwords."
+          );
         } else {
           setStatus("error");
           setError("Something went wrong. Please try again.");

@@ -13,6 +13,12 @@ import { destroySession, getCurrentUser } from "@/lib/auth";
 import { publishInstagramReel } from "@/lib/instagram";
 import { sendVendorProfileChangeEmail, sendPasswordChangedEmail } from "@/lib/email";
 import { hashPassword, verifyPassword } from "@/lib/bcrypt";
+import { validatePasswordComplexity } from "@/lib/passwordPolicy";
+import {
+  isPasswordReusedRecently,
+  recordPasswordInHistory,
+} from "@/lib/passwordHistory";
+import { PasswordPolicyDialog } from "@/components/PasswordPolicyDialog";
 
 async function changeVendorPassword(formData: FormData) {
   "use server";
@@ -33,7 +39,9 @@ async function changeVendorPassword(formData: FormData) {
     redirect(`${baseRedirect}?passwordStatus=missing_fields`);
   }
 
-  if (newPassword.length < 8) {
+  const complexityErrors = validatePasswordComplexity(newPassword);
+
+  if (complexityErrors.length > 0) {
     redirect(`${baseRedirect}?passwordStatus=weak_password`);
   }
 
@@ -64,6 +72,16 @@ async function changeVendorPassword(formData: FormData) {
     redirect(`${baseRedirect}?passwordStatus=no_change`);
   }
 
+  const reused = await isPasswordReusedRecently(
+    currentUser.id as string,
+    newPassword,
+    3
+  );
+
+  if (reused) {
+    redirect(`${baseRedirect}?passwordStatus=reused_recent`);
+  }
+
   const newHash = await hashPassword(newPassword);
 
   await sql`
@@ -71,6 +89,8 @@ async function changeVendorPassword(formData: FormData) {
     SET password_hash = ${newHash}, updated_at = now()
     WHERE id = ${currentUser.id}
   `;
+
+  await recordPasswordInHistory(currentUser.id as string, newHash);
 
   const to = (currentUser as any)?.email as string | undefined;
 
@@ -1103,15 +1123,17 @@ export default async function VendorProfileManagePage({
       : passwordStatus === "missing_fields"
       ? "Please fill in your current password, new password, and confirmation."
       : passwordStatus === "weak_password"
-      ? "Please choose a stronger password with at least 8 characters."
+      ? "Please choose a stronger password with at least 8 characters, including at least one uppercase letter, one number, and one special character."
       : passwordStatus === "mismatch"
       ? "New password and confirmation do not match."
       : passwordStatus === "invalid_current"
       ? "Your current password was incorrect."
       : passwordStatus === "no_password"
-      ? "We couldnt find an existing password for this account. Try resetting it from the login page instead."
+      ? "We couldn't find an existing password for this account. Try resetting it from the login page instead."
       : passwordStatus === "no_change"
       ? "Your new password must be different from your current password."
+      : passwordStatus === "reused_recent"
+      ? "Your new password cannot be the same as any of your last 3 passwords."
       : null;
   const passwordIsError =
     !!passwordStatus && passwordStatus !== "success";
@@ -1125,7 +1147,14 @@ export default async function VendorProfileManagePage({
   return (
     <div className="min-h-screen bg-[var(--dr-neutral)] text-[var(--dr-text)]">
       <div className="mx-auto flex min-h-screen max-w-5xl flex-col px-4 pb-10 pt-6 sm:px-6 lg:px-8">
-        <header className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-baseline sm:justify-between">
+        <header className="relative mb-6 flex flex-col gap-3 sm:flex-row sm:items-baseline sm:justify-between">
+          <Link
+            href="/"
+            aria-label="Back to home"
+            className="absolute right-0 top-0 flex h-8 w-8 items-center justify-center rounded-full border border-[#e0e0e0] bg-white text-base font-semibold text-[#757575] shadow-sm hover:border-[var(--dr-primary)] hover:text-[var(--dr-primary)] sm:hidden"
+          >
+            ×
+          </Link>
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[var(--dr-primary)]">
               Vendor profile
@@ -1138,7 +1167,7 @@ export default async function VendorProfileManagePage({
               Route.
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="hidden items-center gap-2 sm:flex">
             <Link
               href="/"
               className="rounded-full border border-[#e0e0e0] bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#757575] hover:border-[var(--dr-primary)] hover:text-[var(--dr-primary)]"
@@ -1722,6 +1751,9 @@ export default async function VendorProfileManagePage({
           <p className="mt-1 text-xs text-[#757575]">
             Change the password you use to sign in to Delicious Route.
           </p>
+          <div className="mt-1 text-[11px] text-[#9e9e9e]">
+            <PasswordPolicyDialog />
+          </div>
 
           {passwordMessage && (
             <div
@@ -1792,6 +1824,12 @@ export default async function VendorProfileManagePage({
                 />
               </div>
             </div>
+
+            <p className="text-[11px] text-[#9e9e9e]">
+              Must be at least 8 characters and include an uppercase letter,
+              a number, and a special character. You also can&apos;t reuse your
+              last 3 passwords.
+            </p>
 
             <p className="text-[11px] text-[#9e9e9e]">
               For your security, we recommend using a unique password that you

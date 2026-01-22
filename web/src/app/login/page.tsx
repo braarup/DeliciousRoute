@@ -4,6 +4,8 @@ import { sql } from "@vercel/postgres";
 import { verifyPassword } from "@/lib/bcrypt";
 import { createSession, getCurrentUser } from "@/lib/auth";
 import { LoginErrorNotice } from "@/components/LoginErrorNotice";
+import { PasswordPolicyDialog } from "@/components/PasswordPolicyDialog";
+import { sendAccountLockedEmail } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 
@@ -18,22 +20,60 @@ async function loginUser(formData: FormData) {
   }
 
   const userResult = await sql`
-    SELECT id, password_hash
+    SELECT id, password_hash, status, failed_login_attempts, locked_at, email
     FROM users
     WHERE email = ${email}
     LIMIT 1
   `;
 
-  const user = userResult.rows[0];
+  const user = userResult.rows[0] as
+    | {
+        id: string;
+        password_hash: string | null;
+        status: string;
+        failed_login_attempts: number | null;
+        locked_at: string | null;
+        email: string;
+      }
+    | undefined;
 
   if (!user || !user.password_hash) {
     redirect("/login?error=invalid_credentials");
   }
 
+  if ((user.status || "").toLowerCase() === "locked") {
+    redirect("/login?error=account_locked");
+  }
+
   const ok = await verifyPassword(password, user.password_hash as string);
 
   if (!ok) {
-    redirect("/login?error=invalid_credentials");
+    const currentAttempts = user.failed_login_attempts ?? 0;
+    const newAttempts = currentAttempts + 1;
+
+    if (newAttempts >= 3) {
+      await sql`
+        UPDATE users
+        SET status = 'locked', locked_at = now(), failed_login_attempts = ${newAttempts}, updated_at = now()
+        WHERE id = ${user.id}
+      `;
+
+      try {
+        await sendAccountLockedEmail({ to: user.email, role: "other" });
+      } catch (err) {
+        console.error("Failed to send account locked email", err);
+      }
+
+      redirect("/login?error=account_locked");
+    } else {
+      await sql`
+        UPDATE users
+        SET failed_login_attempts = ${newAttempts}, updated_at = now()
+        WHERE id = ${user.id}
+      `;
+
+      redirect("/login?error=invalid_credentials");
+    }
   }
 
   const rolesResult = await sql`
@@ -48,6 +88,14 @@ async function loginUser(formData: FormData) {
   );
 
   const isVendor = roleNames.includes("vendor_admin");
+
+  if ((user.failed_login_attempts ?? 0) > 0 || user.locked_at) {
+    await sql`
+      UPDATE users
+      SET failed_login_attempts = 0, locked_at = NULL, status = 'active', updated_at = now()
+      WHERE id = ${user.id}
+    `;
+  }
 
   await createSession(user.id as string);
 
@@ -140,6 +188,9 @@ export default async function LoginSelectorPage() {
                   className="w-full rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)] px-3 py-2 text-sm text-[var(--dr-text)] placeholder:text-[#bdbdbd] focus:border-[var(--dr-primary)] focus:outline-none"
                   placeholder="Enter your password"
                 />
+                <div className="mt-1">
+                  <PasswordPolicyDialog />
+                </div>
               </div>
 
               <button

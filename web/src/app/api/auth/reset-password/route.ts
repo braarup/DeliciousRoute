@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { sql } from "@vercel/postgres";
 import { hashPassword } from "@/lib/bcrypt";
+import { validatePasswordComplexity } from "@/lib/passwordPolicy";
+import {
+  isPasswordReusedRecently,
+  recordPasswordInHistory,
+} from "@/lib/passwordHistory";
 
 export async function POST(request: Request) {
   try {
@@ -12,7 +17,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "missing_fields" }, { status: 400 });
     }
 
-    if (password.length < 8) {
+    const complexityErrors = validatePasswordComplexity(password);
+
+    if (complexityErrors.length > 0) {
       return NextResponse.json({ error: "weak_password" }, { status: 400 });
     }
 
@@ -31,15 +38,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "invalid_or_expired" }, { status: 400 });
     }
 
+    const reused = await isPasswordReusedRecently(row.user_id as string, password, 3);
+
+    if (reused) {
+      return NextResponse.json({ error: "recent_password" }, { status: 400 });
+    }
+
     const passwordHash = await hashPassword(password);
 
     await sql`BEGIN`;
     try {
       await sql`
         UPDATE users
-        SET password_hash = ${passwordHash}, updated_at = now()
+        SET password_hash = ${passwordHash}, failed_login_attempts = 0, locked_at = NULL, status = 'active', updated_at = now()
         WHERE id = ${row.user_id}
       `;
+
+      await recordPasswordInHistory(row.user_id as string, passwordHash);
 
       await sql`
         UPDATE password_reset_tokens

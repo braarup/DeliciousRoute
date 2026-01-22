@@ -4,6 +4,7 @@ import { sql } from "@vercel/postgres";
 import { verifyPassword } from "@/lib/bcrypt";
 import { createSession, getCurrentUser } from "@/lib/auth";
 import { LoginErrorNotice } from "@/components/LoginErrorNotice";
+import { sendAccountLockedEmail } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 
@@ -18,22 +19,68 @@ async function loginVendor(formData: FormData) {
   }
 
   const userResult = await sql`
-    SELECT id, password_hash
+    SELECT id, password_hash, status, failed_login_attempts, locked_at, email
     FROM users
     WHERE email = ${email}
     LIMIT 1
   `;
 
-  const user = userResult.rows[0];
+  const user = userResult.rows[0] as
+    | {
+        id: string;
+        password_hash: string | null;
+        status: string;
+        failed_login_attempts: number | null;
+        locked_at: string | null;
+        email: string;
+      }
+    | undefined;
 
   if (!user || !user.password_hash) {
     redirect("/vendor/login?error=invalid_credentials");
   }
 
+  if ((user.status || "").toLowerCase() === "locked") {
+    redirect("/vendor/login?error=account_locked");
+  }
+
   const ok = await verifyPassword(password, user.password_hash as string);
 
   if (!ok) {
-    redirect("/vendor/login?error=invalid_credentials");
+    const currentAttempts = user.failed_login_attempts ?? 0;
+    const newAttempts = currentAttempts + 1;
+
+    if (newAttempts >= 3) {
+      await sql`
+        UPDATE users
+        SET status = 'locked', locked_at = now(), failed_login_attempts = ${newAttempts}, updated_at = now()
+        WHERE id = ${user.id}
+      `;
+
+      try {
+        await sendAccountLockedEmail({ to: user.email, role: "vendor" });
+      } catch (err) {
+        console.error("Failed to send account locked email", err);
+      }
+
+      redirect("/vendor/login?error=account_locked");
+    } else {
+      await sql`
+        UPDATE users
+        SET failed_login_attempts = ${newAttempts}, updated_at = now()
+        WHERE id = ${user.id}
+      `;
+
+      redirect("/vendor/login?error=invalid_credentials");
+    }
+  }
+
+  if ((user.failed_login_attempts ?? 0) > 0 || user.locked_at) {
+    await sql`
+      UPDATE users
+      SET failed_login_attempts = 0, locked_at = NULL, status = 'active', updated_at = now()
+      WHERE id = ${user.id}
+    `;
   }
 
   await createSession(user.id as string);

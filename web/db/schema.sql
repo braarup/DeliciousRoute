@@ -9,7 +9,9 @@ CREATE TABLE users (
   phone TEXT,
   password_hash TEXT,
   display_name TEXT,
-  status TEXT NOT NULL DEFAULT 'active', -- active, suspended, deleted
+  status TEXT NOT NULL DEFAULT 'active', -- active, suspended, deleted, locked
+  failed_login_attempts INT NOT NULL DEFAULT 0,
+  locked_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -318,3 +320,14 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
   expires_at TIMESTAMPTZ NOT NULL,
   used_at TIMESTAMPTZ
 );
+
+-- Password history to prevent reuse of recent passwords
+CREATE TABLE IF NOT EXISTS password_history (
+  id UUID PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  password_hash TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_password_history_user_created_at
+  ON password_history (user_id, created_at DESC);

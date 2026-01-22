@@ -371,3 +371,47 @@ export async function sendPasswordChangedEmail(params: {
     console.error("Error sending password changed email", error);
   }
 }
+
+export async function sendAccountLockedEmail(params: {
+  to: string;
+  role?: "vendor" | "customer" | "other" | null;
+}) {
+  if (!resend) {
+    console.warn("RESEND_API_KEY not set; skipping account locked email.");
+    return;
+  }
+
+  const roleLabel =
+    params.role === "vendor"
+      ? "vendor account"
+      : params.role === "customer"
+      ? "account"
+      : "Delicious Route account";
+
+  const appBaseUrl =
+    process.env.NEXT_PUBLIC_APP_BASE_URL || "https://deliciousroute.com";
+
+  const resetUrl = `${appBaseUrl}/reset-password`;
+
+  const textBody =
+    `We noticed multiple unsuccessful attempts to sign in to your ${roleLabel}.` +
+    "\n\n" +
+    "For your security, we've temporarily locked sign-in for this account." +
+    "\n\n" +
+    "To unlock your account, please reset your password from the login page:" +
+    "\n" +
+    resetUrl +
+    "\n\n" +
+    "If you didn't try to sign in, we recommend also reviewing your email account security and enabling two-factor authentication where available.";
+
+  try {
+    await resend.emails.send({
+      from: fromAddress,
+      to: params.to,
+      subject: "Your Delicious Route account was temporarily locked",
+      text: textBody,
+    });
+  } catch (error) {
+    console.error("Error sending account locked email", error);
+  }
+}

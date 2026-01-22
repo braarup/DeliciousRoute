@@ -8,6 +8,8 @@ import {
   sendCustomerWelcomeEmail,
   sendVendorWelcomeEmail,
 } from "@/lib/email";
+import { validatePasswordComplexity } from "@/lib/passwordPolicy";
+import { recordPasswordInHistory } from "@/lib/passwordHistory";
 
 async function createAccount(formData: FormData) {
   "use server";
@@ -24,6 +26,12 @@ async function createAccount(formData: FormData) {
 
   if (accountType !== "vendor" && accountType !== "customer") {
     throw new Error("Invalid account type");
+  }
+
+  const complexityErrors = validatePasswordComplexity(password);
+
+  if (complexityErrors.length > 0) {
+    throw new Error("Password does not meet complexity requirements");
   }
 
   const existingUser = await sql`
@@ -44,6 +52,8 @@ async function createAccount(formData: FormData) {
       INSERT INTO users (id, email, password_hash, display_name, first_name, last_name)
       VALUES (${userId}, ${email}, ${passwordHash}, ${displayName}, ${firstName}, ${lastName})
     `;
+
+    await recordPasswordInHistory(userId, passwordHash);
 
     if (accountType === "vendor") {
       const vendorId = randomUUID();
@@ -236,6 +246,10 @@ export default async function SignupPage({
                 className="w-full rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)] px-3 py-2 text-sm text-[var(--dr-text)] placeholder:text-[#bdbdbd] focus:border-[var(--dr-primary)] focus:outline-none"
                 placeholder="Create a password"
               />
+              <p className="mt-1 text-[0.7rem] text-[#9e9e9e]">
+                Must be at least 8 characters and include an uppercase letter,
+                a number, and a special character.
+              </p>
             </div>
 
             <fieldset className="space-y-2">
