@@ -107,11 +107,11 @@ export default function Home() {
             <div className="flex-1">
               <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[var(--dr-primary)]">
                 Featured
-              <p>
-
-                © {new Date().getFullYear()} Delicious Route. Built for modern
-                street food culture and more.
               </p>
+              <h2 className="mt-1 text-lg font-semibold text-[var(--dr-text)] sm:text-xl">
+                {activeAd.title}
+              </h2>
+              <p className="mt-1 text-sm text-[#616161] sm:text-base">
                 {activeAd.subtitle}
               </p>
             </div>
