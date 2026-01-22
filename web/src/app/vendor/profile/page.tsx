@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { sql } from "@vercel/postgres";
 import { UpdateGpsButton } from "@/components/UpdateGpsButton";
 import { VendorManageMenuSection } from "@/components/VendorManageMenuSection";
@@ -901,14 +902,22 @@ export default async function VendorProfileManagePage({
               Route.
             </p>
           </div>
-          <form action={signOutVendor} className="flex items-center">
-            <button
-              type="submit"
+          <div className="flex items-center gap-2">
+            <Link
+              href="/"
               className="rounded-full border border-[#e0e0e0] bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#757575] hover:border-[var(--dr-primary)] hover:text-[var(--dr-primary)]"
             >
-              Sign out
-            </button>
-          </form>
+              Back home
+            </Link>
+            <form action={signOutVendor} className="flex items-center">
+              <button
+                type="submit"
+                className="rounded-full border border-[#e0e0e0] bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#757575] hover:border-[var(--dr-primary)] hover:text-[var(--dr-primary)]"
+              >
+                Sign out
+              </button>
+            </form>
+          </div>
         </header>
 
         <form
