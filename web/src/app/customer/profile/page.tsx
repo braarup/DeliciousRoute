@@ -3,7 +3,7 @@ import { sql } from "@vercel/postgres";
 import { redirect } from "next/navigation";
 import { randomUUID } from "crypto";
 import { destroySession, getCurrentUser } from "@/lib/auth";
-import { sendCustomerProfileChangeEmail } from "@/lib/email";
+import { sendCustomerProfileChangeEmail, sendPasswordChangedEmail } from "@/lib/email";
 import { hashPassword, verifyPassword } from "@/lib/bcrypt";
 import { FavoriteTrucksSection } from "../../../components/FavoriteTrucksSection";
 
@@ -64,6 +64,15 @@ async function changeCustomerPassword(formData: FormData) {
     SET password_hash = ${newHash}, updated_at = now()
     WHERE id = ${currentUser.id}
   `;
+
+  const to = (currentUser as any)?.email as string | undefined;
+
+  if (to) {
+    await sendPasswordChangedEmail({
+      to,
+      role: "customer",
+    });
+  }
 
   redirect(`${baseRedirect}?passwordStatus=success`);
 }

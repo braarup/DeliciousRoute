@@ -320,3 +320,54 @@ export async function sendSecurityIncidentReportEmail(params: {
     console.error("Error sending security incident report email", error);
   }
 }
+
+export async function sendPasswordChangedEmail(params: {
+  to: string;
+  role?: "vendor" | "customer" | "other" | null;
+}) {
+  if (!resend) {
+    console.warn("RESEND_API_KEY not set; skipping password changed email.");
+    return;
+  }
+
+  const roleLabel =
+    params.role === "vendor"
+      ? "vendor account"
+      : params.role === "customer"
+      ? "account"
+      : "Delicious Route account";
+
+  const appBaseUrl =
+    process.env.NEXT_PUBLIC_APP_BASE_URL || "https://deliciousroute.com";
+
+  const resetUrl = `${appBaseUrl}/reset-password`;
+
+  const securityUrl =
+    process.env.NEXT_PUBLIC_SECURITY_URL ||
+    process.env.NEXT_PUBLIC_APP_BASE_URL ||
+    "https://deliciousroute.com/security";
+
+  const textBody =
+    `We wanted to let you know that the password for your ${roleLabel} was just changed.` +
+    "\n\n" +
+    "If you made this change, you dont need to do anything else." +
+    "\n\n" +
+    "If you didnt change your password:" +
+    "\n- Immediately reset your password from the login page: " +
+    resetUrl +
+    "\n- Review your email account security (recovery options, 2FA, etc.)." +
+    "\n- You can also report a possible security incident here: " +
+    securityUrl +
+    "\n";
+
+  try {
+    await resend.emails.send({
+      from: fromAddress,
+      to: params.to,
+      subject: "Your Delicious Route password was changed",
+      text: textBody,
+    });
+  } catch (error) {
+    console.error("Error sending password changed email", error);
+  }
+}

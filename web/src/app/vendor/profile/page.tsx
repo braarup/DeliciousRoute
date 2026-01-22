@@ -11,7 +11,7 @@ import path from "path";
 import { put } from "@vercel/blob";
 import { destroySession, getCurrentUser } from "@/lib/auth";
 import { publishInstagramReel } from "@/lib/instagram";
-import { sendVendorProfileChangeEmail } from "@/lib/email";
+import { sendVendorProfileChangeEmail, sendPasswordChangedEmail } from "@/lib/email";
 import { hashPassword, verifyPassword } from "@/lib/bcrypt";
 
 async function changeVendorPassword(formData: FormData) {
@@ -71,6 +71,15 @@ async function changeVendorPassword(formData: FormData) {
     SET password_hash = ${newHash}, updated_at = now()
     WHERE id = ${currentUser.id}
   `;
+
+  const to = (currentUser as any)?.email as string | undefined;
+
+  if (to) {
+    await sendPasswordChangedEmail({
+      to,
+      role: "vendor",
+    });
+  }
 
   redirect(`${baseRedirect}?passwordStatus=success`);
 }
