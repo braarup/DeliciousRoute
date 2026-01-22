@@ -151,12 +151,28 @@ export default function TermsPage() {
 
           <h2 className="mt-5 text-base font-semibold">14. Contact</h2>
           <p className="mt-2">
-            For questions or concerns, contact us at:
-            <br />
-            <span className="block">Delicious Route Support</span>
-            <span className="block">📧 Email: support@deliciousroute.com</span>
-            <span className="block">🌐 Website: www.deliciousroute.com</span>
+            For questions or concerns about these Terms, please visit our
+            <span className="font-semibold"> Contact</span> page to reach the Delicious Route team.
           </p>
+
+          <h2 className="mt-5 text-base font-semibold">15. Legal</h2>
+          <p className="mt-2">
+            For more details about how we handle your information and how the
+            Platform is presented, please review our related legal pages:
+          </p>
+          <ul className="mt-2 list-disc space-y-1 pl-5">
+            <li>
+              <span className="font-semibold">Privacy Policy</span> – explains how we collect, use, and protect your data.
+            </li>
+            <li>
+              <span className="font-semibold">Disclaimer</span> – clarifies the informational nature of the Platform and
+              limits of our responsibility for vendor offerings.
+            </li>
+            <li>
+              <span className="font-semibold">Security</span> – describes how to report suspicious activity or potential
+              vulnerabilities related to your Delicious Route account.
+            </li>
+          </ul>
         </section>
       </div>
     </div>

@@ -240,16 +240,25 @@ export default function Home() {
         <footer className="mt-6 border-t border-[#e0e0e0] pt-3 text-xs text-[#757575]">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p>
-              © {new Date().getFullYear()} Delicious Route. Built for modern
-              food truck culture.
+              © 2026 Delicious Route. Built for modern street food culture and more.
             </p>
-            <p className="text-[11px]" id="contact">
-              For partnerships, email
-              <span className="font-medium text-[var(--dr-text)]">
-                {" "}
-                hello@deliciousroute.app
-              </span>
-            </p>
+            <nav className="flex flex-wrap items-center gap-3 text-[11px]">
+              <Link href="/terms" className="hover:text-[var(--dr-primary)]">
+                Terms of Service
+              </Link>
+              <span aria-hidden>•</span>
+              <Link href="/privacy" className="hover:text-[var(--dr-primary)]">
+                Privacy Policy
+              </Link>
+              <span aria-hidden>•</span>
+              <Link href="/disclaimer" className="hover:text-[var(--dr-primary)]">
+                Disclaimer
+              </Link>
+              <span aria-hidden>•</span>
+              <Link href="/contact" className="hover:text-[var(--dr-primary)]">
+                Contact
+              </Link>
+            </nav>
           </div>
         </footer>
       </div>

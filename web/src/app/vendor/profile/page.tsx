@@ -1151,13 +1151,12 @@ export default async function VendorProfileManagePage({
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[var(--dr-primary)]">
               Vendor profile
-            <p>
-
-              © {new Date().getFullYear()} Delicious Route. Built for modern
-              street food culture and more.
             </p>
-              Update how your food truck appears to customers across Delicious
-              Route.
+            <h1 className="mt-1 text-2xl font-semibold text-[var(--dr-text)]">
+              Your Delicious Route vendor profile
+            </h1>
+            <p className="mt-1 text-sm text-[#616161]">
+              Update how your food truck appears to customers across Delicious Route.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -1841,16 +1840,25 @@ export default async function VendorProfileManagePage({
         <footer className="mt-6 border-t border-[#e0e0e0] pt-3 text-xs text-[#757575]">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p>
-              © {new Date().getFullYear()} Delicious Route. Built for modern
-              food truck culture.
+              © 2026 Delicious Route. Built for modern street food culture and more.
             </p>
-            <p className="text-[11px]" id="contact">
-              For partnerships, email
-              <span className="font-medium text-[var(--dr-text)]">
-                {" "}
-                hello@deliciousroute.app
-              </span>
-            </p>
+            <nav className="flex flex-wrap items-center gap-3 text-[11px]">
+              <Link href="/terms" className="hover:text-[var(--dr-primary)]">
+                Terms of Service
+              </Link>
+              <span aria-hidden>•</span>
+              <Link href="/privacy" className="hover:text-[var(--dr-primary)]">
+                Privacy Policy
+              </Link>
+              <span aria-hidden>•</span>
+              <Link href="/disclaimer" className="hover:text-[var(--dr-primary)]">
+                Disclaimer
+              </Link>
+              <span aria-hidden>•</span>
+              <Link href="/contact" className="hover:text-[var(--dr-primary)]">
+                Contact
+              </Link>
+            </nav>
           </div>
         </footer>
       </div>

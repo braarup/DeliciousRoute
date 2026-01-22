@@ -73,11 +73,29 @@ export default function PrivacyPage() {
 
           <h2 className="mt-5 text-base font-semibold">9. Contact Us</h2>
           <p className="mt-2">
-            For questions or concerns about this Privacy Policy, contact us at:
-            <br />
-            <span className="block">📧 Email: support@deliciousroute.com</span>
-            <span className="block">🌐 Website: www.deliciousroute.com</span>
+            For questions or concerns about this Privacy Policy, please use the
+            form on our <span className="font-semibold">Contact</span> page to reach the Delicious Route team.
           </p>
+
+          <h2 className="mt-5 text-base font-semibold">10. Legal</h2>
+          <p className="mt-2">
+            You can learn more about our overall terms and how the Platform is
+            presented by reviewing these related pages:
+          </p>
+          <ul className="mt-2 list-disc space-y-1 pl-5">
+            <li>
+              <span className="font-semibold">Terms of Service</span> – governs your use of the Platform and your
+              relationship with Delicious Route.
+            </li>
+            <li>
+              <span className="font-semibold">Disclaimer</span> – outlines important limitations regarding vendor
+              information, food safety, and third-party services.
+            </li>
+            <li>
+              <span className="font-semibold">Security</span> – provides guidance on reporting suspicious activity or
+              potential vulnerabilities.
+            </li>
+          </ul>
         </section>
       </div>
     </div>
