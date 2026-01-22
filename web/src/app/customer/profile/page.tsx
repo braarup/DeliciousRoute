@@ -4,7 +4,69 @@ import { redirect } from "next/navigation";
 import { randomUUID } from "crypto";
 import { destroySession, getCurrentUser } from "@/lib/auth";
 import { sendCustomerProfileChangeEmail } from "@/lib/email";
+import { hashPassword, verifyPassword } from "@/lib/bcrypt";
 import { FavoriteTrucksSection } from "../../../components/FavoriteTrucksSection";
+
+async function changeCustomerPassword(formData: FormData) {
+  "use server";
+
+  const currentPassword = (formData.get("currentPassword") || "").toString();
+  const newPassword = (formData.get("newPassword") || "").toString();
+  const confirmPassword = (formData.get("confirmPassword") || "").toString();
+
+  const currentUser = await getCurrentUser();
+
+  if (!currentUser?.id) {
+    redirect("/login");
+  }
+
+  const baseRedirect = "/customer/profile";
+
+  if (!currentPassword || !newPassword || !confirmPassword) {
+    redirect(`${baseRedirect}?passwordStatus=missing_fields`);
+  }
+
+  if (newPassword.length < 8) {
+    redirect(`${baseRedirect}?passwordStatus=weak_password`);
+  }
+
+  if (newPassword !== confirmPassword) {
+    redirect(`${baseRedirect}?passwordStatus=mismatch`);
+  }
+
+  const userResult = await sql`
+    SELECT password_hash
+    FROM users
+    WHERE id = ${currentUser.id}
+    LIMIT 1
+  `;
+
+  const userRow = userResult.rows[0] as { password_hash: string | null } | undefined;
+
+  if (!userRow?.password_hash) {
+    redirect(`${baseRedirect}?passwordStatus=no_password`);
+  }
+
+  const ok = await verifyPassword(currentPassword, userRow.password_hash as string);
+
+  if (!ok) {
+    redirect(`${baseRedirect}?passwordStatus=invalid_current`);
+  }
+
+  if (currentPassword === newPassword) {
+    redirect(`${baseRedirect}?passwordStatus=no_change`);
+  }
+
+  const newHash = await hashPassword(newPassword);
+
+  await sql`
+    UPDATE users
+    SET password_hash = ${newHash}, updated_at = now()
+    WHERE id = ${currentUser.id}
+  `;
+
+  redirect(`${baseRedirect}?passwordStatus=success`);
+}
 
 async function updateCustomerProfile(formData: FormData) {
   "use server";
@@ -148,7 +210,11 @@ async function signOutCustomer() {
   redirect("/");
 }
 
-export default async function CustomerProfilePage() {
+export default async function CustomerProfilePage({
+  searchParams,
+}: {
+  searchParams?: { passwordStatus?: string };
+}) {
   const currentUser = await getCurrentUser();
 
   if (!currentUser?.id) {
@@ -186,6 +252,26 @@ export default async function CustomerProfilePage() {
   `;
 
   const profile = profileResult.rows[0] ?? null;
+
+  const passwordStatus = searchParams?.passwordStatus;
+  const passwordMessage =
+    passwordStatus === "success"
+      ? "Your password has been updated."
+      : passwordStatus === "missing_fields"
+      ? "Please fill in your current password, new password, and confirmation."
+      : passwordStatus === "weak_password"
+      ? "Please choose a stronger password with at least 8 characters."
+      : passwordStatus === "mismatch"
+      ? "New password and confirmation do not match."
+      : passwordStatus === "invalid_current"
+      ? "Your current password was incorrect."
+      : passwordStatus === "no_password"
+      ? "We couldnt find an existing password for this account. Try resetting it from the login page instead."
+      : passwordStatus === "no_change"
+      ? "Your new password must be different from your current password."
+      : null;
+  const passwordIsError =
+    !!passwordStatus && passwordStatus !== "success";
 
   const favoritesResult = await sql`
     SELECT
@@ -351,6 +437,97 @@ export default async function CustomerProfilePage() {
             </p>
           </div>
         </form>
+        <section className="mt-6 rounded-3xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
+          <h2 className="text-sm font-semibold text-[var(--dr-text)]">
+            Account security
+          </h2>
+          <p className="mt-1 text-xs text-[#757575]">
+            Change the password you use to sign in to Delicious Route.
+          </p>
+
+          {passwordMessage && (
+            <div
+              className={`mt-3 rounded-2xl px-3 py-2 text-[11px] ${
+                passwordIsError
+                  ? "border border-[#ffcdd2] bg-[#ffebee] text-[#c62828]"
+                  : "border border-[#c8e6c9] bg-[#e8f5e9] text-[#2e7d32]"
+              }`}
+            >
+              {passwordMessage}
+            </div>
+          )}
+
+          <form
+            action={changeCustomerPassword}
+            className="mt-4 space-y-3 text-sm"
+            aria-label="Change password for customer account"
+          >
+            <div className="space-y-1">
+              <label
+                htmlFor="currentPassword"
+                className="text-xs font-medium uppercase tracking-[0.18em] text-[#757575]"
+              >
+                Current password
+              </label>
+              <input
+                id="currentPassword"
+                name="currentPassword"
+                type="password"
+                autoComplete="current-password"
+                className="w-full rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)] px-3 py-2 text-sm text-[var(--dr-text)] placeholder:text-[#bdbdbd] focus:border-[var(--dr-primary)] focus:outline-none"
+                placeholder="Enter your current password"
+              />
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1">
+                <label
+                  htmlFor="newPassword"
+                  className="text-xs font-medium uppercase tracking-[0.18em] text-[#757575]"
+                >
+                  New password
+                </label>
+                <input
+                  id="newPassword"
+                  name="newPassword"
+                  type="password"
+                  autoComplete="new-password"
+                  className="w-full rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)] px-3 py-2 text-sm text-[var(--dr-text)] placeholder:text-[#bdbdbd] focus:border-[var(--dr-primary)] focus:outline-none"
+                  placeholder="At least 8 characters"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label
+                  htmlFor="confirmPassword"
+                  className="text-xs font-medium uppercase tracking-[0.18em] text-[#757575]"
+                >
+                  Confirm new password
+                </label>
+                <input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type="password"
+                  autoComplete="new-password"
+                  className="w-full rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)] px-3 py-2 text-sm text-[var(--dr-text)] placeholder:text-[#bdbdbd] focus:border-[var(--dr-primary)] focus:outline-none"
+                  placeholder="Re-enter new password"
+                />
+              </div>
+            </div>
+
+            <p className="text-[11px] text-[#9e9e9e]">
+              For your security, we recommend using a unique password that you
+              don&apos;t reuse on other sites.
+            </p>
+
+            <button
+              type="submit"
+              className="inline-flex items-center justify-center rounded-full bg-[var(--dr-primary)] px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.18em] text-white shadow-sm shadow-[var(--dr-primary)]/50 hover:bg-[var(--dr-accent)]"
+            >
+              Update password
+            </button>
+          </form>
+        </section>
         <FavoriteTrucksSection favoriteVendors={favoriteVendors} />
         <footer className="mt-6 border-t border-[#e0e0e0] pt-3 text-xs text-[#757575]">
           <div className="flex flex-wrap items-center justify-between gap-3">
