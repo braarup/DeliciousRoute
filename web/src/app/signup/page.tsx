@@ -4,6 +4,10 @@ import { sql } from "@vercel/postgres";
 import { hashPassword } from "@/lib/bcrypt";
 import { randomUUID } from "crypto";
 import { createSession, getCurrentUser } from "@/lib/auth";
+import {
+  sendCustomerWelcomeEmail,
+  sendVendorWelcomeEmail,
+} from "@/lib/email";
 
 async function createAccount(formData: FormData) {
   "use server";
@@ -67,6 +71,7 @@ async function createAccount(formData: FormData) {
       }
 
       await sql`COMMIT`;
+      await sendVendorWelcomeEmail({ to: email, vendorName: displayName });
       await createSession(userId);
       redirect("/vendor/profile");
     } else {
@@ -96,6 +101,7 @@ async function createAccount(formData: FormData) {
       `;
 
       await sql`COMMIT`;
+      await sendCustomerWelcomeEmail({ to: email, displayName });
       await createSession(userId);
       redirect("/customer/profile");
     }
