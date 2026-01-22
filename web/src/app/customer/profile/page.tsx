@@ -339,11 +339,11 @@ export default async function CustomerProfilePage({
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[var(--dr-primary)]">
               Customer profile
+            <p>
+
+              © {new Date().getFullYear()} Delicious Route. Built for modern
+              street food culture and more.
             </p>
-            <h1 className="mt-1 text-2xl font-semibold text-[var(--dr-text)]">
-              Your Delicious Route profile
-            </h1>
-            <p className="mt-1 text-sm text-[#616161]">
               Save your preferences so we can surface the right trucks and reels for you.
             </p>
           </div>

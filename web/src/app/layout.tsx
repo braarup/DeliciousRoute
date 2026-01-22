@@ -15,10 +15,11 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+
 export const metadata: Metadata = {
-  title: "Delicious Route – Food Truck Finder",
+  title: "Delicious Route – Food Trucks, Street Eats & More",
   description:
-    "Discover nearby food trucks in real time, browse vendors, reels, and events, and get instant directions to their live GPS location.",
+    "Discover nearby food trucks, street eats, and more in real time. Browse vendors, reels, and events, and get instant directions to their live GPS locations.",
   icons: {
     icon: "/icon_01.png",
     shortcut: "/icon_01.png",
