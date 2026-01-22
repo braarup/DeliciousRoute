@@ -7,6 +7,36 @@ import {
   recordPasswordInHistory,
 } from "@/lib/passwordHistory";
 
+// Ensure the schema needed for password reset exists, even if migrations
+// haven't been fully applied in this environment.
+async function ensurePasswordResetSchema() {
+  try {
+    await sql`
+      ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS failed_login_attempts INT NOT NULL DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS locked_at TIMESTAMPTZ
+    `;
+
+    await sql`
+      CREATE TABLE IF NOT EXISTS password_history (
+        id UUID PRIMARY KEY,
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        password_hash TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `;
+
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_password_history_user_created_at
+      ON password_history (user_id, created_at DESC)
+    `;
+  } catch (e) {
+    // If these DDL statements fail for any reason, log and continue; the
+    // subsequent queries will surface a clearer error.
+    console.error("Error ensuring password reset schema", e);
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json().catch(() => ({}));
@@ -16,6 +46,10 @@ export async function POST(request: Request) {
     if (!token || !password) {
       return NextResponse.json({ error: "missing_fields" }, { status: 400 });
     }
+
+    // Best-effort safeguard so this route works even if the
+    // latest SQL migrations haven't been run yet.
+    await ensurePasswordResetSchema();
 
     const complexityErrors = validatePasswordComplexity(password);
 
