@@ -350,36 +350,6 @@ export default async function PublicVendorPage({ params }: PageProps) {
   return (
     <div className="min-h-screen bg-[var(--dr-neutral)] text-[var(--dr-text)]">
       <div className="mx-auto flex min-h-screen max-w-5xl flex-col px-4 pb-10 pt-4 sm:px-6 lg:px-8 lg:pt-6">
-        {/* Mobile-only top header with close (X) button */}
-        <header className="mb-3 flex items-center justify-between gap-3 rounded-3xl border border-[#e0e0e0] bg-white px-3 py-3 shadow-sm sm:hidden">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--dr-primary)]">
-              Food truck profile
-            </p>
-            <h1 className="text-base font-semibold leading-snug text-[var(--dr-text)]">
-              {vendor.name || "Untitled venue"}
-            </h1>
-            {vendor.tagline && (
-              <p className="mt-1 text-xs text-[#757575]">{vendor.tagline}</p>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2">
-            {location && showLiveGps && (
-              <span className="hidden rounded-full bg-[var(--dr-success)]/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--dr-success)] ring-1 ring-[var(--dr-success)]/40 xs:inline-flex">
-                Live GPS
-              </span>
-            )}
-            <Link
-              href="/"
-              aria-label="Back to home"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[#e0e0e0] bg-white text-base font-semibold text-[var(--dr-text)] hover:bg-[var(--dr-neutral)]"
-            >
-              <span aria-hidden>×</span>
-            </Link>
-          </div>
-        </header>
-
         <header className="relative overflow-hidden rounded-3xl border border-[#e0e0e0] px-3 py-3 shadow-sm">
           {headerImage && (
             <div className="pointer-events-none absolute inset-0 z-0">
@@ -539,6 +509,13 @@ export default async function PublicVendorPage({ params }: PageProps) {
                   </a>
                 )}
               </div>
+              <Link
+                href="/"
+                aria-label="Back to home"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[#e0e0e0] bg-white text-base font-semibold text-[var(--dr-text)] hover:bg-[var(--dr-neutral)] sm:hidden"
+              >
+                <span aria-hidden>×</span>
+              </Link>
               <Link
                 href="/"
                 className="hidden items-center justify-center rounded-full border border-[#e0e0e0] bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--dr-text)] hover:bg-[var(--dr-neutral)] sm:inline-flex"
