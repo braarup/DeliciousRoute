@@ -50,6 +50,11 @@ export default function ResetPasswordTokenPage({
           setError(
             "Your new password cannot be the same as any of your last 3 passwords."
           );
+        } else if (data?.error === "server_error") {
+          setStatus("error");
+          setError(
+            "We ran into a problem updating your password. Please try again in a moment. If this keeps happening, contact support."
+          );
         } else {
           setStatus("error");
           setError("Something went wrong. Please try again.");
