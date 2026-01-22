@@ -41,15 +41,6 @@ export function SiteHeader({ ctaHref, ctaLabel }: SiteHeaderProps) {
           </Link>
 
           <div className="hidden items-center gap-5 text-sm text-[#424242] md:flex">
-            <a href="#vendors" className="hover:text-[var(--dr-primary)]">
-              Find trucks
-            </a>
-            <a href="#events" className="hover:text-[var(--dr-primary)]">
-              Events
-            </a>
-            <a href="#about" className="hover:text-[var(--dr-primary)]">
-              About
-            </a>
             {showCta && (
               <Link
                 href={ctaHref}
@@ -94,21 +85,6 @@ export function SiteHeader({ ctaHref, ctaLabel }: SiteHeaderProps) {
               </button>
             </div>
             <nav className="flex flex-col gap-1 px-3 py-4 text-sm">
-              <MobileNavItem
-                label="Find trucks"
-                href="#vendors"
-                onClick={() => setMenuOpen(false)}
-              />
-              <MobileNavItem
-                label="Events"
-                href="#events"
-                onClick={() => setMenuOpen(false)}
-              />
-              <MobileNavItem
-                label="About"
-                href="#about"
-                onClick={() => setMenuOpen(false)}
-              />
               {showCta && (
                 <MobileNavItem
                   label={ctaLabel}
