@@ -222,49 +222,6 @@ export default async function PublicVendorPage({ params }: PageProps) {
         open_time: row.open_time,
         close_time: row.close_time,
       };
-
-      return (
-        <div className="min-h-screen bg-[var(--dr-neutral)] text-[var(--dr-text)]">
-          <div className="mx-auto flex min-h-screen max-w-5xl flex-col px-4 pb-10 pt-4 sm:px-6 lg:px-8 lg:pt-6">
-            <header className="flex items-center justify-between gap-4 border-b border-[#e0e0e0] bg-white/90 px-3 py-3 shadow-sm">
-              <div className="flex items-center gap-3">
-                <Link
-                  href="/vendors"
-                  aria-label="Back to vendors"
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[#e0e0e0] bg-white text-base font-semibold text-[var(--dr-text)] hover:bg-[var(--dr-neutral)] sm:text-sm"
-                >
-                  <span className="sm:hidden">×</span>
-                  <span className="hidden sm:inline">←</span>
-                </Link>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--dr-primary)]">
-                    Food truck profile
-                  </p>
-                  <h1 className="text-lg font-semibold leading-snug text-[var(--dr-text)] sm:text-xl">
-                    {vendor.name || "Food truck"}
-                  </h1>
-                  {vendor.tagline && (
-                    <p className="mt-1 text-xs text-[#757575]">{vendor.tagline}</p>
-                  )}
-                </div>
-              </div>
-
-              {location && (
-                <div className="hidden items-center gap-2 text-[11px] text-[#757575] sm:flex">
-                  <span className="rounded-full bg-[var(--dr-success)]/10 px-3 py-1 font-semibold uppercase tracking-[0.18em] text-[var(--dr-success)] ring-1 ring-[var(--dr-success)]/40">
-                    Live GPS
-                  </span>
-                  {location.city && (
-                    <span className="text-[#9e9e9e]">{location.city}</span>
-                  )}
-                </div>
-              )}
-            </header>
-
-            {/* existing main content continues below */}
-          </div>
-        </div>
-      );
     }
   }
 
@@ -393,6 +350,43 @@ export default async function PublicVendorPage({ params }: PageProps) {
   return (
     <div className="min-h-screen bg-[var(--dr-neutral)] text-[var(--dr-text)]">
       <div className="mx-auto flex min-h-screen max-w-5xl flex-col px-4 pb-10 pt-4 sm:px-6 lg:px-8 lg:pt-6">
+        {/* Mobile-only top header with back button */}
+        <header className="mb-3 flex items-center justify-between gap-3 rounded-3xl border border-[#e0e0e0] bg-white px-3 py-3 shadow-sm sm:hidden">
+          <div className="flex items-center gap-3">
+            <Link
+              href="/vendors"
+              aria-label="Back to vendors"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[#e0e0e0] bg-white text-sm font-semibold text-[var(--dr-text)] hover:bg-[var(--dr-neutral)]"
+            >
+              <span aria-hidden>←</span>
+            </Link>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--dr-primary)]">
+                Food truck profile
+              </p>
+              <h1 className="text-base font-semibold leading-snug text-[var(--dr-text)]">
+                {vendor.name || "Untitled venue"}
+              </h1>
+              {vendor.tagline && (
+                <p className="mt-1 text-xs text-[#757575]">{vendor.tagline}</p>
+              )}
+            </div>
+          </div>
+
+          {location && (
+            <div className="flex items-center gap-2 text-[11px] text-[#757575]">
+              {showLiveGps && (
+                <span className="rounded-full bg-[var(--dr-success)]/10 px-3 py-1 font-semibold uppercase tracking-[0.18em] text-[var(--dr-success)] ring-1 ring-[var(--dr-success)]/40">
+                  Live GPS
+                </span>
+              )}
+              {location.city && (
+                <span className="text-[#9e9e9e]">{location.city}</span>
+              )}
+            </div>
+          )}
+        </header>
+
         <header className="relative overflow-hidden rounded-3xl border border-[#e0e0e0] px-3 py-3 shadow-sm">
           {headerImage && (
             <div className="pointer-events-none absolute inset-0 z-0">
