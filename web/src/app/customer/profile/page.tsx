@@ -3,6 +3,7 @@ import { sql } from "@vercel/postgres";
 import { redirect } from "next/navigation";
 import { randomUUID } from "crypto";
 import { destroySession, getCurrentUser } from "@/lib/auth";
+import { sendCustomerProfileChangeEmail } from "@/lib/email";
 import { FavoriteTrucksSection } from "../../../components/FavoriteTrucksSection";
 
 async function updateCustomerProfile(formData: FormData) {
@@ -21,14 +22,33 @@ async function updateCustomerProfile(formData: FormData) {
   }
 
   const existingResult = await sql`
-    SELECT id
+    SELECT id, display_name, home_city, favorite_cuisines, dietary_preferences, notification_preferences
     FROM customer_profiles
     WHERE user_id = ${currentUser.id}
     ORDER BY created_at DESC
     LIMIT 1
   `;
 
-  const existingId = existingResult.rows[0]?.id as string | undefined;
+  const existingRow = existingResult.rows[0] as
+    | {
+        id: string;
+        display_name: string | null;
+        home_city: string | null;
+        favorite_cuisines: string | null;
+        dietary_preferences: string | null;
+        notification_preferences: string | null;
+      }
+    | undefined;
+
+  const existingId = existingRow?.id as string | undefined;
+
+  const normalize = (value: string | null | undefined) =>
+    (value || "").trim();
+
+  const changes: string[] = [];
+
+  type AuditEvent = { event_type: string; description: string };
+  const auditEvents: AuditEvent[] = [];
 
   if (!existingId) {
     const newId = randomUUID();
@@ -53,6 +73,41 @@ async function updateCustomerProfile(formData: FormData) {
       )
     `;
   } else {
+    if (normalize(displayName) !== normalize(existingRow?.display_name)) {
+      const description = "Updated display name.";
+      changes.push(description);
+      auditEvents.push({ event_type: "display_name_updated", description });
+    }
+    if (normalize(homeCity) !== normalize(existingRow?.home_city)) {
+      const description = "Updated home city/region.";
+      changes.push(description);
+      auditEvents.push({ event_type: "home_city_updated", description });
+    }
+    if (
+      normalize(favoriteCuisines) !==
+      normalize(existingRow?.favorite_cuisines)
+    ) {
+      const description = "Updated favorite cuisines.";
+      changes.push(description);
+      auditEvents.push({ event_type: "favorite_cuisines_updated", description });
+    }
+    if (
+      normalize(dietaryPreferences) !==
+      normalize(existingRow?.dietary_preferences)
+    ) {
+      const description = "Updated dietary preferences.";
+      changes.push(description);
+      auditEvents.push({ event_type: "dietary_preferences_updated", description });
+    }
+    if (
+      normalize(notificationPreferences) !==
+      normalize(existingRow?.notification_preferences)
+    ) {
+      const description = "Updated notification preferences.";
+      changes.push(description);
+      auditEvents.push({ event_type: "notification_preferences_updated", description });
+    }
+
     await sql`
       UPDATE customer_profiles
       SET
@@ -64,6 +119,23 @@ async function updateCustomerProfile(formData: FormData) {
         updated_at = now()
       WHERE id = ${existingId}
     `;
+  }
+
+  for (const event of auditEvents) {
+    await sql`
+      INSERT INTO customer_audit_events (id, user_id, event_type, description)
+      VALUES (${randomUUID()}, ${currentUser.id}, ${event.event_type}, ${event.description})
+    `;
+  }
+
+  const to = (currentUser as any)?.email as string | undefined;
+
+  if (to && changes.length > 0) {
+    await sendCustomerProfileChangeEmail({
+      to,
+      displayName: displayName || existingRow?.display_name || null,
+      changes,
+    });
   }
 
   redirect("/customer/profile");

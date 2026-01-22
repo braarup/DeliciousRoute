@@ -11,6 +11,7 @@ import path from "path";
 import { put } from "@vercel/blob";
 import { destroySession, getCurrentUser } from "@/lib/auth";
 import { publishInstagramReel } from "@/lib/instagram";
+import { sendVendorProfileChangeEmail } from "@/lib/email";
 
 async function updateVendorProfile(formData: FormData) {
   "use server";
@@ -54,13 +55,41 @@ async function updateVendorProfile(formData: FormData) {
   }
 
   const vendorResult = await sql`
-    SELECT id, profile_image_path FROM vendors
+    SELECT
+      id,
+      name,
+      description,
+      cuisine_style,
+      primary_region,
+      tagline,
+      website_url,
+      instagram_url,
+      facebook_url,
+      tiktok_url,
+      x_url,
+      profile_image_path,
+      header_image_path
+    FROM vendors
     WHERE owner_user_id = ${currentUser.id}
     ORDER BY created_at DESC
     LIMIT 1
   `;
   const vendorRow = vendorResult.rows[0] as
-    | { id: string; profile_image_path: string | null; header_image_path: string | null }
+    | {
+        id: string;
+        name: string | null;
+        description: string | null;
+        cuisine_style: string | null;
+        primary_region: string | null;
+        tagline: string | null;
+        website_url: string | null;
+        instagram_url: string | null;
+        facebook_url: string | null;
+        tiktok_url: string | null;
+        x_url: string | null;
+        profile_image_path: string | null;
+        header_image_path: string | null;
+      }
     | undefined;
   const vendorId = vendorRow?.id as string | undefined;
 
@@ -75,6 +104,18 @@ async function updateVendorProfile(formData: FormData) {
   let imageErrorCode: string | null = null;
   let photoErrorCode: string | null = null;
   let reelErrorCode: string | null = null;
+
+  let basicInfoChanged = false;
+  let linksChanged = false;
+  let locationChanged = false;
+  let hoursChanged = false;
+  let profilePhotoUpdated = false;
+  let headerPhotoUpdated = false;
+  let galleryPhotosAdded = false;
+  let reelUploaded = false;
+
+  const normalize = (value: string | null | undefined) =>
+    (value || "").trim();
 
   if (profileImageFile instanceof File && profileImageFile.size > 0) {
     const contentType = (profileImageFile as any).type as string | undefined;
@@ -116,11 +157,14 @@ async function updateVendorProfile(formData: FormData) {
         const fileNameOnDisk = targetPath.replace(/^\/+/, "");
         const fullPath = path.join(process.cwd(), "public", fileNameOnDisk);
         await fs.writeFile(fullPath, buffer);
-
         profileImagePath = targetPath;
       }
     } else {
       imageErrorCode = "invalid_image";
+    }
+
+    if (!imageErrorCode && profileImagePath) {
+      profilePhotoUpdated = true;
     }
   }
 
@@ -164,12 +208,35 @@ async function updateVendorProfile(formData: FormData) {
         const fileNameOnDisk = targetPath.replace(/^\/+/, "");
         const fullPath = path.join(process.cwd(), "public", fileNameOnDisk);
         await fs.writeFile(fullPath, buffer);
-
         headerImagePath = targetPath;
       }
     } else {
       imageErrorCode = imageErrorCode ?? "invalid_image";
     }
+
+    if (!imageErrorCode && headerImagePath) {
+      headerPhotoUpdated = true;
+    }
+  }
+
+  if (
+    normalize(truckName) !== normalize(vendorRow?.name) ||
+    normalize(description) !== normalize(vendorRow?.description) ||
+    normalize(cuisine) !== normalize(vendorRow?.cuisine_style) ||
+    normalize(city) !== normalize(vendorRow?.primary_region) ||
+    normalize(tagline) !== normalize(vendorRow?.tagline)
+  ) {
+    basicInfoChanged = true;
+  }
+
+  if (
+    normalize(website) !== normalize(vendorRow?.website_url) ||
+    normalize(instagram) !== normalize(vendorRow?.instagram_url) ||
+    normalize(facebook) !== normalize(vendorRow?.facebook_url) ||
+    normalize(tiktok) !== normalize(vendorRow?.tiktok_url) ||
+    normalize(xHandle) !== normalize(vendorRow?.x_url)
+  ) {
+    linksChanged = true;
   }
 
   await sql`
@@ -222,6 +289,7 @@ async function updateVendorProfile(formData: FormData) {
     `;
 
     locationId = newLocationId;
+    locationChanged = true;
   } else if (latitude != null && longitude != null) {
     // Update coordinates if the vendor provided new ones
     await sql`
@@ -229,6 +297,8 @@ async function updateVendorProfile(formData: FormData) {
       SET lat = ${latitude}, lng = ${longitude}
       WHERE id = ${locationId}
     `;
+
+    locationChanged = true;
   }
 
   if (locationId) {
@@ -255,6 +325,8 @@ async function updateVendorProfile(formData: FormData) {
           ${closeTime}
         )
       `;
+
+      hoursChanged = true;
     }
   }
 
@@ -326,6 +398,8 @@ async function updateVendorProfile(formData: FormData) {
           INSERT INTO vendor_media (id, vendor_id, media_type, url, sort_order)
           VALUES (${randomUUID()}, ${vendorId}, 'photo', ${photoUrl}, 0)
         `;
+
+        galleryPhotosAdded = true;
       }
     }
   }
@@ -411,6 +485,8 @@ async function updateVendorProfile(formData: FormData) {
           DELETE FROM reels
           WHERE created_at < (now() - interval '24 hours')
         `;
+
+        reelUploaded = true;
       }
     } else {
       // Invalid reel type or size
@@ -427,6 +503,70 @@ async function updateVendorProfile(formData: FormData) {
   }
   if (reelErrorCode) {
     params.set("reelError", reelErrorCode);
+  }
+  const to = (currentUser as any)?.email as string | undefined;
+  const changes: string[] = [];
+
+  type AuditEvent = { event_type: string; description: string };
+  const auditEvents: AuditEvent[] = [];
+
+  if (basicInfoChanged) {
+    const description =
+      "Updated basic truck profile details (name, cuisine, city, tagline, description).";
+    changes.push(description);
+    auditEvents.push({ event_type: "basic_info_updated", description });
+  }
+  if (linksChanged) {
+    const description = "Updated website and/or social links.";
+    changes.push(description);
+    auditEvents.push({ event_type: "links_updated", description });
+  }
+  if (locationChanged) {
+    const description = "Updated primary location and/or GPS coordinates.";
+    changes.push(description);
+    auditEvents.push({ event_type: "location_updated", description });
+  }
+  if (hoursChanged) {
+    const description = "Updated open hours schedule.";
+    changes.push(description);
+    auditEvents.push({ event_type: "hours_updated", description });
+  }
+  if (profilePhotoUpdated) {
+    const description = "Updated profile photo.";
+    changes.push(description);
+    auditEvents.push({ event_type: "profile_photo_updated", description });
+  }
+  if (headerPhotoUpdated) {
+    const description = "Updated header/cover photo.";
+    changes.push(description);
+    auditEvents.push({ event_type: "header_photo_updated", description });
+  }
+  if (galleryPhotosAdded) {
+    const description = "Added one or more gallery photos.";
+    changes.push(description);
+    auditEvents.push({ event_type: "gallery_photos_added", description });
+  }
+  if (reelUploaded) {
+    const description = "Uploaded a new Grub Reel.";
+    changes.push(description);
+    auditEvents.push({ event_type: "grub_reel_uploaded", description });
+  }
+
+  if (auditEvents.length > 0) {
+    for (const event of auditEvents) {
+      await sql`
+        INSERT INTO vendor_audit_events (id, vendor_id, user_id, event_type, description)
+        VALUES (${randomUUID()}, ${vendorId}, ${currentUser.id}, ${event.event_type}, ${event.description})
+      `;
+    }
+  }
+
+  if (to && changes.length > 0) {
+    await sendVendorProfileChangeEmail({
+      to,
+      vendorName: vendorRow?.name || null,
+      changes,
+    });
   }
 
   redirect(params.toString() ? `/vendor/profile?${params.toString()}` : "/vendor/profile");

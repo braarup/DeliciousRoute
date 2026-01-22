@@ -231,6 +231,25 @@ CREATE TABLE ad_clicks (
   clicked_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- AUDIT EVENTS
+
+CREATE TABLE IF NOT EXISTS vendor_audit_events (
+  id UUID PRIMARY KEY,
+  vendor_id UUID NOT NULL REFERENCES vendors(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  event_type TEXT NOT NULL,
+  description TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS customer_audit_events (
+  id UUID PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  event_type TEXT NOT NULL,
+  description TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 -- Backfill dietary flags on existing menu_items tables, if present
 ALTER TABLE IF EXISTS menu_items
   ADD COLUMN IF NOT EXISTS is_gluten_free BOOLEAN DEFAULT FALSE,
