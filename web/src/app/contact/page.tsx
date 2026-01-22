@@ -9,12 +9,10 @@ async function handleContactSubmit(formData: FormData) {
   const message = (formData.get("message") || "").toString().trim();
 
   if (!email || !message) {
-    return { ok: false };
+    return;
   }
 
   await sendContactEmails({ name, email, message });
-
-  return { ok: true };
 }
 
 export default function ContactPage() {
