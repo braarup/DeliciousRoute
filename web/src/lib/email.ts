@@ -6,6 +6,72 @@ const fromAddress = process.env.EMAIL_FROM || defaultFromAddress;
 
 const resend = resendApiKey ? new Resend(resendApiKey) : null;
 
+export async function sendContactEmails(params: {
+  name: string;
+  email: string;
+  message: string;
+}) {
+  if (!resend) {
+    console.warn("RESEND_API_KEY not set; skipping contact emails.");
+    return;
+  }
+
+  const safeName = params.name?.trim() || "there";
+  const safeEmail = params.email?.trim();
+  const safeMessage = params.message?.trim();
+
+  if (!safeEmail || !safeMessage) {
+    return;
+  }
+
+  const supportTo =
+    process.env.SUPPORT_EMAIL ||
+    process.env.EMAIL_FROM ||
+    "support@deliciousroute.com";
+
+  // Acknowledgment email to the person who submitted the form
+  try {
+    await resend.emails.send({
+      from: fromAddress,
+      to: safeEmail,
+      subject: "Thanks for reaching out to Delicious Route",
+      text:
+        `Hi ${safeName},` +
+        "\n\n" +
+        "Thanks for getting in touch with the Delicious Route team. We\'ve received your message and someone will review it shortly." +
+        "\n\n" +
+        "If your note is about a time-sensitive issue (like an event or an account problem), we\'ll do our best to respond as quickly as we can." +
+        "\n\n" +
+        "In the meantime, you can keep exploring food trucks, street eats, and more on Delicious Route." +
+        "\n\n" +
+        "Cheers,\nThe Delicious Route team",
+    });
+  } catch (error) {
+    console.error("Error sending contact acknowledgment email", error);
+  }
+
+  // Notification email to support
+  try {
+    await resend.emails.send({
+      from: fromAddress,
+      to: supportTo,
+      subject: "New contact form submission",
+      text:
+        "A new message was submitted through the Delicious Route Contact form." +
+        "\n\n" +
+        `Name: ${safeName || "(not provided)"}` +
+        "\n" +
+        `Email: ${safeEmail}` +
+        "\n\n" +
+        "Message:" +
+        "\n" +
+        safeMessage,
+    });
+  } catch (error) {
+    console.error("Error sending contact notification email", error);
+  }
+}
+
 export async function sendPasswordResetEmail(params: {
   to: string;
   resetUrl: string;

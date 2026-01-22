@@ -1,7 +1,17 @@
+import Link from "next/link";
+
 export default function TermsPage() {
   return (
     <div className="min-h-screen bg-[var(--dr-neutral)] text-[var(--dr-text)]">
       <div className="mx-auto max-w-3xl px-4 pb-12 pt-10 sm:px-6 lg:px-8">
+        <div className="mb-4 flex justify-end">
+          <Link
+            href="/"
+            className="rounded-full border border-[#e0e0e0] bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#757575] hover:border-[var(--dr-primary)] hover:text-[var(--dr-primary)]"
+          >
+            Back home
+          </Link>
+        </div>
         <section className="rounded-3xl border border-[#e0e0e0] bg-white px-6 py-8 shadow-sm text-sm leading-relaxed text-[#424242]">
           <h1 className="text-2xl font-semibold text-[var(--dr-text)]">Terms of Service</h1>
           <p className="mt-2 text-xs text-[#757575]">

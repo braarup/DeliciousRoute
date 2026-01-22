@@ -1,14 +1,45 @@
+import Link from "next/link";
+import { sendContactEmails } from "@/lib/email";
+
+async function handleContactSubmit(formData: FormData) {
+  "use server";
+
+  const name = (formData.get("name") || "").toString().trim();
+  const email = (formData.get("email") || "").toString().trim();
+  const message = (formData.get("message") || "").toString().trim();
+
+  if (!email || !message) {
+    return { ok: false };
+  }
+
+  await sendContactEmails({ name, email, message });
+
+  return { ok: true };
+}
+
 export default function ContactPage() {
   return (
     <div className="min-h-screen bg-[var(--dr-neutral)] text-[var(--dr-text)]">
       <div className="mx-auto max-w-2xl px-4 pb-12 pt-10 sm:px-6 lg:px-8">
+        <div className="mb-4 flex justify-end">
+          <Link
+            href="/"
+            className="rounded-full border border-[#e0e0e0] bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#757575] hover:border-[var(--dr-primary)] hover:text-[var(--dr-primary)]"
+          >
+            Back home
+          </Link>
+        </div>
         <section className="rounded-3xl border border-[#e0e0e0] bg-white px-6 py-8 shadow-sm">
           <h1 className="text-2xl font-semibold text-[var(--dr-text)]">Contact Us</h1>
           <p className="mt-2 text-sm text-[#616161]">
             Have a question, partnership idea, or just want to say hi? Send us a note below.
           </p>
 
-          <form className="mt-5 space-y-4" aria-label="Contact form">
+          <form
+            className="mt-5 space-y-4"
+            aria-label="Contact form"
+            action={handleContactSubmit}
+          >
             <div className="space-y-1">
               <label
                 htmlFor="name"
@@ -67,7 +98,7 @@ export default function ContactPage() {
               Send message
             </button>
             <p className="text-[11px] text-[#9e9e9e]">
-              This is a demo contact form. In a full app it would post to a backend or support inbox.
+              We&apos;ll send you a confirmation email and someone from the Delicious Route team will follow up.
             </p>
           </form>
         </section>
