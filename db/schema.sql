@@ -44,6 +44,40 @@ CREATE TABLE vendors (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- Vendor subscription model
+ALTER TABLE vendors
+  ADD COLUMN IF NOT EXISTS subscription_tier TEXT NOT NULL DEFAULT 'starter',
+  ADD COLUMN IF NOT EXISTS subscription_status TEXT NOT NULL DEFAULT 'active',
+  ADD COLUMN IF NOT EXISTS subscription_started_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS subscription_renewal_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS subscription_canceled_at TIMESTAMPTZ;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'vendors_subscription_tier_check'
+  ) THEN
+    ALTER TABLE vendors
+      ADD CONSTRAINT vendors_subscription_tier_check
+      CHECK (subscription_tier IN ('starter', 'growth', 'pro'));
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'vendors_subscription_status_check'
+  ) THEN
+    ALTER TABLE vendors
+      ADD CONSTRAINT vendors_subscription_status_check
+      CHECK (subscription_status IN ('active', 'past_due', 'canceled', 'trialing'));
+  END IF;
+END $$;
+
 CREATE TABLE vendor_locations (
   id UUID PRIMARY KEY,
   vendor_id UUID NOT NULL REFERENCES vendors(id) ON DELETE CASCADE,

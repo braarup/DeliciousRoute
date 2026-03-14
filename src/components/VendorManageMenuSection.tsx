@@ -2,6 +2,11 @@
 
 import { useState, useRef, FormEvent } from "react";
 import { createPortal } from "react-dom";
+import {
+  VendorSubscriptionTier,
+  canUseVendorFeature,
+  getTierDefinition,
+} from "@/lib/vendorSubscription";
 
 export type VendorManageMenuItem = {
   id: string;
@@ -16,6 +21,7 @@ export type VendorManageMenuItem = {
 
 interface Props {
   items: VendorManageMenuItem[];
+  tier?: VendorSubscriptionTier;
   // Server actions from the vendor manage page; they may return data.
   // Use broad types here so changes to the server-side return shape
   // don't break the client component.
@@ -58,9 +64,12 @@ const formatPrice = (priceCents: number | null) => {
 
 export function VendorManageMenuSection({
   items,
+  tier = "starter",
   addMenuItem,
   deleteMenuItem,
 }: Props) {
+  const tierDetails = getTierDefinition(tier);
+  const canManageMenu = canUseVendorFeature(tier, "menu_upload");
   const [isOpen, setIsOpen] = useState(false);
   const [menuItems, setMenuItems] = useState<VendorManageMenuItem[]>(items);
   const [isSaving, setIsSaving] = useState(false);
@@ -124,12 +133,24 @@ export function VendorManageMenuSection({
         </div>
         <button
           type="button"
-          onClick={() => setIsOpen(true)}
+          onClick={() => {
+            if (canManageMenu) {
+              setIsOpen(true);
+            }
+          }}
+          disabled={!canManageMenu}
           className="inline-flex items-center justify-center rounded-full border border-[var(--dr-primary)]/50 bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--dr-primary)] shadow-sm hover:bg-[var(--dr-primary)] hover:text-white"
         >
-          Create menu
+          {canManageMenu ? "Create menu" : "Upgrade for menu"}
         </button>
       </div>
+
+      {!canManageMenu && (
+        <p className="mt-2 text-[11px] text-[#9e9e9e]">
+          Menu upload is available on Growth Tier and above. You are currently
+          on {tierDetails.name} ({tierDetails.tagline}).
+        </p>
+      )}
 
       {isOpen &&
         createPortal(
