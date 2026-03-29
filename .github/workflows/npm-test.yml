@@ -10,6 +10,7 @@ on:
 
 jobs:
   npm-test:
+    name: npm test
     runs-on: ubuntu-latest
 
     defaults:
