@@ -12,8 +12,7 @@ export type VendorFeature =
   | "favorite_counter"
   | "photo_upload"
   | "menu_upload"
-  | "grub_reels"
-  | "verified_badge";
+  | "grub_reels";
 
 export type TierDefinition = {
   code: VendorSubscriptionTier;
@@ -47,7 +46,6 @@ export const VENDOR_TIER_DEFINITIONS: Record<
       photo_upload: true,
       menu_upload: false,
       grub_reels: false,
-      verified_badge: false,
     },
   },
   growth: {
@@ -69,7 +67,6 @@ export const VENDOR_TIER_DEFINITIONS: Record<
       photo_upload: true,
       menu_upload: true,
       grub_reels: true,
-      verified_badge: true,
     },
   },
 };
@@ -99,10 +96,4 @@ export function canUseVendorFeature(
 
 export function getPhotoUploadLimit(tier: string | null | undefined): number {
   return getTierDefinition(tier).photoUploadLimit;
-}
-
-export function hasVerifiedVendorBadge(
-  tier: string | null | undefined,
-): boolean {
-  return canUseVendorFeature(tier, "verified_badge");
 }

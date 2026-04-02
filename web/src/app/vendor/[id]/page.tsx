@@ -5,7 +5,6 @@ import { getCurrentUser } from "@/lib/auth";
 import { FavoriteButton } from "@/components/FavoriteButton";
 import { VendorMenuSection } from "@/components/VendorMenuSection";
 import { slugifyVendorName } from "@/lib/slug";
-import { hasVerifiedVendorBadge } from "@/lib/vendorSubscription";
 
 interface PageProps {
   // In this project, params is passed as a Promise (Next 16 PPR pattern)
@@ -15,6 +14,7 @@ interface PageProps {
 type DbVendor = {
   id: string;
   name: string | null;
+  is_verified: boolean;
   subscription_tier: string | null;
   description: string | null;
   cuisine_style: string | null;
@@ -70,6 +70,38 @@ type DbMenuItem = {
   is_vegetarian: boolean | null;
 };
 
+async function setVendorVerified(formData: FormData) {
+  "use server";
+
+  const currentUser = await getCurrentUser();
+  if (!currentUser?.id) return;
+
+  const rolesResult = await sql`
+    SELECT r.name
+    FROM roles r
+    JOIN user_roles ur ON ur.role_id = r.id
+    WHERE ur.user_id = ${currentUser.id} AND r.name = 'super_admin'
+    LIMIT 1
+  `;
+
+  if (!rolesResult.rowCount) return;
+
+  const vendorId = (formData.get("vendorId") || "").toString().trim();
+  const isVerified = formData.get("is_verified") === "true";
+  const returnSlug = (formData.get("returnSlug") || "").toString().trim();
+
+  if (!vendorId) return;
+
+  await sql`
+    UPDATE vendors
+    SET is_verified = ${isVerified}, updated_at = now()
+    WHERE id = ${vendorId}
+  `;
+
+  const { redirect } = await import("next/navigation");
+  redirect(`/vendor/${returnSlug || vendorId}`);
+}
+
 export default async function PublicVendorPage({ params }: PageProps) {
   noStore();
   const { id: slug } = await params;
@@ -84,7 +116,7 @@ export default async function PublicVendorPage({ params }: PageProps) {
 
   if (shortIdFromSlug && shortIdFromSlug.length <= 16) {
     const byIdResult = await sql<DbVendor>`
-      SELECT id, name, subscription_tier, description, cuisine_style, primary_region, tagline, hours_text, website_url, instagram_url, facebook_url, tiktok_url, x_url, profile_image_path, header_image_path
+      SELECT id, name, is_verified, subscription_tier, description, cuisine_style, primary_region, tagline, hours_text, website_url, instagram_url, facebook_url, tiktok_url, x_url, profile_image_path, header_image_path
       FROM vendors
       WHERE LEFT(id::text, 8) = ${shortIdFromSlug}
       LIMIT 1
@@ -94,7 +126,7 @@ export default async function PublicVendorPage({ params }: PageProps) {
 
   if (!vendor) {
     const allResult = await sql<DbVendor>`
-      SELECT id, name, subscription_tier, description, cuisine_style, primary_region, tagline, hours_text, website_url, instagram_url, facebook_url, tiktok_url, x_url, profile_image_path, header_image_path
+      SELECT id, name, is_verified, subscription_tier, description, cuisine_style, primary_region, tagline, hours_text, website_url, instagram_url, facebook_url, tiktok_url, x_url, profile_image_path, header_image_path
       FROM vendors
     `;
 
@@ -336,6 +368,18 @@ export default async function PublicVendorPage({ params }: PageProps) {
     isFavoritedByCurrentUser = !!userFavoriteResult.rowCount;
   }
 
+  let isSuperAdmin = false;
+  if (currentUser?.id) {
+    const adminCheck = await sql`
+      SELECT 1
+      FROM roles r
+      JOIN user_roles ur ON ur.role_id = r.id
+      WHERE ur.user_id = ${currentUser.id} AND r.name = 'super_admin'
+      LIMIT 1
+    `;
+    isSuperAdmin = !!adminCheck.rowCount;
+  }
+
   const latNumber = location?.lat != null ? Number(location.lat) : null;
   const lngNumber = location?.lng != null ? Number(location.lng) : null;
   const hasCoords =
@@ -345,7 +389,7 @@ export default async function PublicVendorPage({ params }: PageProps) {
     !Number.isNaN(lngNumber);
 
   const showLiveGps = openNow && hasCoords;
-  const isVerifiedVendor = hasVerifiedVendorBadge(vendor.subscription_tier);
+  const isVerifiedVendor = vendor.is_verified;
 
   const mapsUrl = showLiveGps
     ? `https://www.google.com/maps/dir/?api=1&destination=${latNumber},${lngNumber}`
@@ -377,12 +421,15 @@ export default async function PublicVendorPage({ params }: PageProps) {
                 </p>
                 <h1 className="text-lg font-semibold leading-snug text-[var(--dr-text)] sm:text-xl">
                   {vendor.name || "Untitled venue"}
+                  {isVerifiedVendor && (
+                    <img
+                      src="/checkverify.png"
+                      alt="Verified Vendor"
+                      title="Verified Vendor"
+                      className="ml-2 inline-block h-5 w-5 align-text-bottom"
+                    />
+                  )}
                 </h1>
-                {isVerifiedVendor && (
-                  <p className="mt-1 inline-flex items-center rounded-full bg-[var(--dr-primary)]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--dr-primary)]">
-                    Verified Vendor
-                  </p>
-                )}
                 {vendor.primary_region && (
                   <p className="text-xs text-[#424242]">
                     {vendor.primary_region}
@@ -541,6 +588,34 @@ export default async function PublicVendorPage({ params }: PageProps) {
           </div>
         </header>
 
+        {isSuperAdmin && (
+          <div className="mt-3 rounded-2xl border border-amber-300/50 bg-amber-50 px-4 py-3">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-amber-700">
+              DR Admin — Verification
+            </p>
+            <form action={setVendorVerified} className="mt-2 flex flex-wrap items-center gap-3">
+              <input type="hidden" name="vendorId" value={vendor.id} />
+              <input type="hidden" name="returnSlug" value={slugStr} />
+              <label className="flex cursor-pointer items-center gap-2 text-sm text-amber-900">
+                <input
+                  type="checkbox"
+                  name="is_verified"
+                  value="true"
+                  defaultChecked={vendor.is_verified}
+                  className="h-4 w-4 rounded border-amber-400 accent-amber-600"
+                />
+                Mark as Verified Vendor
+              </label>
+              <button
+                type="submit"
+                className="rounded-full bg-amber-600 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-white hover:bg-amber-700"
+              >
+                Save
+              </button>
+            </form>
+          </div>
+        )}
+
         <main className="mt-5 grid flex-1 gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1.6fr)]">
           {/* Left column: vendor info */}
           <section className="space-y-4">
@@ -557,12 +632,15 @@ export default async function PublicVendorPage({ params }: PageProps) {
                   <div>
                     <h2 className="text-base font-semibold text-[var(--dr-text)] sm:text-lg">
                       {vendor.name || "Untitled venue"}
+                      {isVerifiedVendor && (
+                        <img
+                          src="/checkverify.png"
+                          alt="Verified Vendor"
+                          title="Verified Vendor"
+                          className="ml-1.5 inline-block h-4 w-4 align-text-bottom"
+                        />
+                      )}
                     </h2>
-                    {isVerifiedVendor && (
-                      <p className="mt-1 inline-flex items-center rounded-full bg-[var(--dr-primary)]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--dr-primary)]">
-                        Verified Vendor
-                      </p>
-                    )}
                     {vendor.cuisine_style && (
                       <p className="mt-1 text-xs font-medium text-[var(--dr-accent)]">
                         {vendor.cuisine_style}

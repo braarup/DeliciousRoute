@@ -2,12 +2,11 @@ import Link from "next/link";
 import { sql } from "@vercel/postgres";
 import { unstable_noStore as noStore } from "next/cache";
 import { slugifyVendorName } from "@/lib/slug";
-import { hasVerifiedVendorBadge } from "@/lib/vendorSubscription";
 
 type DbVendorRow = {
   id: string;
   name: string | null;
-  subscription_tier: string | null;
+  is_verified: boolean;
   cuisine_style: string | null;
   primary_region: string | null;
   tagline: string | null;
@@ -179,7 +178,7 @@ export default async function VendorsListPage() {
     SELECT
       v.id,
       v.name,
-      v.subscription_tier,
+      v.is_verified,
       v.cuisine_style,
       v.primary_region,
       v.tagline,
@@ -208,7 +207,7 @@ export default async function VendorsListPage() {
         id: row.id,
         slug: slugifyVendorName(row.name),
         name: row.name,
-        isVerifiedVendor: hasVerifiedVendorBadge(row.subscription_tier),
+        isVerifiedVendor: !!row.is_verified,
         cuisine_style: row.cuisine_style,
         primary_region: row.primary_region,
         tagline: row.tagline,
@@ -291,12 +290,15 @@ export default async function VendorsListPage() {
                   <div className="flex-1">
                     <h2 className="text-base font-semibold text-[var(--dr-text)]">
                       {vendor.name || "Untitled venue"}
+                      {vendor.isVerifiedVendor && (
+                        <img
+                          src="/checkverify.png"
+                          alt="Verified Vendor"
+                          title="Verified Vendor"
+                          className="ml-1.5 inline-block h-4 w-4 align-text-bottom"
+                        />
+                      )}
                     </h2>
-                    {vendor.isVerifiedVendor && (
-                      <p className="mt-1 inline-flex items-center rounded-full bg-[var(--dr-primary)]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--dr-primary)]">
-                        Verified Vendor
-                      </p>
-                    )}
 
                     {vendor.cuisine_style && (
                       <p className="mt-1 text-xs text-[var(--dr-accent)]">

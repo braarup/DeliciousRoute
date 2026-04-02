@@ -26,7 +26,6 @@ import {
   canUseVendorFeature,
   getPhotoUploadLimit,
   getTierDefinition,
-  hasVerifiedVendorBadge,
   normalizeVendorTier,
 } from "@/lib/vendorSubscription";
 
@@ -1153,6 +1152,7 @@ export default async function VendorProfileManagePage({
       v.name,
       v.description,
       v.subscription_tier,
+      v.is_verified,
       v.food_type,
       v.service_style,
       v.cuisine_style,
@@ -1179,7 +1179,7 @@ export default async function VendorProfileManagePage({
     vendor?.subscription_tier as string | null | undefined,
   );
   const tierDefinition = getTierDefinition(vendorTier);
-  const isVerifiedVendor = hasVerifiedVendorBadge(vendorTier);
+  const isVerifiedVendor = vendor?.is_verified === true;
 
   const vendorId = vendor?.id as string | undefined;
 
@@ -1436,7 +1436,14 @@ export default async function VendorProfileManagePage({
             </p>
             <p className="mt-2 inline-flex items-center gap-2 rounded-full border border-[var(--dr-primary)]/30 bg-[var(--dr-primary)]/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--dr-primary)]">
               Tier: {tierDefinition.name}
-              {isVerifiedVendor && <span>• Verified Vendor</span>}
+              {isVerifiedVendor && (
+                <img
+                  src="/checkverify.png"
+                  alt="Verified Vendor"
+                  title="Verified Vendor"
+                  className="inline-block h-4 w-4"
+                />
+              )}
             </p>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               {vendorTier === "starter" ? (

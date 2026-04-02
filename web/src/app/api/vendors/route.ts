@@ -2,12 +2,11 @@ import { NextResponse } from "next/server";
 import { sql } from "@vercel/postgres";
 import { getCurrentUser } from "@/lib/auth";
 import { slugifyVendorName } from "@/lib/slug";
-import { hasVerifiedVendorBadge } from "@/lib/vendorSubscription";
 
 type DbVendorRow = {
   id: string;
   name: string | null;
-  subscription_tier: string | null;
+  is_verified: boolean;
   cuisine_style: string | null;
   primary_region: string | null;
   tagline: string | null;
@@ -164,7 +163,7 @@ export async function GET() {
     SELECT
       v.id,
       v.name,
-      v.subscription_tier,
+      v.is_verified,
       v.cuisine_style,
       v.primary_region,
       v.tagline,
@@ -210,7 +209,7 @@ export async function GET() {
     {
       id: string;
       name: string | null;
-      subscription_tier: string | null;
+      is_verified: boolean;
       cuisine_style: string | null;
       primary_region: string | null;
       tagline: string | null;
@@ -226,7 +225,7 @@ export async function GET() {
       entry = {
         id: row.id,
         name: row.name,
-        subscription_tier: row.subscription_tier,
+        is_verified: row.is_verified,
         cuisine_style: row.cuisine_style,
         primary_region: row.primary_region,
         tagline: row.tagline,
@@ -259,7 +258,7 @@ export async function GET() {
       tagline: row.tagline,
       todayHours: consolidated ?? "",
       isOpenNow: openNow,
-      isVerifiedVendor: hasVerifiedVendorBadge(row.subscription_tier),
+      isVerifiedVendor: !!row.is_verified,
       profileImagePath: row.profile_image_path ?? null,
       favoriteCount: favoriteCounts.get(row.id) ?? 0,
       isFavorited: userFavoriteVendorIds.has(row.id),
