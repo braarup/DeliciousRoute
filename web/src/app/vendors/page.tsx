@@ -288,14 +288,14 @@ export default async function VendorsListPage() {
                     />
                   </div>
                   <div className="flex-1">
-                    <h2 className="text-base font-semibold text-[var(--dr-text)]">
+                    <h2 className="relative inline-block pr-4 text-base font-semibold text-[var(--dr-text)]">
                       {vendor.name || "Untitled venue"}
                       {vendor.isVerifiedVendor && (
                         <img
                           src="/checkverify.png"
                           alt="Verified Vendor"
                           title="Verified Vendor"
-                          className="ml-1.5 inline-block h-4 w-4 align-text-bottom"
+                          className="absolute right-0 top-0 h-4 w-4"
                         />
                       )}
                     </h2>

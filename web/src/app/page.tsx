@@ -353,14 +353,14 @@ function VendorsTab({ search, onSearchChange, vendors }: VendorsTabProps) {
                     />
                   </div>
                   <div>
-                    <h3 className="text-sm font-semibold text-slate-50">
+                    <h3 className="relative inline-block pr-4 text-sm font-semibold text-slate-50">
                       {vendor.name}
                       {vendor.isVerifiedVendor && (
                         <img
                           src="/checkverify.png"
                           alt="Verified Vendor"
                           title="Verified Vendor"
-                          className="ml-1.5 inline-block h-3.5 w-3.5 align-text-bottom"
+                          className="absolute right-0 top-0 h-3.5 w-3.5"
                         />
                       )}
                     </h3>
