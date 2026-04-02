@@ -355,12 +355,15 @@ function VendorsTab({ search, onSearchChange, vendors }: VendorsTabProps) {
                   <div>
                     <h3 className="text-sm font-semibold text-slate-50">
                       {vendor.name}
+                      {vendor.isVerifiedVendor && (
+                        <img
+                          src="/checkverify.png"
+                          alt="Verified Vendor"
+                          title="Verified Vendor"
+                          className="ml-1.5 inline-block h-3.5 w-3.5 align-text-bottom"
+                        />
+                      )}
                     </h3>
-                    {vendor.isVerifiedVendor && (
-                      <p className="mt-0.5 inline-flex items-center rounded-full bg-amber-300/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-amber-200 ring-1 ring-amber-300/30">
-                        Verified Vendor
-                      </p>
-                    )}
                     <p className="text-xs text-amber-200">{vendor.cuisine}</p>
                   </div>
                 </div>

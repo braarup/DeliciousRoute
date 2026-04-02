@@ -40,6 +40,7 @@ CREATE TABLE vendors (
   website_url TEXT,
   instagram_url TEXT,
   status TEXT NOT NULL DEFAULT 'pending', -- pending, approved, rejected, paused
+  is_verified BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
 );
