@@ -11,7 +11,10 @@ import path from "path";
 import { put } from "@vercel/blob";
 import { destroySession, getCurrentUser } from "@/lib/auth";
 import { publishInstagramReel } from "@/lib/instagram";
-import { sendVendorProfileChangeEmail, sendPasswordChangedEmail } from "@/lib/email";
+import {
+  sendVendorProfileChangeEmail,
+  sendPasswordChangedEmail,
+} from "@/lib/email";
 import { hashPassword, verifyPassword } from "@/lib/bcrypt";
 import { validatePasswordComplexity } from "@/lib/passwordPolicy";
 import {
@@ -56,13 +59,18 @@ async function changeVendorPassword(formData: FormData) {
     LIMIT 1
   `;
 
-  const userRow = userResult.rows[0] as { password_hash: string | null } | undefined;
+  const userRow = userResult.rows[0] as
+    | { password_hash: string | null }
+    | undefined;
 
   if (!userRow?.password_hash) {
     redirect(`${baseRedirect}?passwordStatus=no_password`);
   }
 
-  const ok = await verifyPassword(currentPassword, userRow.password_hash as string);
+  const ok = await verifyPassword(
+    currentPassword,
+    userRow.password_hash as string,
+  );
 
   if (!ok) {
     redirect(`${baseRedirect}?passwordStatus=invalid_current`);
@@ -75,7 +83,7 @@ async function changeVendorPassword(formData: FormData) {
   const reused = await isPasswordReusedRecently(
     currentUser.id as string,
     newPassword,
-    3
+    3,
   );
 
   if (reused) {
@@ -133,11 +141,7 @@ async function updateVendorProfile(formData: FormData) {
   ];
 
   const maxReelSizeBytes = 50 * 1024 * 1024; // 50MB
-  const allowedReelTypes = [
-    "video/mp4",
-    "video/webm",
-    "video/quicktime",
-  ];
+  const allowedReelTypes = ["video/mp4", "video/webm", "video/quicktime"];
 
   const currentUser = await getCurrentUser();
 
@@ -205,8 +209,7 @@ async function updateVendorProfile(formData: FormData) {
   let galleryPhotosAdded = false;
   let reelUploaded = false;
 
-  const normalize = (value: string | null | undefined) =>
-    (value || "").trim();
+  const normalize = (value: string | null | undefined) => (value || "").trim();
 
   if (profileImageFile instanceof File && profileImageFile.size > 0) {
     const contentType = (profileImageFile as any).type as string | undefined;
@@ -231,16 +234,24 @@ async function updateVendorProfile(formData: FormData) {
         if (!hasBlobToken) {
           imageErrorCode = "storage_unavailable";
         } else {
-          const blob = await put(`vendor-profile-images/${fileName}`, arrayBuffer, {
-            access: "public",
-            contentType: contentType || "application/octet-stream",
-          });
+          const blob = await put(
+            `vendor-profile-images/${fileName}`,
+            arrayBuffer,
+            {
+              access: "public",
+              contentType: contentType || "application/octet-stream",
+            },
+          );
 
           profileImagePath = blob.url;
         }
       } else {
         const buffer = Buffer.from(arrayBuffer);
-        const uploadsDir = path.join(process.cwd(), "public", "vendor-profile-images");
+        const uploadsDir = path.join(
+          process.cwd(),
+          "public",
+          "vendor-profile-images",
+        );
         await fs.mkdir(uploadsDir, { recursive: true });
 
         const targetPath = `/vendor-profile-images/${fileName}`;
@@ -282,16 +293,24 @@ async function updateVendorProfile(formData: FormData) {
         if (!hasBlobToken) {
           imageErrorCode = imageErrorCode ?? "storage_unavailable";
         } else {
-          const blob = await put(`vendor-header-images/${fileName}`, arrayBuffer, {
-            access: "public",
-            contentType: contentType || "application/octet-stream",
-          });
+          const blob = await put(
+            `vendor-header-images/${fileName}`,
+            arrayBuffer,
+            {
+              access: "public",
+              contentType: contentType || "application/octet-stream",
+            },
+          );
 
           headerImagePath = blob.url;
         }
       } else {
         const buffer = Buffer.from(arrayBuffer);
-        const uploadsDir = path.join(process.cwd(), "public", "vendor-header-images");
+        const uploadsDir = path.join(
+          process.cwd(),
+          "public",
+          "vendor-header-images",
+        );
         await fs.mkdir(uploadsDir, { recursive: true });
 
         const targetPath = `/vendor-header-images/${fileName}`;
@@ -401,8 +420,12 @@ async function updateVendorProfile(formData: FormData) {
 
     for (let day = 0; day < 7; day++) {
       const openFlag = formData.get(`day_${day}_open`);
-      const openTime = (formData.get(`day_${day}_open_time`) || "").toString().trim();
-      const closeTime = (formData.get(`day_${day}_close_time`) || "").toString().trim();
+      const openTime = (formData.get(`day_${day}_open_time`) || "")
+        .toString()
+        .trim();
+      const closeTime = (formData.get(`day_${day}_close_time`) || "")
+        .toString()
+        .trim();
 
       if (!openFlag || !openTime || !closeTime) continue;
 
@@ -429,7 +452,8 @@ async function updateVendorProfile(formData: FormData) {
   if (photoFiles.length > 0) {
     for (const file of photoFiles) {
       const contentType = (file as any).type as string | undefined;
-      const isValidType = !contentType || allowedImageTypes.includes(contentType);
+      const isValidType =
+        !contentType || allowedImageTypes.includes(contentType);
       const isValidSize = file.size <= maxImageSizeBytes;
 
       if (!isValidType || !isValidSize) {
@@ -468,11 +492,7 @@ async function updateVendorProfile(formData: FormData) {
         photoUrl = blob.url;
       } else {
         const buffer = Buffer.from(arrayBuffer);
-        const uploadsDir = path.join(
-          process.cwd(),
-          "public",
-          "vendor-photos"
-        );
+        const uploadsDir = path.join(process.cwd(), "public", "vendor-photos");
         await fs.mkdir(uploadsDir, { recursive: true });
 
         const targetPath = `/vendor-photos/${fileName}`;
@@ -660,7 +680,11 @@ async function updateVendorProfile(formData: FormData) {
     });
   }
 
-  redirect(params.toString() ? `/vendor/profile?${params.toString()}` : "/vendor/profile");
+  redirect(
+    params.toString()
+      ? `/vendor/profile?${params.toString()}`
+      : "/vendor/profile",
+  );
 }
 
 async function signOutVendor() {
@@ -680,7 +704,9 @@ async function addMenuItem(formData: FormData) {
   }
 
   const title = (formData.get("menuItemTitle") || "").toString().trim();
-  const description = (formData.get("menuItemDescription") || "").toString().trim();
+  const description = (formData.get("menuItemDescription") || "")
+    .toString()
+    .trim();
   const priceRaw = (formData.get("menuItemPrice") || "").toString().trim();
 
   if (!title) {
@@ -838,8 +864,8 @@ async function deleteVendorPhoto(formData: FormData) {
     typeof photoIdRaw === "string"
       ? photoIdRaw
       : photoIdRaw
-      ? photoIdRaw.toString()
-      : null;
+        ? photoIdRaw.toString()
+        : null;
 
   if (!photoId) {
     redirect("/vendor/profile");
@@ -888,7 +914,7 @@ export default async function VendorProfileManagePage({
   `;
 
   const roleNames = rolesResult.rows.map((row) =>
-    (row.name as string).toLowerCase()
+    (row.name as string).toLowerCase(),
   );
 
   const isVendor = roleNames.includes("vendor_admin");
@@ -925,7 +951,7 @@ export default async function VendorProfileManagePage({
 
   const vendorId = vendor?.id as string | undefined;
 
-  let hoursByDay: Record<number, { open_time: any; close_time: any }> = {};
+  const hoursByDay: Record<number, { open_time: any; close_time: any }> = {};
   let photos: any[] = [];
   let currentReel: any | null = null;
   let menuItems: Array<{
@@ -1073,7 +1099,7 @@ export default async function VendorProfileManagePage({
   };
 
   const isOpenNow = (
-    hours: Record<number, { open_time: any; close_time: any }>
+    hours: Record<number, { open_time: any; close_time: any }>,
   ): boolean => {
     const { day, current } = getLocalDayAndTime();
     const entry = hours[day];
@@ -1097,52 +1123,45 @@ export default async function VendorProfileManagePage({
     imageErrorCode === "invalid_image"
       ? "Image not updated. Please upload JPEG, PNG, WEBP, GIF, or SVG up to 5MB."
       : imageErrorCode === "storage_unavailable"
-      ? "Image upload is not available yet in this deployment. Ask your admin to configure Vercel Blob (VERCEL_BLOB_READ_WRITE_TOKEN)."
-      : null;
+        ? "Image upload is not available yet in this deployment. Ask your admin to configure Vercel Blob (VERCEL_BLOB_READ_WRITE_TOKEN)."
+        : null;
 
   const photoErrorCodeFromQuery = searchParams?.photoError;
   const photoErrorMessage =
     photoErrorCodeFromQuery === "invalid_photo"
       ? "Photo not uploaded. Please upload JPEG, PNG, WEBP, GIF, or SVG up to 5MB."
       : photoErrorCodeFromQuery === "storage_unavailable"
-      ? "Photo upload is not available yet in this deployment. Ask your admin to configure Vercel Blob."
-      : null;
+        ? "Photo upload is not available yet in this deployment. Ask your admin to configure Vercel Blob."
+        : null;
 
   const reelErrorCodeFromQuery = searchParams?.reelError;
   const reelErrorMessage =
     reelErrorCodeFromQuery === "invalid_reel"
       ? "Video not uploaded. Please upload MP4, WebM, or QuickTime (MOV) up to 50MB."
       : reelErrorCodeFromQuery === "storage_unavailable"
-      ? "Grub Reel upload is not available yet in this deployment. Ask your admin to configure Vercel Blob."
-      : null;
+        ? "Grub Reel upload is not available yet in this deployment. Ask your admin to configure Vercel Blob."
+        : null;
 
   const passwordStatus = searchParams?.passwordStatus;
   const passwordMessage =
     passwordStatus === "success"
       ? "Your password has been updated."
       : passwordStatus === "missing_fields"
-      ? "Please fill in your current password, new password, and confirmation."
-      : passwordStatus === "weak_password"
-      ? "Please choose a stronger password with at least 8 characters, including at least one uppercase letter, one number, and one special character."
-      : passwordStatus === "mismatch"
-      ? "New password and confirmation do not match."
-      : passwordStatus === "invalid_current"
-      ? "Your current password was incorrect."
-      : passwordStatus === "no_password"
-      ? "We couldn't find an existing password for this account. Try resetting it from the login page instead."
-      : passwordStatus === "no_change"
-      ? "Your new password must be different from your current password."
-      : passwordStatus === "reused_recent"
-      ? "Your new password cannot be the same as any of your last 3 passwords."
-      : null;
-  const passwordIsError =
-    !!passwordStatus && passwordStatus !== "success";
-
-  const formatPrice = (priceCents: number | null) => {
-    if (priceCents == null) return "";
-    const dollars = (priceCents / 100).toFixed(2);
-    return `$${dollars}`;
-  };
+        ? "Please fill in your current password, new password, and confirmation."
+        : passwordStatus === "weak_password"
+          ? "Please choose a stronger password with at least 8 characters, including at least one uppercase letter, one number, and one special character."
+          : passwordStatus === "mismatch"
+            ? "New password and confirmation do not match."
+            : passwordStatus === "invalid_current"
+              ? "Your current password was incorrect."
+              : passwordStatus === "no_password"
+                ? "We couldn't find an existing password for this account. Try resetting it from the login page instead."
+                : passwordStatus === "no_change"
+                  ? "Your new password must be different from your current password."
+                  : passwordStatus === "reused_recent"
+                    ? "Your new password cannot be the same as any of your last 3 passwords."
+                    : null;
+  const passwordIsError = !!passwordStatus && passwordStatus !== "success";
 
   return (
     <div className="min-h-screen bg-[var(--dr-neutral)] text-[var(--dr-text)]">
@@ -1156,7 +1175,8 @@ export default async function VendorProfileManagePage({
               Your Delicious Route vendor profile
             </h1>
             <p className="mt-1 text-sm text-[#616161]">
-              Update how your food truck appears to customers across Delicious Route.
+              Update how your food truck appears to customers across Delicious
+              Route.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -1299,7 +1319,8 @@ export default async function VendorProfileManagePage({
                       className="block text-[0.7rem] text-[#616161] file:mr-2 file:rounded-full file:border file:border-[#e0e0e0] file:bg-white file:px-2 file:py-1 file:text-[0.7rem] file:font-semibold file:uppercase file:tracking-[0.16em] file:text-[var(--dr-primary)] hover:file:border-[var(--dr-primary)] hover:file:bg-[var(--dr-primary)]/5"
                     />
                     <p className="text-[0.7rem] text-[#9e9e9e]">
-                      Upload a square image. New uploads overwrite the previous photo.
+                      Upload a square image. New uploads overwrite the previous
+                      photo.
                     </p>
                     {imageErrorMessage && (
                       <p className="text-[0.7rem] text-red-500">
@@ -1429,8 +1450,8 @@ export default async function VendorProfileManagePage({
                 Truck photos
               </h2>
               <p className="mt-1 text-xs text-[#757575]">
-                Upload extra photos of your truck or food. These will appear
-                on your public Food Truck Profile for customers.
+                Upload extra photos of your truck or food. These will appear on
+                your public Food Truck Profile for customers.
               </p>
 
               <div className="mt-4 space-y-2 text-sm">
@@ -1462,7 +1483,8 @@ export default async function VendorProfileManagePage({
                       Current truck photos
                     </p>
                     <p className="text-[0.7rem] text-[#9e9e9e]">
-                      These photos appear on your public Food Truck Profile. Remove any you no longer want to show.
+                      These photos appear on your public Food Truck Profile.
+                      Remove any you no longer want to show.
                     </p>
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                       {photos.map((photo, index) => (
@@ -1492,7 +1514,6 @@ export default async function VendorProfileManagePage({
                 )}
               </div>
             </div>
-
           </section>
 
           {/* Right: menu, hours and location */}
@@ -1571,7 +1592,10 @@ export default async function VendorProfileManagePage({
                       const closeStr = to12h(normalizeTime(entry.close_time));
 
                       return (
-                        <li key={label} className="flex items-center justify-between">
+                        <li
+                          key={label}
+                          className="flex items-center justify-between"
+                        >
                           <span className="text-[0.7rem] font-medium text-[var(--dr-text)]">
                             {label}
                           </span>
@@ -1592,8 +1616,8 @@ export default async function VendorProfileManagePage({
               </h2>
               <p className="mt-1 text-xs text-[#757575]">
                 Upload a short vertical video to feature on the Grub Reels tab
-                and your vendor profile. Each reel stays live for 24 hours,
-                then disappears.
+                and your vendor profile. Each reel stays live for 24 hours, then
+                disappears.
               </p>
 
               <div className="mt-4 space-y-3 text-sm">
@@ -1715,8 +1739,6 @@ export default async function VendorProfileManagePage({
               </p>
 
               {/* Client-side GPS updater */}
-              {/* eslint-disable-next-line @next/next/no-sync-scripts */}
-              {/* Button component imported at top of file */}
               <UpdateGpsButton />
             </div>
 
@@ -1818,8 +1840,8 @@ export default async function VendorProfileManagePage({
             </div>
 
             <p className="text-[11px] text-[#9e9e9e]">
-              Must be at least 8 characters and include an uppercase letter,
-              a number, and a special character. You also can&apos;t reuse your
+              Must be at least 8 characters and include an uppercase letter, a
+              number, and a special character. You also can&apos;t reuse your
               last 3 passwords.
             </p>
 
@@ -1840,7 +1862,8 @@ export default async function VendorProfileManagePage({
         <footer className="mt-6 border-t border-[#e0e0e0] pt-3 text-xs text-[#757575]">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p>
-              © 2026 Delicious Route. Built for modern street food culture and more.
+              © 2026 Delicious Route. Built for modern street food culture and
+              more.
             </p>
             <nav className="flex flex-wrap items-center gap-3 text-[11px]">
               <Link href="/terms" className="hover:text-[var(--dr-primary)]">
@@ -1851,7 +1874,10 @@ export default async function VendorProfileManagePage({
                 Privacy Policy
               </Link>
               <span aria-hidden>•</span>
-              <Link href="/disclaimer" className="hover:text-[var(--dr-primary)]">
+              <Link
+                href="/disclaimer"
+                className="hover:text-[var(--dr-primary)]"
+              >
                 Disclaimer
               </Link>
               <span aria-hidden>•</span>

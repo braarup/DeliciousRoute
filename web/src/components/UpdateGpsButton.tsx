@@ -39,7 +39,7 @@ export function UpdateGpsButton() {
           }
 
           setStatus("GPS location updated for your current session.");
-        } catch (e) {
+        } catch {
           setStatus("Network error while updating GPS location.");
         } finally {
           setLoading(false);
@@ -47,9 +47,11 @@ export function UpdateGpsButton() {
       },
       () => {
         setLoading(false);
-        setStatus("Unable to access your location. Please allow location access.");
+        setStatus(
+          "Unable to access your location. Please allow location access.",
+        );
       },
-      { enableHighAccuracy: true, timeout: 15000 }
+      { enableHighAccuracy: true, timeout: 15000 },
     );
   }
 

@@ -4,13 +4,13 @@ import { FormEvent, useState } from "react";
 import Link from "next/link";
 
 export default function RequestResetPage() {
-  const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
-  const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<
+    "idle" | "submitting" | "success" | "error"
+  >("idle");
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setStatus("submitting");
-    setError(null);
 
     const formData = new FormData(event.currentTarget);
     const email = (formData.get("email") || "").toString().trim();
@@ -45,7 +45,8 @@ export default function RequestResetPage() {
             Forgot your password?
           </h1>
           <p className="mt-1 text-sm text-[#616161]">
-            Enter the email associated with your account. If it exists, we&apos;ll send a reset link.
+            Enter the email associated with your account. If it exists,
+            we&apos;ll send a reset link.
           </p>
         </header>
 
@@ -53,13 +54,18 @@ export default function RequestResetPage() {
           {status === "success" ? (
             <div className="space-y-3 text-sm">
               <p className="text-[var(--dr-text)]">
-                If an account exists for that email, a password reset link has been sent.
+                If an account exists for that email, a password reset link has
+                been sent.
               </p>
               <p className="text-xs text-[#616161]">
-                For local development, check the server logs for the reset link URL.
+                For local development, check the server logs for the reset link
+                URL.
               </p>
               <p className="text-xs text-[#616161]">
-                <Link href="/login" className="font-semibold text-[var(--dr-primary)] hover:underline">
+                <Link
+                  href="/login"
+                  className="font-semibold text-[var(--dr-primary)] hover:underline"
+                >
                   Back to sign in
                 </Link>
               </p>
