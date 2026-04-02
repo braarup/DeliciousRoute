@@ -788,6 +788,91 @@ async function changeVendorTier(formData: FormData) {
     WHERE id = ${vendorRow.id}
   `;
 
+  const billingTableResult = await sql`
+    SELECT to_regclass('public.vendor_subscriptions') AS table_name
+  `;
+
+  const billingTableExists = !!billingTableResult.rows[0]?.table_name;
+
+  if (billingTableExists) {
+    const subscriptionStatus =
+      requestedTier === "growth" ? "active" : "canceled";
+    const subscriptionId = randomUUID();
+
+    await sql`
+      INSERT INTO vendor_subscriptions (
+        id,
+        vendor_id,
+        provider,
+        tier,
+        status,
+        current_period_start,
+        current_period_end,
+        canceled_at,
+        updated_at
+      )
+      VALUES (
+        ${subscriptionId},
+        ${vendorRow.id},
+        'stripe',
+        ${requestedTier},
+        ${subscriptionStatus},
+        ${changedAt},
+        NULL,
+        ${requestedTier === "starter" ? changedAt : null},
+        now()
+      )
+      ON CONFLICT (vendor_id)
+      DO UPDATE SET
+        tier = EXCLUDED.tier,
+        status = EXCLUDED.status,
+        current_period_start = EXCLUDED.current_period_start,
+        canceled_at = EXCLUDED.canceled_at,
+        updated_at = now()
+    `;
+
+    const eventTypeForBilling =
+      requestedTier === "growth"
+        ? "subscription_upgraded"
+        : "subscription_downgraded";
+
+    const subscriptionRowResult = await sql`
+      SELECT id
+      FROM vendor_subscriptions
+      WHERE vendor_id = ${vendorRow.id}
+      LIMIT 1
+    `;
+
+    const vendorSubscriptionId = subscriptionRowResult.rows[0]?.id as
+      | string
+      | undefined;
+
+    if (vendorSubscriptionId) {
+      await sql`
+        INSERT INTO vendor_subscription_events (
+          id,
+          vendor_subscription_id,
+          vendor_id,
+          event_type,
+          payload,
+          created_at
+        )
+        VALUES (
+          ${randomUUID()},
+          ${vendorSubscriptionId},
+          ${vendorRow.id},
+          ${eventTypeForBilling},
+          ${JSON.stringify({
+            source: "self_serve_vendor_profile",
+            requestedTier,
+            changedAt,
+          })}::jsonb,
+          now()
+        )
+      `;
+    }
+  }
+
   const eventType =
     requestedTier === "growth"
       ? "subscription_upgraded"
