@@ -419,14 +419,14 @@ export default async function PublicVendorPage({ params }: PageProps) {
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--dr-primary)]">
                   Food truck profile
                 </p>
-                <h1 className="text-lg font-semibold leading-snug text-[var(--dr-text)] sm:text-xl">
+                <h1 className="relative inline-block pr-5 text-lg font-semibold leading-snug text-[var(--dr-text)] sm:text-xl">
                   {vendor.name || "Untitled venue"}
                   {isVerifiedVendor && (
                     <img
                       src="/checkverify.png"
                       alt="Verified Vendor"
                       title="Verified Vendor"
-                      className="ml-2 inline-block h-5 w-5 align-text-bottom"
+                      className="absolute right-0 top-0 h-5 w-5"
                     />
                   )}
                 </h1>
@@ -633,14 +633,14 @@ export default async function PublicVendorPage({ params }: PageProps) {
                     />
                   </div>
                   <div>
-                    <h2 className="text-base font-semibold text-[var(--dr-text)] sm:text-lg">
+                    <h2 className="relative inline-block pr-4 text-base font-semibold text-[var(--dr-text)] sm:text-lg">
                       {vendor.name || "Untitled venue"}
                       {isVerifiedVendor && (
                         <img
                           src="/checkverify.png"
                           alt="Verified Vendor"
                           title="Verified Vendor"
-                          className="ml-1.5 inline-block h-4 w-4 align-text-bottom"
+                          className="absolute right-0 top-0 h-4 w-4"
                         />
                       )}
                     </h2>
