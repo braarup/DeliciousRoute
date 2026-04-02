@@ -90,62 +90,21 @@ async function createAccount(formData: FormData) {
           id,
           owner_user_id,
           name,
-          vendor_type
+          vendor_type,
+          subscription_tier,
+          subscription_status,
+          subscription_started_at
         )
         VALUES (
           ${vendorId},
           ${userId},
           ${displayName},
-          'food_truck'
+          'food_truck',
+          ${vendorTier},
+          'active',
+          now()
         )
       `;
-
-      const vendorTierColumnsResult = await sql<{ column_name: string }>`
-        SELECT column_name
-        FROM information_schema.columns
-        WHERE table_schema = 'public'
-          AND table_name = 'vendors'
-          AND column_name IN (
-            'subscription_tier',
-            'subscription_status',
-            'subscription_started_at'
-          )
-      `;
-
-      const hasSubscriptionTierColumn = vendorTierColumnsResult.rows.some(
-        (row) => row.column_name === "subscription_tier",
-      );
-      const hasSubscriptionStatusColumn = vendorTierColumnsResult.rows.some(
-        (row) => row.column_name === "subscription_status",
-      );
-      const hasSubscriptionStartedAtColumn = vendorTierColumnsResult.rows.some(
-        (row) => row.column_name === "subscription_started_at",
-      );
-
-      if (
-        hasSubscriptionTierColumn ||
-        hasSubscriptionStatusColumn ||
-        hasSubscriptionStartedAtColumn
-      ) {
-        await sql`
-          UPDATE vendors
-          SET
-            subscription_tier = CASE
-              WHEN ${hasSubscriptionTierColumn} THEN ${vendorTier}
-              ELSE subscription_tier
-            END,
-            subscription_status = CASE
-              WHEN ${hasSubscriptionStatusColumn} THEN 'active'
-              ELSE subscription_status
-            END,
-            subscription_started_at = CASE
-              WHEN ${hasSubscriptionStartedAtColumn} THEN now()
-              ELSE subscription_started_at
-            END,
-            updated_at = now()
-          WHERE id = ${vendorId}
-        `;
-      }
 
       const roleResult = await sql`
         INSERT INTO roles (name)
