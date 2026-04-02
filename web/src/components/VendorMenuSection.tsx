@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, type ReactElement } from "react";
+import { useState, type ReactElement } from "react";
 import { createPortal } from "react-dom";
 
 export type VendorMenuItem = {
@@ -45,7 +45,7 @@ function DietaryIcons({ item }: { item: VendorMenuItem }) {
             strokeLinejoin="round"
           />
         </svg>
-      </span>
+      </span>,
     );
   }
 
@@ -62,7 +62,7 @@ function DietaryIcons({ item }: { item: VendorMenuItem }) {
             fill="#E53935"
           />
         </svg>
-      </span>
+      </span>,
     );
   }
 
@@ -79,7 +79,7 @@ function DietaryIcons({ item }: { item: VendorMenuItem }) {
             fill="#43A047"
           />
         </svg>
-      </span>
+      </span>,
     );
   }
 
@@ -96,7 +96,7 @@ function DietaryIcons({ item }: { item: VendorMenuItem }) {
             fill="#43A047"
           />
         </svg>
-      </span>
+      </span>,
     );
   }
 
@@ -107,11 +107,6 @@ function DietaryIcons({ item }: { item: VendorMenuItem }) {
 
 export function VendorMenuSection({ items }: Props) {
   const [isOpen, setIsOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   if (!items || items.length === 0) {
     return null;
@@ -131,66 +126,67 @@ export function VendorMenuSection({ items }: Props) {
         Menu
       </button>
 
-      {mounted && isOpen &&
+      {isOpen &&
+        typeof document !== "undefined" &&
         createPortal(
           <div className="fixed inset-0 z-40 flex flex-col bg-white">
-          <div className="flex items-center justify-between border-b border-[#e0e0e0] bg-[var(--dr-neutral)]/80 px-4 py-3 text-xs text-[#757575]">
-            <button
-              type="button"
-              onClick={handleClose}
-              className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#757575] hover:text-[var(--dr-primary)]"
-            >
-              <span aria-hidden>←</span>
-              <span>Back</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleClose}
-              className="text-lg leading-none text-[#9e9e9e] hover:text-[#616161]"
-              aria-label="Close menu"
-            >
-              ×
-            </button>
-          </div>
+            <div className="flex items-center justify-between border-b border-[#e0e0e0] bg-[var(--dr-neutral)]/80 px-4 py-3 text-xs text-[#757575]">
+              <button
+                type="button"
+                onClick={handleClose}
+                className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#757575] hover:text-[var(--dr-primary)]"
+              >
+                <span aria-hidden>←</span>
+                <span>Back</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleClose}
+                className="text-lg leading-none text-[#9e9e9e] hover:text-[#616161]"
+                aria-label="Close menu"
+              >
+                ×
+              </button>
+            </div>
 
-          <div className="flex-1 overflow-y-auto px-4 pb-6 pt-4 text-sm text-[#424242]">
-            <h2 className="text-sm font-semibold text-[var(--dr-text)]">
-              Menu
-            </h2>
-            <p className="mt-1 text-xs text-[#757575]">
-              Browse this truck&apos;s dishes and details.
-            </p>
+            <div className="flex-1 overflow-y-auto px-4 pb-6 pt-4 text-sm text-[#424242]">
+              <h2 className="text-sm font-semibold text-[var(--dr-text)]">
+                Menu
+              </h2>
+              <p className="mt-1 text-xs text-[#757575]">
+                Browse this truck&apos;s dishes and details.
+              </p>
 
-            <div className="mt-3 space-y-2">
-              {items.map((item) => (
-                <div
-                  key={item.id}
-                  className="rounded-2xl border border-[#eeeeee] bg-[var(--dr-neutral)] px-3 py-2 text-xs text-[#424242]"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-[13px] font-semibold text-[var(--dr-text)]">
-                      {item.name}
-                    </p>
-                    {item.price_cents != null && (
-                      <p className="whitespace-nowrap text-[13px] font-semibold text-[var(--dr-accent)]">
-                        {formatPrice(item.price_cents)}
+              <div className="mt-3 space-y-2">
+                {items.map((item) => (
+                  <div
+                    key={item.id}
+                    className="rounded-2xl border border-[#eeeeee] bg-[var(--dr-neutral)] px-3 py-2 text-xs text-[#424242]"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-[13px] font-semibold text-[var(--dr-text)]">
+                        {item.name}
+                      </p>
+                      {item.price_cents != null && (
+                        <p className="whitespace-nowrap text-[13px] font-semibold text-[var(--dr-accent)]">
+                          {formatPrice(item.price_cents)}
+                        </p>
+                      )}
+                    </div>
+                    <div className="mt-1 flex flex-wrap items-center gap-1">
+                      <DietaryIcons item={item} />
+                    </div>
+                    {item.description && (
+                      <p className="mt-1 text-[11px] text-[#616161]">
+                        {item.description}
                       </p>
                     )}
                   </div>
-                  <div className="mt-1 flex flex-wrap items-center gap-1">
-                    <DietaryIcons item={item} />
-                  </div>
-                  {item.description && (
-                    <p className="mt-1 text-[11px] text-[#616161]">
-                      {item.description}
-                    </p>
-                  )}
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        </div>,
-          document.body
+          </div>,
+          document.body,
         )}
     </>
   );
