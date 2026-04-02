@@ -4,12 +4,10 @@ import { sql } from "@vercel/postgres";
 import { hashPassword } from "@/lib/bcrypt";
 import { randomUUID } from "crypto";
 import { createSession, getCurrentUser } from "@/lib/auth";
-import {
-  sendCustomerWelcomeEmail,
-  sendVendorWelcomeEmail,
-} from "@/lib/email";
+import { sendCustomerWelcomeEmail, sendVendorWelcomeEmail } from "@/lib/email";
 import { validatePasswordComplexity } from "@/lib/passwordPolicy";
 import { recordPasswordInHistory } from "@/lib/passwordHistory";
+import { normalizeVendorTier } from "@/lib/vendorSubscription";
 
 async function createAccount(formData: FormData) {
   "use server";
@@ -19,6 +17,9 @@ async function createAccount(formData: FormData) {
   const email = (formData.get("email") || "").toString().trim().toLowerCase();
   const password = (formData.get("password") || "").toString();
   const accountType = (formData.get("accountType") || "").toString();
+  const vendorTier = normalizeVendorTier(
+    (formData.get("vendorTier") || "starter").toString(),
+  );
 
   if (!firstName || !lastName || !email || !password || !accountType) {
     throw new Error("Missing required signup fields");
@@ -59,8 +60,24 @@ async function createAccount(formData: FormData) {
       const vendorId = randomUUID();
 
       await sql`
-        INSERT INTO vendors (id, owner_user_id, name, vendor_type)
-        VALUES (${vendorId}, ${userId}, ${displayName}, 'food_truck')
+        INSERT INTO vendors (
+          id,
+          owner_user_id,
+          name,
+          vendor_type,
+          subscription_tier,
+          subscription_status,
+          subscription_started_at
+        )
+        VALUES (
+          ${vendorId},
+          ${userId},
+          ${displayName},
+          'food_truck',
+          ${vendorTier},
+          'active',
+          now()
+        )
       `;
 
       const roleResult = await sql`
@@ -138,7 +155,7 @@ export default async function SignupPage({
     `;
 
     const roleNames = rolesResult.rows.map((row) =>
-      (row.name as string).toLowerCase()
+      (row.name as string).toLowerCase(),
     );
 
     const isVendor = roleNames.includes("vendor_admin");
@@ -247,8 +264,8 @@ export default async function SignupPage({
                 placeholder="Create a password"
               />
               <p className="mt-1 text-[0.7rem] text-[#9e9e9e]">
-                Must be at least 8 characters and include an uppercase letter,
-                a number, and a special character.
+                Must be at least 8 characters and include an uppercase letter, a
+                number, and a special character.
               </p>
             </div>
 
@@ -282,6 +299,48 @@ export default async function SignupPage({
               <p className="text-[0.7rem] text-[#9e9e9e]">
                 Vendors can manage their truck profile, locations, and hours.
                 Customers can save favorites and preferences.
+              </p>
+            </fieldset>
+
+            <fieldset className="space-y-2">
+              <legend className="text-xs font-medium uppercase tracking-[0.18em] text-[#757575]">
+                Vendor tier
+              </legend>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <label className="flex cursor-pointer items-start gap-2 rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)] px-3 py-2 text-xs text-[var(--dr-text)] hover:border-[var(--dr-primary)]">
+                  <input
+                    type="radio"
+                    name="vendorTier"
+                    value="starter"
+                    defaultChecked
+                    className="mt-0.5 h-3 w-3 text-[var(--dr-primary)] focus:ring-[var(--dr-primary)]"
+                  />
+                  <span>
+                    <strong className="block">Starter</strong>
+                    <span className="text-[#757575]">
+                      Vendor listing, profile, GPS updates, social links,
+                      website, favorite count, up to 5 photos.
+                    </span>
+                  </span>
+                </label>
+                <label className="flex cursor-pointer items-start gap-2 rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)] px-3 py-2 text-xs text-[var(--dr-text)] hover:border-[var(--dr-primary)]">
+                  <input
+                    type="radio"
+                    name="vendorTier"
+                    value="growth"
+                    className="mt-0.5 h-3 w-3 text-[var(--dr-primary)] focus:ring-[var(--dr-primary)]"
+                  />
+                  <span>
+                    <strong className="block">Growth</strong>
+                    <span className="text-[#757575]">
+                      Everything in Starter, up to 10 photos, menu uploads, Grub
+                      Reels, Verified Vendor badge.
+                    </span>
+                  </span>
+                </label>
+              </div>
+              <p className="text-[0.7rem] text-[#9e9e9e]">
+                If you sign up as a customer, this setting is ignored.
               </p>
             </fieldset>
 

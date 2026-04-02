@@ -21,6 +21,8 @@ interface Props {
   // don't break the client component.
   addMenuItem: (formData: FormData) => any;
   deleteMenuItem: (formData: FormData) => any;
+  canManageMenu: boolean;
+  tierName: string;
 }
 
 const formatPrice = (priceCents: number | null) => {
@@ -33,6 +35,8 @@ export function VendorManageMenuSection({
   items,
   addMenuItem,
   deleteMenuItem,
+  canManageMenu,
+  tierName,
 }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [menuItems, setMenuItems] = useState<VendorManageMenuItem[]>(items);
@@ -101,12 +105,19 @@ export function VendorManageMenuSection({
         </div>
         <button
           type="button"
+          disabled={!canManageMenu}
           onClick={() => setIsOpen(true)}
-          className="inline-flex items-center justify-center rounded-full border border-[var(--dr-primary)]/50 bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--dr-primary)] shadow-sm hover:bg-[var(--dr-primary)] hover:text-white"
+          className="inline-flex items-center justify-center rounded-full border border-[var(--dr-primary)]/50 bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--dr-primary)] shadow-sm hover:bg-[var(--dr-primary)] hover:text-white disabled:cursor-not-allowed disabled:border-[#e0e0e0] disabled:text-[#9e9e9e] disabled:hover:bg-white disabled:hover:text-[#9e9e9e]"
         >
           Create menu
         </button>
       </div>
+      {!canManageMenu && (
+        <p className="mt-2 text-[11px] text-[#9e9e9e]">
+          Menu uploads are available on Growth tier. Your current tier is{" "}
+          {tierName}.
+        </p>
+      )}
 
       {mounted &&
         isOpen &&

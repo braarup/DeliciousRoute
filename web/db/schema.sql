@@ -331,3 +331,39 @@ CREATE TABLE IF NOT EXISTS password_history (
 
 CREATE INDEX IF NOT EXISTS idx_password_history_user_created_at
   ON password_history (user_id, created_at DESC);
+
+-- Vendor tiering and profile classification
+ALTER TABLE vendors
+  ADD COLUMN IF NOT EXISTS subscription_tier TEXT NOT NULL DEFAULT 'starter',
+  ADD COLUMN IF NOT EXISTS subscription_status TEXT NOT NULL DEFAULT 'active',
+  ADD COLUMN IF NOT EXISTS subscription_started_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS subscription_renewal_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS subscription_canceled_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS food_type TEXT,
+  ADD COLUMN IF NOT EXISTS service_style TEXT;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'vendors_subscription_tier_check'
+  ) THEN
+    ALTER TABLE vendors
+      ADD CONSTRAINT vendors_subscription_tier_check
+      CHECK (subscription_tier IN ('starter', 'growth'));
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'vendors_subscription_status_check'
+  ) THEN
+    ALTER TABLE vendors
+      ADD CONSTRAINT vendors_subscription_status_check
+      CHECK (subscription_status IN ('active', 'past_due', 'canceled', 'trialing'));
+  END IF;
+END $$;
