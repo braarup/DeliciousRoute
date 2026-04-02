@@ -772,18 +772,18 @@ async function changeVendorTier(formData: FormData) {
   }
 
   const newStatus = "active";
-  const changedAt = new Date();
-  const endedAt = requestedTier === "starter" ? changedAt : null;
-  const renewalAt = requestedTier === "growth" ? changedAt : null;
+  const changedAtIso = new Date().toISOString();
+  const endedAtIso = requestedTier === "starter" ? changedAtIso : null;
+  const renewalAtIso = requestedTier === "growth" ? changedAtIso : null;
 
   await sql`
     UPDATE vendors
     SET
       subscription_tier = ${requestedTier},
       subscription_status = ${newStatus},
-      subscription_started_at = COALESCE(subscription_started_at, ${changedAt}),
-      subscription_renewal_at = ${renewalAt},
-      subscription_ended_at = ${endedAt},
+      subscription_started_at = COALESCE(subscription_started_at, ${changedAtIso}::timestamptz),
+      subscription_renewal_at = ${renewalAtIso}::timestamptz,
+      subscription_ended_at = ${endedAtIso}::timestamptz,
       updated_at = now()
     WHERE id = ${vendorRow.id}
   `;
@@ -817,9 +817,9 @@ async function changeVendorTier(formData: FormData) {
         'stripe',
         ${requestedTier},
         ${subscriptionStatus},
-        ${changedAt},
+        ${changedAtIso}::timestamptz,
         NULL,
-        ${requestedTier === "starter" ? changedAt : null},
+        ${requestedTier === "starter" ? changedAtIso : null}::timestamptz,
         now()
       )
       ON CONFLICT (vendor_id)
@@ -865,7 +865,7 @@ async function changeVendorTier(formData: FormData) {
           ${JSON.stringify({
             source: "self_serve_vendor_profile",
             requestedTier,
-            changedAt,
+            changedAt: changedAtIso,
           })}::jsonb,
           now()
         )
