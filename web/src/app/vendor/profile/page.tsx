@@ -22,6 +22,13 @@ import {
   recordPasswordInHistory,
 } from "@/lib/passwordHistory";
 import { PasswordPolicyDialog } from "@/components/PasswordPolicyDialog";
+import {
+  canUseVendorFeature,
+  getPhotoUploadLimit,
+  getTierDefinition,
+  hasVerifiedVendorBadge,
+  normalizeVendorTier,
+} from "@/lib/vendorSubscription";
 
 async function changeVendorPassword(formData: FormData) {
   "use server";
@@ -119,6 +126,8 @@ async function updateVendorProfile(formData: FormData) {
   const description = (formData.get("description") || "").toString().trim();
   const cuisine = (formData.get("cuisine") || "").toString().trim();
   const city = (formData.get("city") || "").toString().trim();
+  const foodType = (formData.get("foodType") || "").toString().trim();
+  const serviceStyle = (formData.get("serviceStyle") || "").toString().trim();
   const tagline = (formData.get("tagline") || "").toString().trim();
   const website = (formData.get("website") || "").toString().trim();
   const facebook = (formData.get("facebook") || "").toString().trim();
@@ -154,6 +163,9 @@ async function updateVendorProfile(formData: FormData) {
       id,
       name,
       description,
+      subscription_tier,
+      food_type,
+      service_style,
       cuisine_style,
       primary_region,
       tagline,
@@ -174,6 +186,9 @@ async function updateVendorProfile(formData: FormData) {
         id: string;
         name: string | null;
         description: string | null;
+        subscription_tier: string | null;
+        food_type: string | null;
+        service_style: string | null;
         cuisine_style: string | null;
         primary_region: string | null;
         tagline: string | null;
@@ -187,6 +202,8 @@ async function updateVendorProfile(formData: FormData) {
       }
     | undefined;
   const vendorId = vendorRow?.id as string | undefined;
+  const vendorTier = normalizeVendorTier(vendorRow?.subscription_tier);
+  const photoUploadLimit = getPhotoUploadLimit(vendorTier);
 
   if (!vendorId) {
     throw new Error("No vendor found to update");
@@ -332,6 +349,8 @@ async function updateVendorProfile(formData: FormData) {
   if (
     normalize(truckName) !== normalize(vendorRow?.name) ||
     normalize(description) !== normalize(vendorRow?.description) ||
+    normalize(foodType) !== normalize(vendorRow?.food_type) ||
+    normalize(serviceStyle) !== normalize(vendorRow?.service_style) ||
     normalize(cuisine) !== normalize(vendorRow?.cuisine_style) ||
     normalize(city) !== normalize(vendorRow?.primary_region) ||
     normalize(tagline) !== normalize(vendorRow?.tagline)
@@ -354,6 +373,8 @@ async function updateVendorProfile(formData: FormData) {
     SET
       name = ${truckName || null},
       description = ${description || null},
+      food_type = ${foodType || null},
+      service_style = ${serviceStyle || null},
       cuisine_style = ${cuisine || null},
       primary_region = ${city || null},
       tagline = ${tagline || null},
@@ -450,6 +471,19 @@ async function updateVendorProfile(formData: FormData) {
     .filter((v): v is File => v instanceof File && v.size > 0);
 
   if (photoFiles.length > 0) {
+    const photoCountResult = await sql`
+      SELECT COUNT(*)::int AS count
+      FROM vendor_media
+      WHERE vendor_id = ${vendorId} AND media_type = 'photo'
+    `;
+    const existingPhotoCount = Number(photoCountResult.rows[0]?.count ?? 0);
+
+    if (existingPhotoCount + photoFiles.length > photoUploadLimit) {
+      photoErrorCode = "photo_limit";
+    }
+  }
+
+  if (photoFiles.length > 0 && photoErrorCode !== "photo_limit") {
     for (const file of photoFiles) {
       const contentType = (file as any).type as string | undefined;
       const isValidType =
@@ -520,88 +554,92 @@ async function updateVendorProfile(formData: FormData) {
   const reelCaption = (formData.get("grubReelCaption") || "").toString().trim();
 
   if (reelFile instanceof File && reelFile.size > 0) {
-    const reelType = (reelFile as any).type as string | undefined;
-    const isValidReelType = !!reelType && allowedReelTypes.includes(reelType);
-    const isValidReelSize = reelFile.size <= maxReelSizeBytes;
+    if (!canUseVendorFeature(vendorTier, "grub_reels")) {
+      reelErrorCode = reelErrorCode ?? "tier_restricted";
+    } else {
+      const reelType = (reelFile as any).type as string | undefined;
+      const isValidReelType = !!reelType && allowedReelTypes.includes(reelType);
+      const isValidReelSize = reelFile.size <= maxReelSizeBytes;
 
-    if (isValidReelType && isValidReelSize) {
-      const isOnVercel = process.env.VERCEL === "1";
-      const hasBlobToken =
-        !!process.env.BLOB_READ_WRITE_TOKEN ||
-        !!process.env.VERCEL_BLOB_READ_WRITE_TOKEN;
+      if (isValidReelType && isValidReelSize) {
+        const isOnVercel = process.env.VERCEL === "1";
+        const hasBlobToken =
+          !!process.env.BLOB_READ_WRITE_TOKEN ||
+          !!process.env.VERCEL_BLOB_READ_WRITE_TOKEN;
 
-      const originalName = reelFile.name || "reel.mp4";
-      const extMatch = originalName.match(/\.[a-zA-Z0-9]+$/);
-      const ext = (extMatch ? extMatch[0] : ".mp4").toLowerCase();
-      const uniqueSuffix = randomUUID();
-      const fileName = `${vendorId}-reel-${uniqueSuffix}${ext}`;
+        const originalName = reelFile.name || "reel.mp4";
+        const extMatch = originalName.match(/\.[a-zA-Z0-9]+$/);
+        const ext = (extMatch ? extMatch[0] : ".mp4").toLowerCase();
+        const uniqueSuffix = randomUUID();
+        const fileName = `${vendorId}-reel-${uniqueSuffix}${ext}`;
 
-      const arrayBuffer = await reelFile.arrayBuffer();
-      let videoUrl: string | null = null;
+        const arrayBuffer = await reelFile.arrayBuffer();
+        let videoUrl: string | null = null;
 
-      if (isOnVercel) {
-        if (hasBlobToken) {
-          const blob = await put(`vendor-reels/${fileName}`, arrayBuffer, {
-            access: "public",
-            contentType: reelType || "application/octet-stream",
-          });
-          videoUrl = blob.url;
+        if (isOnVercel) {
+          if (hasBlobToken) {
+            const blob = await put(`vendor-reels/${fileName}`, arrayBuffer, {
+              access: "public",
+              contentType: reelType || "application/octet-stream",
+            });
+            videoUrl = blob.url;
+          } else {
+            // Surface a clear error if blob storage isn't configured
+            imageErrorCode = imageErrorCode ?? "storage_unavailable";
+            reelErrorCode = reelErrorCode ?? "storage_unavailable";
+          }
         } else {
-          // Surface a clear error if blob storage isn't configured
-          imageErrorCode = imageErrorCode ?? "storage_unavailable";
-          reelErrorCode = reelErrorCode ?? "storage_unavailable";
+          const buffer = Buffer.from(arrayBuffer);
+          const uploadsDir = path.join(process.cwd(), "public", "vendor-reels");
+          await fs.mkdir(uploadsDir, { recursive: true });
+
+          const targetPath = `/vendor-reels/${fileName}`;
+          const fileNameOnDisk = targetPath.replace(/^\/+/, "");
+          const fullPath = path.join(process.cwd(), "public", fileNameOnDisk);
+          await fs.writeFile(fullPath, buffer);
+
+          videoUrl = targetPath;
+        }
+
+        if (videoUrl) {
+          // Remove any existing reels for this vendor (only one active reel)
+          await sql`
+            DELETE FROM reels
+            WHERE vendor_id = ${vendorId}
+          `;
+
+          const reelId = randomUUID();
+
+          await sql`
+            INSERT INTO reels (id, vendor_id, created_by_user_id, caption, status, created_at)
+            VALUES (${reelId}, ${vendorId}, ${currentUser.id}, ${reelCaption || null}, 'published', now())
+          `;
+
+          await sql`
+            INSERT INTO reel_media (id, reel_id, video_url)
+            VALUES (${randomUUID()}, ${reelId}, ${videoUrl})
+          `;
+
+          // Fire-and-forget: try to publish this reel to Instagram
+          publishInstagramReel({
+            videoUrl,
+            caption: reelCaption || null,
+          }).catch((error) => {
+            console.error("Instagram Reel publish failed", error);
+          });
+
+          // Optional cleanup of expired reels globally
+          await sql`
+            DELETE FROM reels
+            WHERE created_at < (now() - interval '24 hours')
+          `;
+
+          reelUploaded = true;
         }
       } else {
-        const buffer = Buffer.from(arrayBuffer);
-        const uploadsDir = path.join(process.cwd(), "public", "vendor-reels");
-        await fs.mkdir(uploadsDir, { recursive: true });
-
-        const targetPath = `/vendor-reels/${fileName}`;
-        const fileNameOnDisk = targetPath.replace(/^\/+/, "");
-        const fullPath = path.join(process.cwd(), "public", fileNameOnDisk);
-        await fs.writeFile(fullPath, buffer);
-
-        videoUrl = targetPath;
+        // Invalid reel type or size
+        reelErrorCode = reelErrorCode ?? "invalid_reel";
       }
-
-      if (videoUrl) {
-        // Remove any existing reels for this vendor (only one active reel)
-        await sql`
-          DELETE FROM reels
-          WHERE vendor_id = ${vendorId}
-        `;
-
-        const reelId = randomUUID();
-
-        await sql`
-          INSERT INTO reels (id, vendor_id, created_by_user_id, caption, status, created_at)
-          VALUES (${reelId}, ${vendorId}, ${currentUser.id}, ${reelCaption || null}, 'published', now())
-        `;
-
-        await sql`
-          INSERT INTO reel_media (id, reel_id, video_url)
-          VALUES (${randomUUID()}, ${reelId}, ${videoUrl})
-        `;
-
-        // Fire-and-forget: try to publish this reel to Instagram
-        publishInstagramReel({
-          videoUrl,
-          caption: reelCaption || null,
-        }).catch((error) => {
-          console.error("Instagram Reel publish failed", error);
-        });
-
-        // Optional cleanup of expired reels globally
-        await sql`
-          DELETE FROM reels
-          WHERE created_at < (now() - interval '24 hours')
-        `;
-
-        reelUploaded = true;
-      }
-    } else {
-      // Invalid reel type or size
-      reelErrorCode = reelErrorCode ?? "invalid_reel";
     }
   }
 
@@ -694,6 +732,90 @@ async function signOutVendor() {
   redirect("/");
 }
 
+async function changeVendorTier(formData: FormData) {
+  "use server";
+
+  const currentUser = await getCurrentUser();
+
+  if (!currentUser?.id) {
+    redirect("/login");
+  }
+
+  const requestedTier = normalizeVendorTier(
+    (formData.get("tier") || "").toString().trim(),
+  );
+
+  const vendorResult = await sql`
+    SELECT id, name, subscription_tier
+    FROM vendors
+    WHERE owner_user_id = ${currentUser.id}
+    ORDER BY created_at DESC
+    LIMIT 1
+  `;
+
+  const vendorRow = vendorResult.rows[0] as
+    | {
+        id: string;
+        name: string | null;
+        subscription_tier: string | null;
+      }
+    | undefined;
+
+  if (!vendorRow?.id) {
+    redirect("/vendor/profile?tierStatus=missing_vendor");
+  }
+
+  const currentTier = normalizeVendorTier(vendorRow.subscription_tier);
+
+  if (currentTier === requestedTier) {
+    redirect(`/vendor/profile?tierStatus=no_change&tier=${requestedTier}`);
+  }
+
+  const newStatus = "active";
+  const changedAt = new Date();
+  const endedAt = requestedTier === "starter" ? changedAt : null;
+  const renewalAt = requestedTier === "growth" ? changedAt : null;
+
+  await sql`
+    UPDATE vendors
+    SET
+      subscription_tier = ${requestedTier},
+      subscription_status = ${newStatus},
+      subscription_started_at = COALESCE(subscription_started_at, ${changedAt}),
+      subscription_renewal_at = ${renewalAt},
+      subscription_ended_at = ${endedAt},
+      updated_at = now()
+    WHERE id = ${vendorRow.id}
+  `;
+
+  const eventType =
+    requestedTier === "growth"
+      ? "subscription_upgraded"
+      : "subscription_downgraded";
+  const eventDescription =
+    requestedTier === "growth"
+      ? "Vendor upgraded to Growth tier."
+      : "Vendor downgraded to Starter tier.";
+
+  await sql`
+    INSERT INTO vendor_audit_events (id, vendor_id, user_id, event_type, description)
+    VALUES (${randomUUID()}, ${vendorRow.id}, ${currentUser.id}, ${eventType}, ${eventDescription})
+  `;
+
+  const to = (currentUser as any)?.email as string | undefined;
+
+  if (to) {
+    await sendVendorProfileChangeEmail({
+      to,
+      vendorName: vendorRow.name || null,
+      changes: [eventDescription],
+    });
+  }
+
+  const tierStatus = requestedTier === "growth" ? "upgraded" : "downgraded";
+  redirect(`/vendor/profile?tierStatus=${tierStatus}&tier=${requestedTier}`);
+}
+
 async function addMenuItem(formData: FormData) {
   "use server";
 
@@ -727,7 +849,7 @@ async function addMenuItem(formData: FormData) {
     (formData.get("fromManageMenuModal") || "").toString() === "1";
 
   const vendorResult = await sql`
-    SELECT id
+    SELECT id, subscription_tier
     FROM vendors
     WHERE owner_user_id = ${currentUser.id}
     ORDER BY created_at DESC
@@ -735,9 +857,23 @@ async function addMenuItem(formData: FormData) {
   `;
 
   const vendorId = vendorResult.rows[0]?.id as string | undefined;
+  const vendorTier = normalizeVendorTier(
+    vendorResult.rows[0]?.subscription_tier as string | null | undefined,
+  );
 
   if (!vendorId) {
     redirect("/vendor/profile");
+  }
+
+  if (!canUseVendorFeature(vendorTier, "menu_upload")) {
+    if (!fromManageMenuModal) {
+      redirect("/vendor/profile?menuError=tier_restricted");
+    }
+
+    return {
+      error: "tier_restricted",
+      message: `${getTierDefinition(vendorTier).name} tier does not include menu uploads.`,
+    };
   }
 
   const menuResult = await sql`
@@ -896,7 +1032,10 @@ export default async function VendorProfileManagePage({
     imageError?: string;
     photoError?: string;
     reelError?: string;
+    menuError?: string;
     passwordStatus?: string;
+    tierStatus?: string;
+    tier?: string;
   };
 }) {
   noStore();
@@ -928,6 +1067,9 @@ export default async function VendorProfileManagePage({
       v.id,
       v.name,
       v.description,
+      v.subscription_tier,
+      v.food_type,
+      v.service_style,
       v.cuisine_style,
       v.primary_region,
       v.tagline,
@@ -948,6 +1090,11 @@ export default async function VendorProfileManagePage({
     LIMIT 1
   `;
   const vendor = vendorResult.rows[0] ?? null;
+  const vendorTier = normalizeVendorTier(
+    vendor?.subscription_tier as string | null | undefined,
+  );
+  const tierDefinition = getTierDefinition(vendorTier);
+  const isVerifiedVendor = hasVerifiedVendorBadge(vendorTier);
 
   const vendorId = vendor?.id as string | undefined;
 
@@ -1130,17 +1277,27 @@ export default async function VendorProfileManagePage({
   const photoErrorMessage =
     photoErrorCodeFromQuery === "invalid_photo"
       ? "Photo not uploaded. Please upload JPEG, PNG, WEBP, GIF, or SVG up to 5MB."
-      : photoErrorCodeFromQuery === "storage_unavailable"
-        ? "Photo upload is not available yet in this deployment. Ask your admin to configure Vercel Blob."
-        : null;
+      : photoErrorCodeFromQuery === "photo_limit"
+        ? `Photo limit reached for ${tierDefinition.name} tier (max ${tierDefinition.photoUploadLimit} photos).`
+        : photoErrorCodeFromQuery === "storage_unavailable"
+          ? "Photo upload is not available yet in this deployment. Ask your admin to configure Vercel Blob."
+          : null;
 
   const reelErrorCodeFromQuery = searchParams?.reelError;
   const reelErrorMessage =
     reelErrorCodeFromQuery === "invalid_reel"
       ? "Video not uploaded. Please upload MP4, WebM, or QuickTime (MOV) up to 50MB."
-      : reelErrorCodeFromQuery === "storage_unavailable"
-        ? "Grub Reel upload is not available yet in this deployment. Ask your admin to configure Vercel Blob."
-        : null;
+      : reelErrorCodeFromQuery === "tier_restricted"
+        ? `${tierDefinition.name} tier does not include Grub Reels. Upgrade to Growth to unlock this feature.`
+        : reelErrorCodeFromQuery === "storage_unavailable"
+          ? "Grub Reel upload is not available yet in this deployment. Ask your admin to configure Vercel Blob."
+          : null;
+
+  const menuErrorCode = searchParams?.menuError;
+  const menuErrorMessage =
+    menuErrorCode === "tier_restricted"
+      ? `${tierDefinition.name} tier does not include menu uploads. Upgrade to Growth to unlock this feature.`
+      : null;
 
   const passwordStatus = searchParams?.passwordStatus;
   const passwordMessage =
@@ -1163,6 +1320,20 @@ export default async function VendorProfileManagePage({
                     : null;
   const passwordIsError = !!passwordStatus && passwordStatus !== "success";
 
+  const tierStatus = searchParams?.tierStatus;
+  const tierLabelFromQuery = getTierDefinition(searchParams?.tier).name;
+  const tierMessage =
+    tierStatus === "upgraded"
+      ? `Tier updated: you are now on ${tierLabelFromQuery}.`
+      : tierStatus === "downgraded"
+        ? `Tier updated: you are now on ${tierLabelFromQuery}.`
+        : tierStatus === "no_change"
+          ? `No change made. Your account is already on ${tierLabelFromQuery}.`
+          : tierStatus === "missing_vendor"
+            ? "We couldn't find a vendor account to update."
+            : null;
+  const tierIsError = tierStatus === "missing_vendor";
+
   return (
     <div className="min-h-screen bg-[var(--dr-neutral)] text-[var(--dr-text)]">
       <div className="mx-auto flex min-h-screen max-w-5xl flex-col px-4 pb-10 pt-6 sm:px-6 lg:px-8">
@@ -1178,6 +1349,42 @@ export default async function VendorProfileManagePage({
               Update how your food truck appears to customers across Delicious
               Route.
             </p>
+            <p className="mt-2 inline-flex items-center gap-2 rounded-full border border-[var(--dr-primary)]/30 bg-[var(--dr-primary)]/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--dr-primary)]">
+              Tier: {tierDefinition.name}
+              {isVerifiedVendor && <span>• Verified Vendor</span>}
+            </p>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              {vendorTier === "starter" ? (
+                <form action={changeVendorTier}>
+                  <input type="hidden" name="tier" value="growth" />
+                  <button
+                    type="submit"
+                    className="rounded-full border border-[var(--dr-primary)] bg-[var(--dr-primary)] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-white hover:bg-[var(--dr-accent)]"
+                  >
+                    Upgrade to Growth
+                  </button>
+                </form>
+              ) : (
+                <form action={changeVendorTier}>
+                  <input type="hidden" name="tier" value="starter" />
+                  <button
+                    type="submit"
+                    className="rounded-full border border-[#e0e0e0] bg-white px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#616161] hover:border-[var(--dr-primary)] hover:text-[var(--dr-primary)]"
+                  >
+                    Downgrade to Starter
+                  </button>
+                </form>
+              )}
+            </div>
+            {tierMessage && (
+              <p
+                className={`mt-2 text-xs ${
+                  tierIsError ? "text-red-600" : "text-emerald-700"
+                }`}
+              >
+                {tierMessage}
+              </p>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <Link
@@ -1245,6 +1452,41 @@ export default async function VendorProfileManagePage({
                     defaultValue={vendor?.cuisine_style ?? ""}
                     className="w-full rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)] px-3 py-2 text-sm text-[var(--dr-text)] placeholder:text-[#bdbdbd] focus:border-[var(--dr-primary)] focus:outline-none"
                   />
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <label
+                      htmlFor="foodType"
+                      className="text-xs font-medium uppercase tracking-[0.18em] text-[#757575]"
+                    >
+                      Food type
+                    </label>
+                    <input
+                      id="foodType"
+                      name="foodType"
+                      type="text"
+                      placeholder="e.g. Street tacos"
+                      defaultValue={(vendor as any)?.food_type ?? ""}
+                      className="w-full rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)] px-3 py-2 text-sm text-[var(--dr-text)] placeholder:text-[#bdbdbd] focus:border-[var(--dr-primary)] focus:outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label
+                      htmlFor="serviceStyle"
+                      className="text-xs font-medium uppercase tracking-[0.18em] text-[#757575]"
+                    >
+                      Service style
+                    </label>
+                    <input
+                      id="serviceStyle"
+                      name="serviceStyle"
+                      type="text"
+                      placeholder="e.g. Counter pickup"
+                      defaultValue={(vendor as any)?.service_style ?? ""}
+                      className="w-full rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)] px-3 py-2 text-sm text-[var(--dr-text)] placeholder:text-[#bdbdbd] focus:border-[var(--dr-primary)] focus:outline-none"
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-1">
@@ -1469,6 +1711,7 @@ export default async function VendorProfileManagePage({
                   <p className="text-[0.7rem] text-[#9e9e9e]">
                     You can select multiple images at once. Supported types:
                     JPEG, PNG, WEBP, GIF, SVG up to 5MB each.
+                    {` ${tierDefinition.name} tier limit: ${tierDefinition.photoUploadLimit} photos total.`}
                   </p>
                   {photoErrorMessage && (
                     <p className="text-[0.7rem] text-red-500">
@@ -1522,7 +1765,14 @@ export default async function VendorProfileManagePage({
               items={menuItems}
               addMenuItem={addMenuItem}
               deleteMenuItem={deleteMenuItem}
+              canManageMenu={canUseVendorFeature(vendorTier, "menu_upload")}
+              tierName={tierDefinition.name}
             />
+            {menuErrorMessage && (
+              <div className="rounded-2xl border border-[#ffcdd2] bg-[#ffebee] px-3 py-2 text-[11px] text-[#c62828]">
+                {menuErrorMessage}
+              </div>
+            )}
             <div className="rounded-3xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
               <h2 className="text-sm font-semibold text-[var(--dr-text)]">
                 Hours of operation

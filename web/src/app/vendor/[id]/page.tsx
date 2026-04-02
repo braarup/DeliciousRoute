@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { FavoriteButton } from "@/components/FavoriteButton";
 import { VendorMenuSection } from "@/components/VendorMenuSection";
 import { slugifyVendorName } from "@/lib/slug";
+import { hasVerifiedVendorBadge } from "@/lib/vendorSubscription";
 
 interface PageProps {
   // In this project, params is passed as a Promise (Next 16 PPR pattern)
@@ -14,6 +15,7 @@ interface PageProps {
 type DbVendor = {
   id: string;
   name: string | null;
+  subscription_tier: string | null;
   description: string | null;
   cuisine_style: string | null;
   primary_region: string | null;
@@ -75,14 +77,14 @@ export default async function PublicVendorPage({ params }: PageProps) {
   const currentUser = await getCurrentUser();
   const slugStr = String(slug ?? "");
   const shortIdFromSlug = slugStr.includes("-")
-    ? slugStr.split("-").pop() ?? ""
+    ? (slugStr.split("-").pop() ?? "")
     : "";
 
   let vendor: DbVendor | undefined;
 
   if (shortIdFromSlug && shortIdFromSlug.length <= 16) {
     const byIdResult = await sql<DbVendor>`
-      SELECT id, name, description, cuisine_style, primary_region, tagline, hours_text, website_url, instagram_url, facebook_url, tiktok_url, x_url, profile_image_path, header_image_path
+      SELECT id, name, subscription_tier, description, cuisine_style, primary_region, tagline, hours_text, website_url, instagram_url, facebook_url, tiktok_url, x_url, profile_image_path, header_image_path
       FROM vendors
       WHERE LEFT(id::text, 8) = ${shortIdFromSlug}
       LIMIT 1
@@ -92,11 +94,13 @@ export default async function PublicVendorPage({ params }: PageProps) {
 
   if (!vendor) {
     const allResult = await sql<DbVendor>`
-      SELECT id, name, description, cuisine_style, primary_region, tagline, hours_text, website_url, instagram_url, facebook_url, tiktok_url, x_url, profile_image_path, header_image_path
+      SELECT id, name, subscription_tier, description, cuisine_style, primary_region, tagline, hours_text, website_url, instagram_url, facebook_url, tiktok_url, x_url, profile_image_path, header_image_path
       FROM vendors
     `;
 
-    vendor = allResult.rows.find((row) => slugifyVendorName(row.name) === slugStr);
+    vendor = allResult.rows.find(
+      (row) => slugifyVendorName(row.name) === slugStr,
+    );
   }
 
   if (!vendor) {
@@ -128,7 +132,8 @@ export default async function PublicVendorPage({ params }: PageProps) {
                 This food truck isn&apos;t available.
               </p>
               <p className="mt-2 text-xs">
-                The link you followed may be out of date, or this vendor hasn&apos;t completed their public profile yet.
+                The link you followed may be out of date, or this vendor
+                hasn&apos;t completed their public profile yet.
               </p>
               <div className="mt-4 flex justify-center gap-2 text-xs font-semibold uppercase tracking-[0.18em]">
                 <Link
@@ -288,7 +293,7 @@ export default async function PublicVendorPage({ params }: PageProps) {
   };
 
   const isOpenNow = (
-    hours: Record<number, { open_time: any; close_time: any }>
+    hours: Record<number, { open_time: any; close_time: any }>,
   ): boolean => {
     const { day, current } = getLocalDayAndTime();
     const entry = hours[day];
@@ -334,10 +339,13 @@ export default async function PublicVendorPage({ params }: PageProps) {
   const latNumber = location?.lat != null ? Number(location.lat) : null;
   const lngNumber = location?.lng != null ? Number(location.lng) : null;
   const hasCoords =
-    latNumber != null && !Number.isNaN(latNumber) &&
-    lngNumber != null && !Number.isNaN(lngNumber);
+    latNumber != null &&
+    !Number.isNaN(latNumber) &&
+    lngNumber != null &&
+    !Number.isNaN(lngNumber);
 
   const showLiveGps = openNow && hasCoords;
+  const isVerifiedVendor = hasVerifiedVendorBadge(vendor.subscription_tier);
 
   const mapsUrl = showLiveGps
     ? `https://www.google.com/maps/dir/?api=1&destination=${latNumber},${lngNumber}`
@@ -370,8 +378,15 @@ export default async function PublicVendorPage({ params }: PageProps) {
                 <h1 className="text-lg font-semibold leading-snug text-[var(--dr-text)] sm:text-xl">
                   {vendor.name || "Untitled venue"}
                 </h1>
+                {isVerifiedVendor && (
+                  <p className="mt-1 inline-flex items-center rounded-full bg-[var(--dr-primary)]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--dr-primary)]">
+                    Verified Vendor
+                  </p>
+                )}
                 {vendor.primary_region && (
-                  <p className="text-xs text-[#424242]">{vendor.primary_region}</p>
+                  <p className="text-xs text-[#424242]">
+                    {vendor.primary_region}
+                  </p>
                 )}
                 <div className="absolute bottom-3 right-3 z-10 sm:bottom-3 sm:left-1/2 sm:right-auto sm:-translate-x-1/2">
                   <VendorMenuSection items={menuItems} />
@@ -543,13 +558,20 @@ export default async function PublicVendorPage({ params }: PageProps) {
                     <h2 className="text-base font-semibold text-[var(--dr-text)] sm:text-lg">
                       {vendor.name || "Untitled venue"}
                     </h2>
+                    {isVerifiedVendor && (
+                      <p className="mt-1 inline-flex items-center rounded-full bg-[var(--dr-primary)]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--dr-primary)]">
+                        Verified Vendor
+                      </p>
+                    )}
                     {vendor.cuisine_style && (
                       <p className="mt-1 text-xs font-medium text-[var(--dr-accent)]">
                         {vendor.cuisine_style}
                       </p>
                     )}
                     {vendor.tagline && (
-                      <p className="mt-2 text-xs text-[#616161]">{vendor.tagline}</p>
+                      <p className="mt-2 text-xs text-[#616161]">
+                        {vendor.tagline}
+                      </p>
                     )}
                   </div>
                   <FavoriteButton
@@ -558,7 +580,6 @@ export default async function PublicVendorPage({ params }: PageProps) {
                     initialFavorited={isFavoritedByCurrentUser}
                   />
                 </div>
-
               </div>
 
               {todayEntry && (
@@ -571,7 +592,8 @@ export default async function PublicVendorPage({ params }: PageProps) {
                   />
                   <span>{openNow ? "Open now" : "Closed"}</span>
                   <span>
-                    · Today: {to12h(normalizeTime(todayEntry.open_time))} – {to12h(normalizeTime(todayEntry.close_time))}
+                    · Today: {to12h(normalizeTime(todayEntry.open_time))} –{" "}
+                    {to12h(normalizeTime(todayEntry.close_time))}
                   </span>
                 </p>
               )}
@@ -653,11 +675,17 @@ export default async function PublicVendorPage({ params }: PageProps) {
               {location ? (
                 <div className="mt-2 text-xs text-[#616161]">
                   {location.label && (
-                    <p className="font-medium text-[var(--dr-text)]">{location.label}</p>
+                    <p className="font-medium text-[var(--dr-text)]">
+                      {location.label}
+                    </p>
                   )}
-                  {(location.address_text || location.city || location.state) && (
+                  {(location.address_text ||
+                    location.city ||
+                    location.state) && (
                     <p className="mt-1">
-                      {location.address_text && <span>{location.address_text}</span>}
+                      {location.address_text && (
+                        <span>{location.address_text}</span>
+                      )}
                       {location.city && (
                         <span>
                           {location.address_text ? ", " : ""}
@@ -670,7 +698,9 @@ export default async function PublicVendorPage({ params }: PageProps) {
                           {location.state}
                         </span>
                       )}
-                      {location.postal_code && <span> {location.postal_code}</span>}
+                      {location.postal_code && (
+                        <span> {location.postal_code}</span>
+                      )}
                     </p>
                   )}
                   {showLiveGps && latNumber != null && lngNumber != null && (
@@ -693,7 +723,8 @@ export default async function PublicVendorPage({ params }: PageProps) {
                 </div>
               ) : (
                 <p className="mt-2 text-xs text-[#757575]">
-                  This vendor hasn&apos;t set a default location yet. Once a primary location is saved, it will appear here.
+                  This vendor hasn&apos;t set a default location yet. Once a
+                  primary location is saved, it will appear here.
                 </p>
               )}
             </div>
@@ -723,7 +754,9 @@ export default async function PublicVendorPage({ params }: PageProps) {
                     />
                   </div>
                   {activeReel.caption && (
-                    <p className="text-xs text-[#424242]">{activeReel.caption}</p>
+                    <p className="text-xs text-[#424242]">
+                      {activeReel.caption}
+                    </p>
                   )}
                 </div>
               ) : (

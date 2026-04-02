@@ -2,10 +2,12 @@ import Link from "next/link";
 import { sql } from "@vercel/postgres";
 import { unstable_noStore as noStore } from "next/cache";
 import { slugifyVendorName } from "@/lib/slug";
+import { hasVerifiedVendorBadge } from "@/lib/vendorSubscription";
 
 type DbVendorRow = {
   id: string;
   name: string | null;
+  subscription_tier: string | null;
   cuisine_style: string | null;
   primary_region: string | null;
   tagline: string | null;
@@ -20,6 +22,7 @@ type VendorCard = {
   id: string;
   slug: string;
   name: string | null;
+  isVerifiedVendor: boolean;
   cuisine_style: string | null;
   primary_region: string | null;
   tagline: string | null;
@@ -97,7 +100,7 @@ function formatTimeRange(open: string, close: string): string {
 
 function buildConsolidatedHours(
   hoursByDay: Record<number, { open: string; close: string }>,
-  fallback: string | null
+  fallback: string | null,
 ): string | null {
   const entries: { day: number; open: string; close: string }[] = [];
 
@@ -125,7 +128,12 @@ function buildConsolidatedHours(
     ) {
       last.end = entry.day;
     } else {
-      groups.push({ start: entry.day, end: entry.day, open: entry.open, close: entry.close });
+      groups.push({
+        start: entry.day,
+        end: entry.day,
+        open: entry.open,
+        close: entry.close,
+      });
     }
   }
 
@@ -145,7 +153,9 @@ function buildConsolidatedHours(
   return parts.join(" · ");
 }
 
-function isOpenNow(hoursByDay: Record<number, { open: string; close: string }>): boolean {
+function isOpenNow(
+  hoursByDay: Record<number, { open: string; close: string }>,
+): boolean {
   const { day, current } = getLocalDayAndTime();
 
   const info = hoursByDay[day];
@@ -169,6 +179,7 @@ export default async function VendorsListPage() {
     SELECT
       v.id,
       v.name,
+      v.subscription_tier,
       v.cuisine_style,
       v.primary_region,
       v.tagline,
@@ -185,7 +196,10 @@ export default async function VendorsListPage() {
     ORDER BY v.name, lh.day_of_week
   `;
 
-  const vendorMap = new Map<string, VendorCard & { hoursByDay: Record<number, { open: string; close: string }> }>();
+  const vendorMap = new Map<
+    string,
+    VendorCard & { hoursByDay: Record<number, { open: string; close: string }> }
+  >();
 
   for (const row of result.rows) {
     let entry = vendorMap.get(row.id);
@@ -194,6 +208,7 @@ export default async function VendorsListPage() {
         id: row.id,
         slug: slugifyVendorName(row.name),
         name: row.name,
+        isVerifiedVendor: hasVerifiedVendorBadge(row.subscription_tier),
         cuisine_style: row.cuisine_style,
         primary_region: row.primary_region,
         tagline: row.tagline,
@@ -222,7 +237,11 @@ export default async function VendorsListPage() {
     const { hoursByDay, ...rest } = value;
     const consolidated = buildConsolidatedHours(hoursByDay, rest.hours_text);
     const openNow = isOpenNow(hoursByDay);
-    vendors.push({ ...rest, consolidated_hours: consolidated, isOpenNow: openNow });
+    vendors.push({
+      ...rest,
+      consolidated_hours: consolidated,
+      isOpenNow: openNow,
+    });
   }
 
   return (
@@ -236,7 +255,8 @@ export default async function VendorsListPage() {
             Food venues near you
           </h1>
           <p className="mt-1 text-sm text-[#616161]">
-            This list shows vendors created through the Delicious Route signup flow.
+            This list shows vendors created through the Delicious Route signup
+            flow.
           </p>
         </header>
 
@@ -272,6 +292,11 @@ export default async function VendorsListPage() {
                     <h2 className="text-base font-semibold text-[var(--dr-text)]">
                       {vendor.name || "Untitled venue"}
                     </h2>
+                    {vendor.isVerifiedVendor && (
+                      <p className="mt-1 inline-flex items-center rounded-full bg-[var(--dr-primary)]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--dr-primary)]">
+                        Verified Vendor
+                      </p>
+                    )}
 
                     {vendor.cuisine_style && (
                       <p className="mt-1 text-xs text-[var(--dr-accent)]">
@@ -293,7 +318,8 @@ export default async function VendorsListPage() {
 
                     {vendor.consolidated_hours && (
                       <p className="mt-2 text-[11px] text-[#9e9e9e]">
-                        <span className="font-semibold">Hours:</span> {vendor.consolidated_hours}
+                        <span className="font-semibold">Hours:</span>{" "}
+                        {vendor.consolidated_hours}
                       </p>
                     )}
                   </div>

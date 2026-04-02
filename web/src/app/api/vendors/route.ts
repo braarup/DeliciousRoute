@@ -2,10 +2,12 @@ import { NextResponse } from "next/server";
 import { sql } from "@vercel/postgres";
 import { getCurrentUser } from "@/lib/auth";
 import { slugifyVendorName } from "@/lib/slug";
+import { hasVerifiedVendorBadge } from "@/lib/vendorSubscription";
 
 type DbVendorRow = {
   id: string;
   name: string | null;
+  subscription_tier: string | null;
   cuisine_style: string | null;
   primary_region: string | null;
   tagline: string | null;
@@ -84,7 +86,7 @@ function formatTimeRange(open: string, close: string): string {
 
 function buildConsolidatedHours(
   hoursByDay: Record<number, { open: string; close: string }>,
-  fallback: string | null
+  fallback: string | null,
 ): string | null {
   const entries: { day: number; open: string; close: string }[] = [];
 
@@ -112,7 +114,12 @@ function buildConsolidatedHours(
     ) {
       last.end = entry.day;
     } else {
-      groups.push({ start: entry.day, end: entry.day, open: entry.open, close: entry.close });
+      groups.push({
+        start: entry.day,
+        end: entry.day,
+        open: entry.open,
+        close: entry.close,
+      });
     }
   }
 
@@ -132,7 +139,9 @@ function buildConsolidatedHours(
   return parts.join(" · ");
 }
 
-function isOpenNow(hoursByDay: Record<number, { open: string; close: string }>): boolean {
+function isOpenNow(
+  hoursByDay: Record<number, { open: string; close: string }>,
+): boolean {
   const { day, current } = getLocalDayAndTime();
 
   const info = hoursByDay[day];
@@ -155,6 +164,7 @@ export async function GET() {
     SELECT
       v.id,
       v.name,
+      v.subscription_tier,
       v.cuisine_style,
       v.primary_region,
       v.tagline,
@@ -200,6 +210,7 @@ export async function GET() {
     {
       id: string;
       name: string | null;
+      subscription_tier: string | null;
       cuisine_style: string | null;
       primary_region: string | null;
       tagline: string | null;
@@ -215,6 +226,7 @@ export async function GET() {
       entry = {
         id: row.id,
         name: row.name,
+        subscription_tier: row.subscription_tier,
         cuisine_style: row.cuisine_style,
         primary_region: row.primary_region,
         tagline: row.tagline,
@@ -247,6 +259,7 @@ export async function GET() {
       tagline: row.tagline,
       todayHours: consolidated ?? "",
       isOpenNow: openNow,
+      isVerifiedVendor: hasVerifiedVendorBadge(row.subscription_tier),
       profileImagePath: row.profile_image_path ?? null,
       favoriteCount: favoriteCounts.get(row.id) ?? 0,
       isFavorited: userFavoriteVendorIds.has(row.id),

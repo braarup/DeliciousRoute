@@ -10,6 +10,7 @@ type VendorsTabVendor = {
   id: string;
   slug: string;
   name: string;
+  isVerifiedVendor?: boolean;
   cuisine: string;
   city: string;
   tagline?: string | null;
@@ -198,8 +199,8 @@ export default function Home() {
               </h1>
               <p className="mt-3 text-sm leading-relaxed text-[#424242]">
                 Delicious Route connects hungry explorers with roaming kitchens.
-                Search by truck, cuisine, street eats, or city, then get
-                instant directions to live GPS locations, pop-ups, and more.
+                Search by truck, cuisine, street eats, or city, then get instant
+                directions to live GPS locations, pop-ups, and more.
               </p>
               <div className="mt-5 flex flex-wrap gap-3 text-xs font-semibold uppercase tracking-[0.16em]">
                 <a
@@ -240,7 +241,8 @@ export default function Home() {
         <footer className="mt-6 border-t border-[#e0e0e0] pt-3 text-xs text-[#757575]">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p>
-              © 2026 Delicious Route. Built for modern street food culture and more.
+              © 2026 Delicious Route. Built for modern street food culture and
+              more.
             </p>
             <nav className="flex flex-wrap items-center gap-3 text-[11px]">
               <Link href="/terms" className="hover:text-[var(--dr-primary)]">
@@ -251,7 +253,10 @@ export default function Home() {
                 Privacy Policy
               </Link>
               <span aria-hidden>•</span>
-              <Link href="/disclaimer" className="hover:text-[var(--dr-primary)]">
+              <Link
+                href="/disclaimer"
+                className="hover:text-[var(--dr-primary)]"
+              >
                 Disclaimer
               </Link>
               <span aria-hidden>•</span>
@@ -299,7 +304,11 @@ type VendorsTabProps = {
 
 function VendorsTab({ search, onSearchChange, vendors }: VendorsTabProps) {
   return (
-    <section id="vendors" aria-label="Nearby food trucks" className="flex flex-col gap-3">
+    <section
+      id="vendors"
+      aria-label="Nearby food trucks"
+      className="flex flex-col gap-3"
+    >
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-200">
@@ -347,6 +356,11 @@ function VendorsTab({ search, onSearchChange, vendors }: VendorsTabProps) {
                     <h3 className="text-sm font-semibold text-slate-50">
                       {vendor.name}
                     </h3>
+                    {vendor.isVerifiedVendor && (
+                      <p className="mt-0.5 inline-flex items-center rounded-full bg-amber-300/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-amber-200 ring-1 ring-amber-300/30">
+                        Verified Vendor
+                      </p>
+                    )}
                     <p className="text-xs text-amber-200">{vendor.cuisine}</p>
                   </div>
                 </div>
@@ -419,13 +433,17 @@ function GrubReelsTab() {
               vendorId: String(r.vendorId),
               vendorSlug: String(r.vendorSlug ?? r.vendorId),
               caption: r.caption ?? null,
-              createdAt: typeof r.createdAt === "string" ? r.createdAt : new Date(r.createdAt).toISOString(),
+              createdAt:
+                typeof r.createdAt === "string"
+                  ? r.createdAt
+                  : new Date(r.createdAt).toISOString(),
               videoUrl: String(r.videoUrl),
               vendorName: r.vendorName ?? "",
               city: r.city ?? "",
-              favoriteCount: typeof r.favoriteCount === "number" ? r.favoriteCount : 0,
+              favoriteCount:
+                typeof r.favoriteCount === "number" ? r.favoriteCount : 0,
               isFavorited: !!r.isFavorited,
-            }))
+            })),
           );
         }
       } catch (err) {
@@ -481,7 +499,8 @@ function GrubReelsTab() {
               <div className="flex flex-1 flex-col justify-between px-3 py-2">
                 <div>
                   <h3 className="line-clamp-2 text-[11px] font-semibold text-[var(--dr-text)]">
-                    {reel.caption || `Grub Reel from ${reel.vendorName || "this truck"}`}
+                    {reel.caption ||
+                      `Grub Reel from ${reel.vendorName || "this truck"}`}
                   </h3>
                   <p className="mt-1 text-[10px] text-[#616161]">
                     {reel.vendorName}
@@ -562,7 +581,9 @@ function EventsTab() {
             className="flex items-center justify-between gap-3 rounded-2xl border border-[#e0e0e0] bg-white px-3 py-2.5 text-xs shadow-sm"
           >
             <div>
-              <h3 className="font-semibold text-[var(--dr-text)]">{event.name}</h3>
+              <h3 className="font-semibold text-[var(--dr-text)]">
+                {event.name}
+              </h3>
               <p className="text-[#616161]">
                 {event.city}
                 <span className="mx-1">•</span>
@@ -579,7 +600,3 @@ function EventsTab() {
     </section>
   );
 }
-
-
-
-
