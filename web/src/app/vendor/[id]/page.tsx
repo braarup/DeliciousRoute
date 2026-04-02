@@ -593,7 +593,10 @@ export default async function PublicVendorPage({ params }: PageProps) {
             <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-amber-700">
               DR Admin — Verification
             </p>
-            <form action={setVendorVerified} className="mt-2 flex flex-wrap items-center gap-3">
+            <form
+              action={setVendorVerified}
+              className="mt-2 flex flex-wrap items-center gap-3"
+            >
               <input type="hidden" name="vendorId" value={vendor.id} />
               <input type="hidden" name="returnSlug" value={slugStr} />
               <label className="flex cursor-pointer items-center gap-2 text-sm text-amber-900">
