@@ -128,6 +128,11 @@ async function updateVendorProfile(formData: FormData) {
   const foodType = (formData.get("foodType") || "").toString().trim();
   const serviceStyle = (formData.get("serviceStyle") || "").toString().trim();
   const tagline = (formData.get("tagline") || "").toString().trim();
+  const sidewalkVendingPermit = (formData.get("sidewalkVendingPermit") || "")
+    .toString()
+    .trim();
+  const sellersPermit = (formData.get("sellersPermit") || "").toString().trim();
+  const healthPermit = (formData.get("healthPermit") || "").toString().trim();
   const website = (formData.get("website") || "").toString().trim();
   const facebook = (formData.get("facebook") || "").toString().trim();
   const instagram = (formData.get("instagram") || "").toString().trim();
@@ -168,6 +173,9 @@ async function updateVendorProfile(formData: FormData) {
       cuisine_style,
       primary_region,
       tagline,
+      sidewalk_vending_permit,
+      sellers_permit,
+      health_permit,
       website_url,
       instagram_url,
       facebook_url,
@@ -191,6 +199,9 @@ async function updateVendorProfile(formData: FormData) {
         cuisine_style: string | null;
         primary_region: string | null;
         tagline: string | null;
+        sidewalk_vending_permit: string | null;
+        sellers_permit: string | null;
+        health_permit: string | null;
         website_url: string | null;
         instagram_url: string | null;
         facebook_url: string | null;
@@ -217,6 +228,7 @@ async function updateVendorProfile(formData: FormData) {
   let reelErrorCode: string | null = null;
 
   let basicInfoChanged = false;
+  let permitsChanged = false;
   let linksChanged = false;
   let locationChanged = false;
   let hoursChanged = false;
@@ -358,6 +370,15 @@ async function updateVendorProfile(formData: FormData) {
   }
 
   if (
+    normalize(sidewalkVendingPermit) !==
+      normalize(vendorRow?.sidewalk_vending_permit) ||
+    normalize(sellersPermit) !== normalize(vendorRow?.sellers_permit) ||
+    normalize(healthPermit) !== normalize(vendorRow?.health_permit)
+  ) {
+    permitsChanged = true;
+  }
+
+  if (
     normalize(website) !== normalize(vendorRow?.website_url) ||
     normalize(instagram) !== normalize(vendorRow?.instagram_url) ||
     normalize(facebook) !== normalize(vendorRow?.facebook_url) ||
@@ -377,6 +398,9 @@ async function updateVendorProfile(formData: FormData) {
       cuisine_style = ${cuisine || null},
       primary_region = ${city || null},
       tagline = ${tagline || null},
+      sidewalk_vending_permit = ${sidewalkVendingPermit || null},
+      sellers_permit = ${sellersPermit || null},
+      health_permit = ${healthPermit || null},
       website_url = ${website || null},
       instagram_url = ${instagram || null},
       facebook_url = ${facebook || null},
@@ -663,6 +687,12 @@ async function updateVendorProfile(formData: FormData) {
       "Updated basic truck profile details (name, cuisine, city, tagline, description).";
     changes.push(description);
     auditEvents.push({ event_type: "basic_info_updated", description });
+  }
+  if (permitsChanged) {
+    const description =
+      "Updated permit details (sidewalk vending, seller's permit, and health permit).";
+    changes.push(description);
+    auditEvents.push({ event_type: "permits_updated", description });
   }
   if (linksChanged) {
     const description = "Updated website and/or social links.";
@@ -1158,6 +1188,9 @@ export default async function VendorProfileManagePage({
       v.cuisine_style,
       v.primary_region,
       v.tagline,
+      v.sidewalk_vending_permit,
+      v.sellers_permit,
+      v.health_permit,
       v.website_url,
       v.instagram_url,
       v.facebook_url,
@@ -1629,6 +1662,68 @@ export default async function VendorProfileManagePage({
                     placeholder="Tell customers what makes your truck special. Menu highlights, sourcing, or story."
                     defaultValue={vendor?.description ?? ""}
                     className="w-full resize-none rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)] px-3 py-2 text-sm text-[var(--dr-text)] placeholder:text-[#bdbdbd] focus:border-[var(--dr-primary)] focus:outline-none"
+                  />
+                </div>
+
+                <div className="space-y-1 pt-1">
+                  <p className="text-[0.7rem] font-medium uppercase tracking-[0.18em] text-[#757575]">
+                    Permits (DR internal verification)
+                  </p>
+                  <p className="text-[0.7rem] text-[#9e9e9e]">
+                    These are not shown on your public vendor card.
+                  </p>
+                </div>
+
+                <div className="space-y-1">
+                  <label
+                    htmlFor="sidewalkVendingPermit"
+                    className="text-xs font-medium uppercase tracking-[0.18em] text-[#757575]"
+                  >
+                    Sidewalk Vending Permit
+                  </label>
+                  <input
+                    id="sidewalkVendingPermit"
+                    name="sidewalkVendingPermit"
+                    type="text"
+                    placeholder="Permit number or reference"
+                    defaultValue={
+                      (vendor as any)?.sidewalk_vending_permit ?? ""
+                    }
+                    className="w-full rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)] px-3 py-2 text-sm text-[var(--dr-text)] placeholder:text-[#bdbdbd] focus:border-[var(--dr-primary)] focus:outline-none"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label
+                    htmlFor="sellersPermit"
+                    className="text-xs font-medium uppercase tracking-[0.18em] text-[#757575]"
+                  >
+                    Seller&apos;s Permit
+                  </label>
+                  <input
+                    id="sellersPermit"
+                    name="sellersPermit"
+                    type="text"
+                    placeholder="Permit number or reference"
+                    defaultValue={(vendor as any)?.sellers_permit ?? ""}
+                    className="w-full rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)] px-3 py-2 text-sm text-[var(--dr-text)] placeholder:text-[#bdbdbd] focus:border-[var(--dr-primary)] focus:outline-none"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label
+                    htmlFor="healthPermit"
+                    className="text-xs font-medium uppercase tracking-[0.18em] text-[#757575]"
+                  >
+                    Health Permit
+                  </label>
+                  <input
+                    id="healthPermit"
+                    name="healthPermit"
+                    type="text"
+                    placeholder="Permit number or reference"
+                    defaultValue={(vendor as any)?.health_permit ?? ""}
+                    className="w-full rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)] px-3 py-2 text-sm text-[var(--dr-text)] placeholder:text-[#bdbdbd] focus:border-[var(--dr-primary)] focus:outline-none"
                   />
                 </div>
 
