@@ -22,6 +22,7 @@ import {
   recordPasswordInHistory,
 } from "@/lib/passwordHistory";
 import { PasswordPolicyDialog } from "@/components/PasswordPolicyDialog";
+import { TierDowngradeButton } from "@/components/TierDowngradeButton";
 import {
   canUseVendorFeature,
   getPhotoUploadLimit,
@@ -805,6 +806,29 @@ async function changeVendorTier(formData: FormData) {
   const endedAtIso = requestedTier === "starter" ? changedAtIso : null;
   const renewalAtIso = requestedTier === "growth" ? changedAtIso : null;
 
+  // When downgrading to Starter, remove Growth-exclusive content
+  if (requestedTier === "starter") {
+    // Remove all Grub Reels (reel_media and reel_likes cascade via FK)
+    await sql`DELETE FROM reels WHERE vendor_id = ${vendorRow.id}`;
+
+    // Remove all menus and their items (menu_items cascade via FK)
+    await sql`DELETE FROM menus WHERE vendor_id = ${vendorRow.id}`;
+
+    // Remove photos beyond the Starter photo limit (keep the oldest 5)
+    await sql`
+      DELETE FROM vendor_media
+      WHERE vendor_id = ${vendorRow.id}
+        AND media_type = 'photo'
+        AND id NOT IN (
+          SELECT id FROM vendor_media
+          WHERE vendor_id = ${vendorRow.id}
+            AND media_type = 'photo'
+          ORDER BY sort_order NULLS LAST, created_at
+          LIMIT 5
+        )
+    `;
+  }
+
   await sql`
     UPDATE vendors
     SET
@@ -1444,7 +1468,7 @@ export default async function VendorProfileManagePage({
     tierStatus === "upgraded"
       ? `Tier updated: you are now on ${tierLabelFromQuery}.`
       : tierStatus === "downgraded"
-        ? `Tier updated: you are now on ${tierLabelFromQuery}.`
+        ? `Downgraded to ${tierLabelFromQuery}. Growth-tier content (Grub Reels, menu items, and excess photos) has been removed.`
         : tierStatus === "no_change"
           ? `No change made. Your account is already on ${tierLabelFromQuery}.`
           : tierStatus === "missing_vendor"
@@ -1490,15 +1514,12 @@ export default async function VendorProfileManagePage({
                   </button>
                 </form>
               ) : (
-                <form action={changeVendorTier}>
-                  <input type="hidden" name="tier" value="starter" />
-                  <button
-                    type="submit"
-                    className="rounded-full border border-[#e0e0e0] bg-white px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#616161] hover:border-[var(--dr-primary)] hover:text-[var(--dr-primary)]"
-                  >
-                    Downgrade to Starter
-                  </button>
-                </form>
+                <TierDowngradeButton
+                  action={changeVendorTier}
+                  photoCount={photos.length}
+                  starterPhotoLimit={5}
+                  hasMenu={menuItems.length > 0}
+                />
               )}
             </div>
             {tierMessage && (
