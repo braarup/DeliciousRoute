@@ -7,10 +7,12 @@ export default function RequestResetPage() {
   const [status, setStatus] = useState<
     "idle" | "submitting" | "success" | "error"
   >("idle");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setStatus("submitting");
+    setErrorMessage(null);
 
     const formData = new FormData(event.currentTarget);
     const email = (formData.get("email") || "").toString().trim();
@@ -23,6 +25,24 @@ export default function RequestResetPage() {
       });
 
       if (!res.ok) {
+        let data: any = {};
+        try {
+          data = await res.json();
+        } catch {
+          data = {};
+        }
+
+        if (data?.error === "email_unavailable") {
+          setErrorMessage(
+            "Password reset email is not configured yet. Please contact support.",
+          );
+        } else if (data?.error === "email_delivery_failed") {
+          setErrorMessage(
+            "We couldn't deliver the reset email right now. Please try again in a few minutes.",
+          );
+        } else {
+          setErrorMessage("Something went wrong. Please try again.");
+        }
         setStatus("error");
         return;
       }
@@ -31,6 +51,7 @@ export default function RequestResetPage() {
     } catch (err) {
       console.error(err);
       setStatus("error");
+      setErrorMessage("Something went wrong. Please try again.");
     }
   }
 
@@ -100,7 +121,7 @@ export default function RequestResetPage() {
 
               {status === "error" ? (
                 <p className="text-xs text-red-600">
-                  Something went wrong. Please try again.
+                  {errorMessage || "Something went wrong. Please try again."}
                 </p>
               ) : null}
 

@@ -1195,6 +1195,7 @@ export default async function VendorProfileManagePage({
   );
 
   const isVendor = roleNames.includes("vendor_admin");
+  const isSuperAdmin = roleNames.includes("super_admin");
 
   if (!isVendor) {
     redirect("/customer/profile");
@@ -1533,6 +1534,14 @@ export default async function VendorProfileManagePage({
             )}
           </div>
           <div className="flex items-center gap-2">
+            {isSuperAdmin && (
+              <Link
+                href="/admin/vendors"
+                className="rounded-full border border-[var(--dr-primary)] bg-[var(--dr-primary)]/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--dr-primary)] hover:bg-[var(--dr-primary)]/20"
+              >
+                Admin Permit Review
+              </Link>
+            )}
             <Link
               href="/"
               className="rounded-full border border-[#e0e0e0] bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#757575] hover:border-[var(--dr-primary)] hover:text-[var(--dr-primary)]"

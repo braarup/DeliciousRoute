@@ -538,30 +538,6 @@ function GrubReelsTab() {
 }
 
 function EventsTab() {
-  const events = [
-    {
-      id: 1,
-      name: "Downtown Street Food Fridays",
-      city: "Austin, TX",
-      date: "Every Friday · 6–10pm",
-      trucks: 14,
-    },
-    {
-      id: 2,
-      name: "Rooftop Lunchtime Rally",
-      city: "Seattle, WA",
-      date: "Wednesdays · 11am–2pm",
-      trucks: 8,
-    },
-    {
-      id: 3,
-      name: "Night Market by the River",
-      city: "Sacramento, CA",
-      date: "First Saturdays · 5–11pm",
-      trucks: 22,
-    },
-  ];
-
   return (
     <section
       aria-label="Upcoming food truck events"
@@ -577,28 +553,14 @@ function EventsTab() {
         </p>
       </div>
 
-      <div className="mt-1 space-y-2">
-        {events.map((event) => (
-          <article
-            key={event.id}
-            className="flex items-center justify-between gap-3 rounded-2xl border border-[#e0e0e0] bg-white px-3 py-2.5 text-xs shadow-sm"
-          >
-            <div>
-              <h3 className="font-semibold text-[var(--dr-text)]">
-                {event.name}
-              </h3>
-              <p className="text-[#616161]">
-                {event.city}
-                <span className="mx-1">•</span>
-                {event.date}
-              </p>
-            </div>
-            <div className="text-right text-[11px] text-[#757575]">
-              <p>{event.trucks} trucks</p>
-              <p className="text-[var(--dr-primary)]">View lineup</p>
-            </div>
-          </article>
-        ))}
+      <div className="mt-1 rounded-2xl border border-[#e0e0e0] bg-white px-4 py-6 text-center shadow-sm">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--dr-primary)]">
+          Coming Soon
+        </p>
+        <p className="mt-2 text-xs text-[#616161]">
+          Event listings will be available soon. Check back for food truck
+          rallies, night markets, and local pop-ups.
+        </p>
       </div>
     </section>
   );
