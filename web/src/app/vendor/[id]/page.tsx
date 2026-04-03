@@ -140,11 +140,6 @@ export default async function PublicVendorPage({ params }: PageProps) {
     );
   }
 
-  const vendorTier = normalizeVendorTier(vendor.subscription_tier);
-  const canShowMenu = canUseVendorFeature(vendorTier, "menu_upload");
-  const canShowReels = canUseVendorFeature(vendorTier, "grub_reels");
-  const publicPhotoLimit = getPhotoUploadLimit(vendorTier);
-
   if (!vendor) {
     return (
       <div className="min-h-screen bg-[var(--dr-neutral)] text-[var(--dr-text)]">
@@ -197,6 +192,11 @@ export default async function PublicVendorPage({ params }: PageProps) {
       </div>
     );
   }
+
+  const vendorTier = normalizeVendorTier(vendor.subscription_tier);
+  const canShowMenu = canUseVendorFeature(vendorTier, "menu_upload");
+  const canShowReels = canUseVendorFeature(vendorTier, "grub_reels");
+  const publicPhotoLimit = getPhotoUploadLimit(vendorTier);
 
   const locationResult = await sql<DbLocation>`
     SELECT label, address_text, city, state, postal_code, lat, lng
