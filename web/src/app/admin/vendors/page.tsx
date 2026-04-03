@@ -59,9 +59,11 @@ async function setVendorVerifiedFromAdmin(formData: FormData) {
       ${vendorId},
       ${currentUser.id},
       ${isVerified ? "verified_by_admin" : "unverified_by_admin"},
-      ${isVerified
-        ? "Vendor marked as Verified by DR admin panel."
-        : "Vendor unmarked as Verified by DR admin panel."}
+      ${
+        isVerified
+          ? "Vendor marked as Verified by DR admin panel."
+          : "Vendor unmarked as Verified by DR admin panel."
+      }
     )
   `;
 
@@ -241,7 +243,9 @@ export default async function AdminVendorsPage() {
                             : "bg-[var(--dr-primary)] hover:bg-[var(--dr-accent)]")
                         }
                       >
-                        {vendor.is_verified ? "Remove Verified Badge" : "Mark as Verified"}
+                        {vendor.is_verified
+                          ? "Remove Verified Badge"
+                          : "Mark as Verified"}
                       </button>
                     </form>
                   </div>

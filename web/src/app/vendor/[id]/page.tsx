@@ -5,6 +5,11 @@ import { getCurrentUser } from "@/lib/auth";
 import { FavoriteButton } from "@/components/FavoriteButton";
 import { VendorMenuSection } from "@/components/VendorMenuSection";
 import { slugifyVendorName } from "@/lib/slug";
+import {
+  canUseVendorFeature,
+  getPhotoUploadLimit,
+  normalizeVendorTier,
+} from "@/lib/vendorSubscription";
 
 interface PageProps {
   // In this project, params is passed as a Promise (Next 16 PPR pattern)
@@ -188,6 +193,11 @@ export default async function PublicVendorPage({ params }: PageProps) {
     );
   }
 
+  const vendorTier = normalizeVendorTier(vendor.subscription_tier);
+  const canShowMenu = canUseVendorFeature(vendorTier, "menu_upload");
+  const canShowReels = canUseVendorFeature(vendorTier, "grub_reels");
+  const publicPhotoLimit = getPhotoUploadLimit(vendorTier);
+
   const locationResult = await sql<DbLocation>`
     SELECT label, address_text, city, state, postal_code, lat, lng
     FROM vendor_locations
@@ -198,18 +208,22 @@ export default async function PublicVendorPage({ params }: PageProps) {
 
   const location = locationResult.rows[0] ?? null;
 
-  const reelsResult = await sql<DbReel>`
-    SELECT r.id, r.caption, rm.video_url, r.created_at
-    FROM reels r
-    JOIN reel_media rm ON rm.reel_id = r.id
-    WHERE r.vendor_id = ${vendor.id}
-      AND r.status = 'published'
-      AND r.created_at > (now() - interval '24 hours')
-    ORDER BY r.created_at DESC
-    LIMIT 1
-  `;
+  let activeReel: DbReel | null = null;
 
-  const activeReel = reelsResult.rows[0] ?? null;
+  if (canShowReels) {
+    const reelsResult = await sql<DbReel>`
+      SELECT r.id, r.caption, rm.video_url, r.created_at
+      FROM reels r
+      JOIN reel_media rm ON rm.reel_id = r.id
+      WHERE r.vendor_id = ${vendor.id}
+        AND r.status = 'published'
+        AND r.created_at > (now() - interval '24 hours')
+      ORDER BY r.created_at DESC
+      LIMIT 1
+    `;
+
+    activeReel = reelsResult.rows[0] ?? null;
+  }
 
   const mediaResult = await sql<DbMedia>`
     SELECT url, media_type, sort_order
@@ -219,27 +233,30 @@ export default async function PublicVendorPage({ params }: PageProps) {
   `;
 
   const photos = mediaResult.rows;
-
-  const menuResult = await sql<{ id: string }>`
-    SELECT id
-    FROM menus
-    WHERE vendor_id = ${vendor.id} AND is_active = true
-    LIMIT 1
-  `;
+  const visiblePhotos = photos.slice(0, publicPhotoLimit);
 
   let menuItems: DbMenuItem[] = [];
 
-  const menuId = menuResult.rows[0]?.id as string | undefined;
-
-  if (menuId) {
-    const itemsResult = await sql<DbMenuItem>`
-      SELECT id, name, description, price_cents, is_gluten_free, is_spicy, is_vegan, is_vegetarian
-      FROM menu_items
-      WHERE menu_id = ${menuId} AND is_available = true
-      ORDER BY created_at
+  if (canShowMenu) {
+    const menuResult = await sql<{ id: string }>`
+      SELECT id
+      FROM menus
+      WHERE vendor_id = ${vendor.id} AND is_active = true
+      LIMIT 1
     `;
 
-    menuItems = itemsResult.rows;
+    const menuId = menuResult.rows[0]?.id as string | undefined;
+
+    if (menuId) {
+      const itemsResult = await sql<DbMenuItem>`
+        SELECT id, name, description, price_cents, is_gluten_free, is_spicy, is_vegan, is_vegetarian
+        FROM menu_items
+        WHERE menu_id = ${menuId} AND is_available = true
+        ORDER BY created_at
+      `;
+
+      menuItems = itemsResult.rows;
+    }
   }
 
   const hoursResult = await sql<DbHours>`
@@ -435,9 +452,11 @@ export default async function PublicVendorPage({ params }: PageProps) {
                     {vendor.primary_region}
                   </p>
                 )}
-                <div className="absolute bottom-3 right-3 z-10 sm:bottom-3 sm:left-1/2 sm:right-auto sm:-translate-x-1/2">
-                  <VendorMenuSection items={menuItems} />
-                </div>
+                {canShowMenu && (
+                  <div className="absolute bottom-3 right-3 z-10 sm:bottom-3 sm:left-1/2 sm:right-auto sm:-translate-x-1/2">
+                    <VendorMenuSection items={menuItems} />
+                  </div>
+                )}
               </div>
             </div>
 
@@ -722,13 +741,13 @@ export default async function PublicVendorPage({ params }: PageProps) {
                 </div>
               )}
 
-              {photos.length > 0 && (
+              {visiblePhotos.length > 0 && (
                 <div className="mt-4">
                   <h3 className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--dr-primary)]/90">
                     Truck photos
                   </h3>
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                    {photos.map((media, index) => (
+                    {visiblePhotos.map((media, index) => (
                       <div
                         key={media.url + index}
                         className="overflow-hidden rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)]"
@@ -810,43 +829,45 @@ export default async function PublicVendorPage({ params }: PageProps) {
               )}
             </div>
 
-            <section
-              aria-label="Vendor Grub Reel"
-              className="rounded-3xl border border-[#e0e0e0] bg-white p-4 text-sm text-[#424242] shadow-sm"
-            >
-              <div className="flex items-center justify-between gap-2">
-                <h3 className="text-sm font-semibold text-[var(--dr-text)]">
-                  Grub Reels
-                </h3>
-                {!activeReel && (
-                  <span className="rounded-full bg-[var(--dr-accent)]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--dr-accent)]">
-                    No active reel
-                  </span>
-                )}
-              </div>
-              {activeReel ? (
-                <div className="mt-2 space-y-2">
-                  <div className="overflow-hidden rounded-2xl bg-black/5">
-                    <video
-                      src={activeReel.video_url}
-                      controls
-                      playsInline
-                      className="h-56 w-full rounded-2xl bg-black object-cover"
-                    />
-                  </div>
-                  {activeReel.caption && (
-                    <p className="text-xs text-[#424242]">
-                      {activeReel.caption}
-                    </p>
+            {canShowReels && (
+              <section
+                aria-label="Vendor Grub Reel"
+                className="rounded-3xl border border-[#e0e0e0] bg-white p-4 text-sm text-[#424242] shadow-sm"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="text-sm font-semibold text-[var(--dr-text)]">
+                    Grub Reels
+                  </h3>
+                  {!activeReel && (
+                    <span className="rounded-full bg-[var(--dr-accent)]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--dr-accent)]">
+                      No active reel
+                    </span>
                   )}
                 </div>
-              ) : (
-                <p className="mt-2 text-xs text-[#616161]">
-                  This vendor hasn&apos;t posted a Grub Reel yet. Check back
-                  later for fresh clips from their truck.
-                </p>
-              )}
-            </section>
+                {activeReel ? (
+                  <div className="mt-2 space-y-2">
+                    <div className="overflow-hidden rounded-2xl bg-black/5">
+                      <video
+                        src={activeReel.video_url}
+                        controls
+                        playsInline
+                        className="h-56 w-full rounded-2xl bg-black object-cover"
+                      />
+                    </div>
+                    {activeReel.caption && (
+                      <p className="text-xs text-[#424242]">
+                        {activeReel.caption}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <p className="mt-2 text-xs text-[#616161]">
+                    This vendor hasn&apos;t posted a Grub Reel yet. Check back
+                    later for fresh clips from their truck.
+                  </p>
+                )}
+              </section>
+            )}
           </section>
         </main>
       </div>
