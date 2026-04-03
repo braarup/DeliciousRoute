@@ -1,12 +1,19 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { sql } from "@vercel/postgres";
-import { sendPasswordResetEmail } from "@/lib/email";
+import { isEmailDeliveryConfigured, sendPasswordResetEmail } from "@/lib/email";
 
 const RESET_TOKEN_TTL_HOURS = 2;
 
 export async function POST(request: Request) {
   try {
+    if (!isEmailDeliveryConfigured()) {
+      console.error(
+        "Forgot-password requested but RESEND_API_KEY is not configured.",
+      );
+      return NextResponse.json({ error: "email_unavailable" }, { status: 503 });
+    }
+
     const body = await request.json().catch(() => ({}));
     const email = (body.email || "").toString().trim().toLowerCase();
 
@@ -31,7 +38,7 @@ export async function POST(request: Request) {
     const tokenId = randomUUID();
 
     const expiresAt = new Date(
-      Date.now() + RESET_TOKEN_TTL_HOURS * 60 * 60 * 1000
+      Date.now() + RESET_TOKEN_TTL_HOURS * 60 * 60 * 1000,
     ).toISOString();
 
     await sql`
@@ -39,7 +46,8 @@ export async function POST(request: Request) {
       VALUES (${tokenId}, ${user.id}, ${token}, ${expiresAt})
     `;
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_BASE_URL || process.env.VERCEL_URL || "";
+    const baseUrl =
+      process.env.NEXT_PUBLIC_APP_BASE_URL || process.env.VERCEL_URL || "";
     const origin = baseUrl
       ? baseUrl.startsWith("http")
         ? baseUrl
@@ -50,7 +58,15 @@ export async function POST(request: Request) {
       ? `${origin}/reset-password/${encodeURIComponent(token)}`
       : `/reset-password/${encodeURIComponent(token)}`;
 
-    await sendPasswordResetEmail({ to: email, resetUrl });
+    try {
+      await sendPasswordResetEmail({ to: email, resetUrl });
+    } catch (sendError) {
+      console.error("Password reset email send failed", sendError);
+      return NextResponse.json(
+        { error: "email_delivery_failed" },
+        { status: 502 },
+      );
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

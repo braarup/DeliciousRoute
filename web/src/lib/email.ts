@@ -6,6 +6,10 @@ const fromAddress = process.env.EMAIL_FROM || defaultFromAddress;
 
 const resend = resendApiKey ? new Resend(resendApiKey) : null;
 
+export function isEmailDeliveryConfigured(): boolean {
+  return !!resend;
+}
+
 export async function sendContactEmails(params: {
   name: string;
   email: string;
@@ -77,22 +81,25 @@ export async function sendPasswordResetEmail(params: {
   resetUrl: string;
 }) {
   if (!resend) {
-    console.warn("RESEND_API_KEY not set; skipping email send. Reset URL:", params.resetUrl);
-    return;
+    throw new Error("email_service_not_configured");
   }
 
-  try {
-    await resend.emails.send({
-      from: fromAddress,
-      to: params.to,
-      subject: "Reset your Delicious Route password",
-      text:
-        "We received a request to reset your Delicious Route password.\n\n" +
-        `You can choose a new password by visiting this link:\n${params.resetUrl}\n\n` +
-        "If you didn't request this, you can ignore this email.",
-    });
-  } catch (error) {
-    console.error("Error sending password reset email", error);
+  const result = await resend.emails.send({
+    from: fromAddress,
+    to: params.to,
+    subject: "Reset your Delicious Route password",
+    text:
+      "We received a request to reset your Delicious Route password.\n\n" +
+      `You can choose a new password by visiting this link:\n${params.resetUrl}\n\n` +
+      "If you didn't request this, you can ignore this email.",
+  });
+
+  if ((result as any)?.error) {
+    const reason =
+      (result as any)?.error?.message ||
+      (result as any)?.error?.name ||
+      "unknown_error";
+    throw new Error(`email_send_failed:${reason}`);
   }
 }
 
@@ -176,7 +183,9 @@ export async function sendVendorProfileChangeEmail(params: {
   changes: string[];
 }) {
   if (!resend) {
-    console.warn("RESEND_API_KEY not set; skipping vendor profile change email.");
+    console.warn(
+      "RESEND_API_KEY not set; skipping vendor profile change email.",
+    );
     return;
   }
 
@@ -199,14 +208,13 @@ export async function sendVendorProfileChangeEmail(params: {
     "https://deliciousroute.com/security";
 
   const changesText = safeChanges.map((c) => `- ${c}`).join("\n");
-  const changesHtml = safeChanges
-    .map((c) => `<li>${c}</li>`)
-    .join("");
+  const changesHtml = safeChanges.map((c) => `<li>${c}</li>`).join("");
 
   const securityParagraphText =
     "If you didn't make these changes, please log into your Delicious Route vendor account and change your password immediately. " +
     "We also recommend reviewing your login activity and active sessions. " +
-    "You can report this incident here: " + securityUrl;
+    "You can report this incident here: " +
+    securityUrl;
 
   const securityParagraphHtml =
     `<p style="margin: 0 0 16px; font-size: 13px; color: #d32f2f;">` +
@@ -252,7 +260,9 @@ export async function sendCustomerProfileChangeEmail(params: {
   changes: string[];
 }) {
   if (!resend) {
-    console.warn("RESEND_API_KEY not set; skipping customer profile change email.");
+    console.warn(
+      "RESEND_API_KEY not set; skipping customer profile change email.",
+    );
     return;
   }
 
@@ -279,7 +289,8 @@ export async function sendCustomerProfileChangeEmail(params: {
   const securityParagraphText =
     "If you didn't make these changes, please log into your Delicious Route account and change your password immediately. " +
     "We also recommend reviewing your login activity and active sessions. " +
-    "You can report this incident here: " + securityUrl;
+    "You can report this incident here: " +
+    securityUrl;
 
   const securityParagraphHtml =
     `<p style="margin: 0 0 16px; font-size: 13px; color: #d32f2f;">` +
@@ -329,7 +340,9 @@ export async function sendSecurityIncidentReportEmail(params: {
   firstNoticedAt?: string | null;
 }) {
   if (!resend) {
-    console.warn("RESEND_API_KEY not set; skipping security incident report email.");
+    console.warn(
+      "RESEND_API_KEY not set; skipping security incident report email.",
+    );
     return;
   }
 
@@ -350,10 +363,17 @@ export async function sendSecurityIncidentReportEmail(params: {
   const category = clean(params.category) || "Unspecified";
   const description = clean(params.description);
 
-  const roleLabel = role === "vendor" ? "Vendor" : role === "customer" ? "Customer" : "Other / Not specified";
+  const roleLabel =
+    role === "vendor"
+      ? "Vendor"
+      : role === "customer"
+        ? "Customer"
+        : "Other / Not specified";
 
   const lines: string[] = [];
-  lines.push("A new security incident was reported from the Delicious Route app.");
+  lines.push(
+    "A new security incident was reported from the Delicious Route app.",
+  );
   lines.push("");
   lines.push(`Category: ${category}`);
   lines.push(`Role: ${roleLabel}`);
@@ -400,8 +420,8 @@ export async function sendPasswordChangedEmail(params: {
     params.role === "vendor"
       ? "vendor account"
       : params.role === "customer"
-      ? "account"
-      : "Delicious Route account";
+        ? "account"
+        : "Delicious Route account";
 
   const appBaseUrl =
     process.env.NEXT_PUBLIC_APP_BASE_URL || "https://deliciousroute.com";
@@ -451,8 +471,8 @@ export async function sendAccountLockedEmail(params: {
     params.role === "vendor"
       ? "vendor account"
       : params.role === "customer"
-      ? "account"
-      : "Delicious Route account";
+        ? "account"
+        : "Delicious Route account";
 
   const appBaseUrl =
     process.env.NEXT_PUBLIC_APP_BASE_URL || "https://deliciousroute.com";
