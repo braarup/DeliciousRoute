@@ -8,6 +8,11 @@ import { sendCustomerWelcomeEmail, sendVendorWelcomeEmail } from "@/lib/email";
 import { validatePasswordComplexity } from "@/lib/passwordPolicy";
 import { recordPasswordInHistory } from "@/lib/passwordHistory";
 import { normalizeVendorTier } from "@/lib/vendorSubscription";
+import {
+  getAppBaseUrl,
+  getStripeClient,
+  getStripePriceIdForTier,
+} from "@/lib/stripe";
 
 async function createAccount(formData: FormData) {
   "use server";
@@ -101,7 +106,7 @@ async function createAccount(formData: FormData) {
           ${displayName},
           'food_truck',
           ${vendorTier},
-          'active',
+          'incomplete',
           now()
         )
       `;
@@ -123,10 +128,73 @@ async function createAccount(formData: FormData) {
         `;
       }
 
+      const billingTableResult = await sql`
+        SELECT to_regclass('public.vendor_subscriptions') AS table_name
+      `;
+
+      const billingTableExists = !!billingTableResult.rows[0]?.table_name;
+
+      if (billingTableExists) {
+        await sql`
+          INSERT INTO vendor_subscriptions (
+            id,
+            vendor_id,
+            provider,
+            tier,
+            status,
+            current_period_start,
+            metadata,
+            updated_at
+          )
+          VALUES (
+            ${randomUUID()},
+            ${vendorId},
+            'stripe',
+            ${vendorTier},
+            'incomplete',
+            now(),
+            ${JSON.stringify({
+              source: "vendor_signup",
+            })}::jsonb,
+            now()
+          )
+          ON CONFLICT (vendor_id)
+          DO UPDATE SET
+            provider = EXCLUDED.provider,
+            tier = EXCLUDED.tier,
+            status = EXCLUDED.status,
+            current_period_start = EXCLUDED.current_period_start,
+            metadata = EXCLUDED.metadata,
+            updated_at = now()
+        `;
+      }
+
       await sql`COMMIT`;
+
+      const stripe = getStripeClient();
+      const priceId = getStripePriceIdForTier(vendorTier);
+      const appBaseUrl = getAppBaseUrl();
+      const checkoutSession = await stripe.checkout.sessions.create({
+        mode: "subscription",
+        line_items: [{ price: priceId, quantity: 1 }],
+        customer_email: email,
+        success_url: `${appBaseUrl}/vendor/profile?tierStatus=upgraded&tier=${vendorTier}`,
+        cancel_url: `${appBaseUrl}/vendor/profile?tierStatus=no_change&tier=${vendorTier}`,
+        metadata: {
+          userId,
+          vendorId,
+          vendorTier,
+          source: "vendor_signup",
+        },
+      });
+
+      if (!checkoutSession.url) {
+        throw new Error("stripe_checkout_url_missing");
+      }
+
       await sendVendorWelcomeEmail({ to: email, vendorName: displayName });
       await createSession(userId);
-      redirect("/vendor/profile");
+      redirect(checkoutSession.url);
     } else {
       const roleResult = await sql`
         INSERT INTO roles (name)
@@ -344,8 +412,8 @@ export default async function SignupPage({
                   <span>
                     <strong className="block">Starter</strong>
                     <span className="text-[#757575]">
-                      Vendor listing, profile, GPS updates, social links,
-                      website, favorite count, up to 5 photos.
+                      $29/month. Vendor listing, profile, GPS updates, social
+                      links, website, favorite count, up to 5 photos.
                     </span>
                   </span>
                 </label>
@@ -359,8 +427,8 @@ export default async function SignupPage({
                   <span>
                     <strong className="block">Growth</strong>
                     <span className="text-[#757575]">
-                      Everything in Starter, up to 10 photos, menu uploads, Grub
-                      Reels, Verified Vendor badge.
+                      $59/month. Everything in Starter, up to 10 photos, menu
+                      uploads, Grub Reels, Verified Vendor badge.
                     </span>
                   </span>
                 </label>

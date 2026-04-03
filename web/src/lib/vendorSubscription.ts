@@ -31,7 +31,7 @@ export const VENDOR_TIER_DEFINITIONS: Record<
     code: "starter",
     name: "Starter",
     tagline: "Get discovered",
-    monthlyPriceCents: 0,
+    monthlyPriceCents: 2900,
     photoUploadLimit: 5,
     features: {
       vendor_listing: true,
@@ -52,7 +52,7 @@ export const VENDOR_TIER_DEFINITIONS: Record<
     code: "growth",
     name: "Growth",
     tagline: "Get customers",
-    monthlyPriceCents: 4900,
+    monthlyPriceCents: 5900,
     photoUploadLimit: 10,
     features: {
       vendor_listing: true,
