@@ -6,6 +6,10 @@ import {
 
 let stripeClient: Stripe | null = null;
 
+export function hasStripeSecretKey(): boolean {
+  return !!process.env.STRIPE_SECRET_KEY;
+}
+
 export function getStripeClient(): Stripe {
   if (stripeClient) return stripeClient;
 

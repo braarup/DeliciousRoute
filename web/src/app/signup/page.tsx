@@ -16,6 +16,7 @@ import {
   getAppBaseUrl,
   getStripeClient,
   getStripePriceIdForTier,
+  hasStripeSecretKey,
 } from "@/lib/stripe";
 
 async function createAccount(formData: FormData) {
@@ -209,29 +210,38 @@ async function createAccount(formData: FormData) {
         );
       }
 
-      try {
-        const stripe = getStripeClient();
-        const priceId = getStripePriceIdForTier(vendorTier);
-        const appBaseUrl = getAppBaseUrl();
-        const checkoutSession = await stripe.checkout.sessions.create({
-          mode: "subscription",
-          line_items: [{ price: priceId, quantity: 1 }],
-          customer_email: email,
-          success_url: `${appBaseUrl}/vendor/profile?tierStatus=upgraded&tier=${vendorTier}`,
-          cancel_url: `${appBaseUrl}/vendor/profile?tierStatus=no_change&tier=${vendorTier}`,
-          metadata: {
-            userId,
-            vendorId,
-            vendorTier,
-            source: "vendor_signup",
-          },
-        });
+      const stripeEnabledForSignup =
+        hasStripeSecretKey() &&
+        !!process.env.STRIPE_PRICE_STARTER_MONTHLY &&
+        !!process.env.STRIPE_PRICE_GROWTH_MONTHLY;
 
-        if (checkoutSession.url) {
-          redirect(checkoutSession.url);
+      if (stripeEnabledForSignup) {
+        try {
+          const stripe = getStripeClient();
+          const priceId = getStripePriceIdForTier(vendorTier);
+          const appBaseUrl = getAppBaseUrl();
+          const checkoutSession = await stripe.checkout.sessions.create({
+            mode: "subscription",
+            line_items: [{ price: priceId, quantity: 1 }],
+            customer_email: email,
+            success_url: `${appBaseUrl}/vendor/profile?tierStatus=upgraded&tier=${vendorTier}`,
+            cancel_url: `${appBaseUrl}/vendor/profile?tierStatus=no_change&tier=${vendorTier}`,
+            metadata: {
+              userId,
+              vendorId,
+              vendorTier,
+              source: "vendor_signup",
+            },
+          });
+
+          if (checkoutSession.url) {
+            redirect(checkoutSession.url);
+          }
+        } catch (stripeError) {
+          console.error("Vendor Stripe checkout setup failed", stripeError);
         }
-      } catch (stripeError) {
-        console.error("Vendor Stripe checkout setup failed", stripeError);
+      } else {
+        console.error("Vendor Stripe checkout skipped: missing Stripe env config");
       }
 
       redirect(`/verify-email?email=${encodeURIComponent(email)}&sent=1`);
