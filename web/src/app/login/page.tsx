@@ -71,7 +71,23 @@ async function loginUser(formData: FormData) {
       `;
 
       try {
-        await sendAccountLockedEmail({ to: user.email, role: "other" });
+        const roleResult = await sql`
+          SELECT r.name
+          FROM roles r
+          JOIN user_roles ur ON ur.role_id = r.id
+          WHERE ur.user_id = ${user.id}
+          LIMIT 1
+        `;
+
+        const roleName = ((roleResult.rows[0]?.name as string) || "").toLowerCase();
+        const roleForEmail: "vendor" | "customer" | "other" =
+          roleName === "vendor_admin"
+            ? "vendor"
+            : roleName.length > 0
+              ? "customer"
+              : "other";
+
+        await sendAccountLockedEmail({ to: user.email, role: roleForEmail });
       } catch (err) {
         console.error("Failed to send account locked email", err);
       }
