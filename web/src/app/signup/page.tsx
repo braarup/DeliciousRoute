@@ -18,11 +18,6 @@ import {
   getStripePriceIdForTier,
 } from "@/lib/stripe";
 
-async function getVendorSignupStatusCandidates() {
-  // Intentionally exclude subscription-only states like "incomplete"/"unpaid" for vendors.
-  return ["active", "trialing", "pending", "past_due", "canceled"];
-}
-
 async function createAccount(formData: FormData) {
   "use server";
 
@@ -123,64 +118,26 @@ async function createAccount(formData: FormData) {
 
     if (accountType === "vendor") {
       const vendorId = randomUUID();
-      const vendorSubscriptionStatuses =
-        await getVendorSignupStatusCandidates();
-      let vendorInsertSucceeded = false;
-
-      console.error("vendor-signup-status-candidates:v2", {
-        vendorId,
-        candidateCount: vendorSubscriptionStatuses.length,
-        candidateStatuses: vendorSubscriptionStatuses,
-      });
-
-      for (const vendorSubscriptionStatus of vendorSubscriptionStatuses) {
-        try {
-          await sql`
-            INSERT INTO vendors (
-              id,
-              owner_user_id,
-              name,
-              vendor_type,
-              subscription_tier,
-              subscription_status,
-              subscription_started_at
-            )
-            VALUES (
-              ${vendorId},
-              ${userId},
-              ${displayName},
-              'food_truck',
-              ${vendorTier},
-              ${vendorSubscriptionStatus},
-              now()
-            )
-          `;
-          vendorInsertSucceeded = true;
-          console.error("vendor-signup-status-selected:v2", {
-            vendorId,
-            vendorSubscriptionStatus,
-          });
-          break;
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : "";
-
-          console.error("vendor-signup-status-rejected:v2", {
-            vendorId,
-            vendorSubscriptionStatus,
-            errorMessage,
-          });
-
-          if (errorMessage.includes("vendors_subscription_status_check")) {
-            continue;
-          }
-
-          throw error;
-        }
-      }
-
-      if (!vendorInsertSucceeded) {
-        throw new Error("Unable to find valid vendor subscription status");
-      }
+      await sql`
+        INSERT INTO vendors (
+          id,
+          owner_user_id,
+          name,
+          vendor_type,
+          subscription_tier,
+          subscription_status,
+          subscription_started_at
+        )
+        VALUES (
+          ${vendorId},
+          ${userId},
+          ${displayName},
+          'food_truck',
+          ${vendorTier},
+          'active',
+          now()
+        )
+      `;
 
       const roleResult = await sql`
         INSERT INTO roles (name)
@@ -252,28 +209,32 @@ async function createAccount(formData: FormData) {
         );
       }
 
-      const stripe = getStripeClient();
-      const priceId = getStripePriceIdForTier(vendorTier);
-      const appBaseUrl = getAppBaseUrl();
-      const checkoutSession = await stripe.checkout.sessions.create({
-        mode: "subscription",
-        line_items: [{ price: priceId, quantity: 1 }],
-        customer_email: email,
-        success_url: `${appBaseUrl}/vendor/profile?tierStatus=upgraded&tier=${vendorTier}`,
-        cancel_url: `${appBaseUrl}/vendor/profile?tierStatus=no_change&tier=${vendorTier}`,
-        metadata: {
-          userId,
-          vendorId,
-          vendorTier,
-          source: "vendor_signup",
-        },
-      });
+      try {
+        const stripe = getStripeClient();
+        const priceId = getStripePriceIdForTier(vendorTier);
+        const appBaseUrl = getAppBaseUrl();
+        const checkoutSession = await stripe.checkout.sessions.create({
+          mode: "subscription",
+          line_items: [{ price: priceId, quantity: 1 }],
+          customer_email: email,
+          success_url: `${appBaseUrl}/vendor/profile?tierStatus=upgraded&tier=${vendorTier}`,
+          cancel_url: `${appBaseUrl}/vendor/profile?tierStatus=no_change&tier=${vendorTier}`,
+          metadata: {
+            userId,
+            vendorId,
+            vendorTier,
+            source: "vendor_signup",
+          },
+        });
 
-      if (!checkoutSession.url) {
-        throw new Error("stripe_checkout_url_missing");
+        if (checkoutSession.url) {
+          redirect(checkoutSession.url);
+        }
+      } catch (stripeError) {
+        console.error("Vendor Stripe checkout setup failed", stripeError);
       }
 
-      redirect(checkoutSession.url);
+      redirect(`/verify-email?email=${encodeURIComponent(email)}&sent=1`);
     } else {
       const roleResult = await sql`
         INSERT INTO roles (name)
@@ -315,6 +276,18 @@ async function createAccount(formData: FormData) {
       redirect(`/verify-email?email=${encodeURIComponent(email)}&sent=1`);
     }
   } catch (error) {
+    const digest =
+      typeof error === "object" &&
+      error !== null &&
+      "digest" in error &&
+      typeof (error as { digest?: unknown }).digest === "string"
+        ? (error as { digest: string }).digest
+        : "";
+
+    if (digest.startsWith("NEXT_REDIRECT")) {
+      throw error;
+    }
+
     try {
       await sql`
         DELETE FROM users
