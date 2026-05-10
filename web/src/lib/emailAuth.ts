@@ -196,6 +196,53 @@ export async function verifyEmailVerificationChallenge(params: {
 }) {
   await ensureEmailAuthSchema();
 
+  const preview = await previewEmailVerificationChallenge(params);
+
+  if (!preview.ok) {
+    return preview;
+  }
+
+  await sql`
+    BEGIN
+  `;
+
+  try {
+    await sql`
+      UPDATE users
+      SET email_verified_at = COALESCE(email_verified_at, now()), updated_at = now()
+      WHERE id = ${preview.userId}
+    `;
+
+    await sql`
+      UPDATE email_verification_tokens
+      SET used_at = now()
+      WHERE id = ${preview.challengeId}
+    `;
+
+    await sql`
+      COMMIT
+    `;
+  } catch (error) {
+    await sql`
+      ROLLBACK
+    `;
+    throw error;
+  }
+
+  return {
+    ok: true as const,
+    userId: preview.userId,
+    email: preview.email,
+    alreadyVerified: false as const,
+  };
+}
+
+export async function previewEmailVerificationChallenge(params: {
+  challengeId: string;
+  token: string;
+}) {
+  await ensureEmailAuthSchema();
+
   const result = await sql<{
     id: string;
     user_id: string;
@@ -232,35 +279,9 @@ export async function verifyEmailVerificationChallenge(params: {
     return { ok: false as const, reason: "invalid" as const };
   }
 
-  await sql`
-    BEGIN
-  `;
-
-  try {
-    await sql`
-      UPDATE users
-      SET email_verified_at = COALESCE(email_verified_at, now()), updated_at = now()
-      WHERE id = ${row.user_id}
-    `;
-
-    await sql`
-      UPDATE email_verification_tokens
-      SET used_at = now()
-      WHERE id = ${row.id}
-    `;
-
-    await sql`
-      COMMIT
-    `;
-  } catch (error) {
-    await sql`
-      ROLLBACK
-    `;
-    throw error;
-  }
-
   return {
     ok: true as const,
+    challengeId: row.id,
     userId: row.user_id,
     email: row.email,
     alreadyVerified: false as const,

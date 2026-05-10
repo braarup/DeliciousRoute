@@ -45,9 +45,13 @@ export default async function VerifyEmailPage({
       ? "Enter the email address used to create the account."
       : searchParams?.error === "email_delivery_failed"
         ? "We could not send the verification email right now. Please try again in a moment."
-        : searchParams?.error === "missing_email_service"
-          ? "Email delivery is not configured right now."
-          : null;
+        : searchParams?.error === "link_expired"
+          ? "This verification link has expired. Request a new one below."
+          : searchParams?.error === "invalid_link"
+            ? "This verification link is invalid. Request a new one below."
+            : searchParams?.error === "missing_email_service"
+              ? "Email delivery is not configured right now."
+              : null;
 
   return (
     <div className="min-h-screen bg-[var(--dr-neutral)] text-[var(--dr-text)]">

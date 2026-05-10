@@ -127,11 +127,20 @@ async function loginUser(formData: FormData) {
   redirect("/login/verify?sent=1");
 }
 
-export default async function LoginSelectorPage() {
+export default async function LoginSelectorPage({
+  searchParams,
+}: {
+  searchParams?: { verified?: string };
+}) {
   const existingUser = await getCurrentUser();
   if (existingUser) {
     redirect(await getAccountLandingPath(existingUser.id));
   }
+
+  const successMessage =
+    searchParams?.verified === "1"
+      ? "Email verified successfully. You can now sign in."
+      : null;
 
   return (
     <div className="min-h-screen bg-[var(--dr-neutral)] text-[var(--dr-text)]">
@@ -149,6 +158,11 @@ export default async function LoginSelectorPage() {
         </header>
 
         <main className="space-y-4 rounded-3xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
+          {successMessage ? (
+            <p className="rounded-2xl bg-[#e8f5e9] px-3 py-2 text-xs text-[#1b5e20]">
+              {successMessage}
+            </p>
+          ) : null}
           <section className="space-y-3 text-sm">
             <h2 className="text-sm font-semibold text-[var(--dr-text)]">
               Sign in to Delicious Route
