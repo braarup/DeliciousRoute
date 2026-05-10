@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { sql } from "@vercel/postgres";
+import { randomUUID } from "crypto";
 import { unstable_noStore as noStore } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
 import { FavoriteButton } from "@/components/FavoriteButton";
@@ -14,6 +15,7 @@ import {
 interface PageProps {
   // In this project, params is passed as a Promise (Next 16 PPR pattern)
   params: Promise<{ id: string }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }
 
 type DbVendor = {
@@ -75,6 +77,35 @@ type DbMenuItem = {
   is_vegetarian: boolean | null;
 };
 
+type DbActivePromo = {
+  id: string;
+  title: string;
+  summary: string | null;
+  details: string | null;
+  discount_label: string | null;
+  max_claims: number | null;
+  ends_at: Date | string | null;
+  claim_count: number;
+};
+
+type DbPromoClaim = {
+  id: string;
+  claim_code: string;
+  status: "claimed" | "redeemed";
+  claimed_at: Date | string;
+  redeemed_at: Date | string | null;
+};
+
+const PROMO_CLAIM_STATUS_COPY: Record<string, string> = {
+  success: "Promo claimed. Show your QR code at the truck to redeem.",
+  already_claimed: "You already claimed this promo.",
+  sold_out: "This promo has reached its claim limit.",
+  inactive: "This promo is no longer active.",
+  invalid: "Could not claim that promo. Please try again.",
+  auth_required: "Sign in to claim this promo.",
+  customer_only: "Promo claiming is available to customer accounts only.",
+};
+
 async function setVendorVerified(formData: FormData) {
   "use server";
 
@@ -107,9 +138,158 @@ async function setVendorVerified(formData: FormData) {
   redirect(`/vendor/${returnSlug || vendorId}`);
 }
 
-export default async function PublicVendorPage({ params }: PageProps) {
+async function claimVendorPromo(formData: FormData) {
+  "use server";
+
+  const currentUser = await getCurrentUser();
+  const promoId = (formData.get("promoId") || "").toString().trim();
+  const vendorId = (formData.get("vendorId") || "").toString().trim();
+  const returnSlug = (formData.get("returnSlug") || "").toString().trim();
+  const fallbackPath = `/vendor/${returnSlug || vendorId}`;
+
+  const { redirect } = await import("next/navigation");
+  const currentUserId = currentUser?.id?.toString();
+
+  if (!currentUserId) {
+    redirect(`/login?next=${encodeURIComponent(fallbackPath)}`);
+    return;
+  }
+
+  if (!promoId || !vendorId) {
+    redirect(`${fallbackPath}?promoClaimStatus=invalid`);
+  }
+
+  const userTypeResult = await sql<{ account_type: string | null }>`
+    SELECT account_type
+    FROM users
+    WHERE id = ${currentUserId}
+    LIMIT 1
+  `;
+
+  const accountType = (userTypeResult.rows[0]?.account_type || "").toLowerCase();
+  if (accountType !== "customer") {
+    redirect(`${fallbackPath}?promoClaimStatus=customer_only`);
+  }
+
+  const promoResult = await sql<{
+    id: string;
+    max_claims: number | null;
+    claimed_count: number;
+  }>`
+    SELECT id, max_claims, claimed_count
+    FROM vendor_promos
+    WHERE id = ${promoId}
+      AND vendor_id = ${vendorId}
+      AND is_active = true
+      AND (starts_at IS NULL OR starts_at <= now())
+      AND (ends_at IS NULL OR ends_at > now())
+    LIMIT 1
+  `;
+
+  const promo = promoResult.rows[0];
+  if (!promo) {
+    redirect(`${fallbackPath}?promoClaimStatus=inactive`);
+  }
+
+  const existingClaimResult = await sql<{ id: string }>`
+    SELECT id
+    FROM customer_promo_claims
+    WHERE promo_id = ${promo.id}
+      AND customer_user_id = ${currentUserId}
+    LIMIT 1
+  `;
+
+  if (existingClaimResult.rowCount) {
+    redirect(`${fallbackPath}?promoClaimStatus=already_claimed`);
+  }
+
+  if (promo.max_claims != null && promo.claimed_count >= promo.max_claims) {
+    redirect(`${fallbackPath}?promoClaimStatus=sold_out`);
+  }
+
+  const claimCode = `DR-${randomUUID().replace(/-/g, "").slice(0, 12).toUpperCase()}`;
+
+  const claimAttemptResult = await sql<{
+    slot_acquired: number;
+    inserted_count: number;
+  }>`
+    WITH promo_slot AS (
+      UPDATE vendor_promos
+      SET claimed_count = claimed_count + 1,
+          updated_at = now()
+      WHERE id = ${promo.id}
+        AND vendor_id = ${vendorId}
+        AND is_active = true
+        AND (starts_at IS NULL OR starts_at <= now())
+        AND (ends_at IS NULL OR ends_at > now())
+        AND (max_claims IS NULL OR claimed_count < max_claims)
+      RETURNING id
+    ),
+    inserted_claim AS (
+      INSERT INTO customer_promo_claims (
+        id,
+        promo_id,
+        vendor_id,
+        customer_user_id,
+        claim_code,
+        status,
+        claimed_at
+      )
+      SELECT
+        ${randomUUID()},
+        ${promo.id},
+        ${vendorId},
+        ${currentUserId},
+        ${claimCode},
+        'claimed',
+        now()
+      FROM promo_slot
+      ON CONFLICT (promo_id, customer_user_id) DO NOTHING
+      RETURNING id
+    ),
+    released_slot AS (
+      UPDATE vendor_promos
+      SET claimed_count = GREATEST(claimed_count - 1, 0),
+          updated_at = now()
+      WHERE id = ${promo.id}
+        AND EXISTS (SELECT 1 FROM promo_slot)
+        AND NOT EXISTS (SELECT 1 FROM inserted_claim)
+      RETURNING id
+    )
+    SELECT
+      (EXISTS (SELECT 1 FROM promo_slot))::int AS slot_acquired,
+      (EXISTS (SELECT 1 FROM inserted_claim))::int AS inserted_count
+  `;
+
+  const attempt = claimAttemptResult.rows[0];
+
+  if (!attempt?.slot_acquired) {
+    redirect(`${fallbackPath}?promoClaimStatus=sold_out`);
+  }
+
+  if (!attempt.inserted_count) {
+    redirect(`${fallbackPath}?promoClaimStatus=already_claimed`);
+  }
+
+  redirect(`${fallbackPath}?promoClaimStatus=success`);
+}
+
+export default async function PublicVendorPage({
+  params,
+  searchParams,
+}: PageProps) {
   noStore();
   const { id: slug } = await params;
+  const queryParams = (await searchParams) || {};
+  const getParam = (value: string | string[] | undefined) =>
+    Array.isArray(value) ? value[0] : value;
+
+  const promoClaimStatusParam = (getParam(queryParams.promoClaimStatus) || "")
+    .toString()
+    .trim();
+  const promoClaimStatusMessage =
+    PROMO_CLAIM_STATUS_COPY[promoClaimStatusParam] || "";
+  const promoClaimStatusIsSuccess = promoClaimStatusParam === "success";
 
   const currentUser = await getCurrentUser();
   const slugStr = String(slug ?? "");
@@ -258,6 +438,71 @@ export default async function PublicVendorPage({ params }: PageProps) {
       menuItems = itemsResult.rows;
     }
   }
+
+  const activePromoResult = await sql<DbActivePromo>`
+    SELECT
+      vp.id,
+      vp.title,
+      vp.summary,
+      vp.details,
+      vp.discount_label,
+      vp.max_claims,
+      vp.ends_at,
+      COUNT(cpc.id)::int AS claim_count
+    FROM vendor_promos vp
+    LEFT JOIN customer_promo_claims cpc ON cpc.promo_id = vp.id
+    WHERE vp.vendor_id = ${vendor.id}
+      AND vp.is_active = true
+      AND (vp.starts_at IS NULL OR vp.starts_at <= now())
+      AND (vp.ends_at IS NULL OR vp.ends_at > now())
+    GROUP BY vp.id
+    ORDER BY vp.created_at DESC
+    LIMIT 1
+  `;
+
+  const activePromo = activePromoResult.rows[0] ?? null;
+  const promoClaimsRemaining =
+    activePromo && activePromo.max_claims != null
+      ? Math.max(activePromo.max_claims - (activePromo.claim_count ?? 0), 0)
+      : null;
+
+  let myPromoClaim: DbPromoClaim | null = null;
+  if (activePromo && currentUser?.id) {
+    const myPromoClaimResult = await sql<DbPromoClaim>`
+      SELECT id, claim_code, status, claimed_at, redeemed_at
+      FROM customer_promo_claims
+      WHERE promo_id = ${activePromo.id}
+        AND customer_user_id = ${currentUser.id}
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+
+    myPromoClaim = myPromoClaimResult.rows[0] ?? null;
+  }
+
+  let currentAccountType = "";
+  if (currentUser?.id) {
+    const userTypeResult = await sql<{ account_type: string | null }>`
+      SELECT account_type
+      FROM users
+      WHERE id = ${currentUser.id}
+      LIMIT 1
+    `;
+    currentAccountType = (
+      userTypeResult.rows[0]?.account_type || ""
+    ).toLowerCase();
+  }
+
+  const canCurrentUserClaimPromos = currentAccountType === "customer";
+
+  const promoQrValue = myPromoClaim
+    ? `DRPROMO:${myPromoClaim.claim_code}`
+    : "";
+  const promoQrUrl = promoQrValue
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(
+        promoQrValue,
+      )}`
+    : "";
 
   const hoursResult = await sql<DbHours>`
     SELECT lh.day_of_week, lh.open_time, lh.close_time
@@ -653,6 +898,111 @@ export default async function PublicVendorPage({ params }: PageProps) {
                   </div>
                   <div>
                     <h2 className="relative inline-block pr-4 text-base font-semibold text-[var(--dr-text)] sm:text-lg">
+
+                {promoClaimStatusMessage && (
+                  <div
+                    className={`mt-3 rounded-2xl border px-4 py-3 text-sm ${
+                      promoClaimStatusIsSuccess
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                        : "border-amber-200 bg-amber-50 text-amber-800"
+                    }`}
+                  >
+                    {promoClaimStatusMessage}
+                  </div>
+                )}
+
+                {activePromo && (
+                  <section className="mt-3 rounded-3xl border border-[var(--dr-primary)]/20 bg-white p-4 shadow-sm">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--dr-primary)]">
+                      Vendor promo
+                    </p>
+                    <h2 className="mt-1 text-lg font-semibold text-[var(--dr-text)]">
+                      {activePromo.title}
+                    </h2>
+
+                    {activePromo.discount_label && (
+                      <p className="mt-1 inline-flex rounded-full bg-[var(--dr-primary)]/10 px-2.5 py-1 text-xs font-semibold text-[var(--dr-primary)]">
+                        {activePromo.discount_label}
+                      </p>
+                    )}
+
+                    {(activePromo.summary || activePromo.details) && (
+                      <p className="mt-2 text-sm text-[#424242]">
+                        {activePromo.summary || activePromo.details}
+                      </p>
+                    )}
+
+                    <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-[#616161]">
+                      {promoClaimsRemaining != null && (
+                        <span className="inline-flex rounded-full border border-[#e0e0e0] px-2 py-1">
+                          Remaining claims: {promoClaimsRemaining}
+                        </span>
+                      )}
+                      {activePromo.ends_at && (
+                        <span className="inline-flex rounded-full border border-[#e0e0e0] px-2 py-1">
+                          Expires: {new Date(activePromo.ends_at).toLocaleString()}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="mt-4 rounded-2xl border border-dashed border-[#e0e0e0] p-3">
+                      {myPromoClaim ? (
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div>
+                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--dr-primary)]">
+                              Your claim
+                            </p>
+                            <p className="mt-1 text-sm font-semibold text-[var(--dr-text)]">
+                              Claim code: {myPromoClaim.claim_code}
+                            </p>
+                            <p className="mt-1 text-xs text-[#616161]">
+                              Status: {myPromoClaim.status === "redeemed" ? "Redeemed" : "Claimed"}
+                            </p>
+                          </div>
+                          {promoQrUrl && (
+                            <img
+                              src={promoQrUrl}
+                              alt="Promo claim QR code"
+                              className="h-24 w-24 rounded-xl border border-[#e0e0e0] bg-white p-1"
+                            />
+                          )}
+                        </div>
+                      ) : !currentUser?.id ? (
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                          <p className="text-sm text-[#616161]">
+                            Sign in with a customer account to claim this promo.
+                          </p>
+                          <Link
+                            href={`/login?next=${encodeURIComponent(`/vendor/${slugStr}`)}`}
+                            className="inline-flex items-center justify-center rounded-full bg-[var(--dr-primary)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white hover:bg-[var(--dr-accent)]"
+                          >
+                            Sign in to claim
+                          </Link>
+                        </div>
+                      ) : !canCurrentUserClaimPromos ? (
+                        <p className="text-sm text-[#616161]">
+                          Promo claiming is available to customer accounts.
+                        </p>
+                      ) : promoClaimsRemaining === 0 ? (
+                        <p className="text-sm font-medium text-amber-700">
+                          This promo is fully claimed.
+                        </p>
+                      ) : (
+                        <form action={claimVendorPromo} className="flex flex-wrap items-center gap-2">
+                          <input type="hidden" name="promoId" value={activePromo.id} />
+                          <input type="hidden" name="vendorId" value={vendor.id} />
+                          <input type="hidden" name="returnSlug" value={slugStr} />
+                          <button
+                            type="submit"
+                            className="inline-flex items-center justify-center rounded-full bg-[var(--dr-primary)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white hover:bg-[var(--dr-accent)]"
+                          >
+                            Claim this promo
+                          </button>
+                        </form>
+                      )}
+                    </div>
+                  </section>
+                )}
                       {vendor.name || "Untitled venue"}
                       {isVerifiedVendor && (
                         <img

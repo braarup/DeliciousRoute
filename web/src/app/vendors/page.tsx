@@ -17,6 +17,15 @@ type DbVendorRow = {
   close_time: any;
 };
 
+type DbPromoRow = {
+  vendor_id: string;
+  id: string;
+  title: string;
+  discount_label: string | null;
+  max_claims: number | null;
+  claim_count: number;
+};
+
 type VendorCard = {
   id: string;
   slug: string;
@@ -29,6 +38,12 @@ type VendorCard = {
   consolidated_hours: string | null;
   isOpenNow: boolean;
   profile_image_path: string | null;
+  activePromo: {
+    id: string;
+    title: string;
+    discountLabel: string | null;
+    remainingClaims: number | null;
+  } | null;
 };
 
 const dayLabels = [
@@ -195,6 +210,39 @@ export default async function VendorsListPage() {
     ORDER BY v.name, lh.day_of_week
   `;
 
+  const promoResult = await sql<DbPromoRow>`
+    SELECT DISTINCT ON (vp.vendor_id)
+      vp.vendor_id,
+      vp.id,
+      vp.title,
+      vp.discount_label,
+      vp.max_claims,
+      (
+        SELECT COUNT(*)::int
+        FROM customer_promo_claims cpc
+        WHERE cpc.promo_id = vp.id
+      ) AS claim_count
+    FROM vendor_promos vp
+    WHERE vp.is_active = true
+      AND (vp.expires_at IS NULL OR vp.expires_at > now())
+    ORDER BY vp.vendor_id, vp.created_at DESC
+  `;
+
+  const promoByVendorId = new Map<string, VendorCard["activePromo"]>();
+  for (const row of promoResult.rows) {
+    const remainingClaims =
+      row.max_claims != null
+        ? Math.max(row.max_claims - (row.claim_count ?? 0), 0)
+        : null;
+
+    promoByVendorId.set(row.vendor_id, {
+      id: row.id,
+      title: row.title,
+      discountLabel: row.discount_label,
+      remainingClaims,
+    });
+  }
+
   const vendorMap = new Map<
     string,
     VendorCard & { hoursByDay: Record<number, { open: string; close: string }> }
@@ -215,6 +263,7 @@ export default async function VendorsListPage() {
         consolidated_hours: null,
         isOpenNow: false,
         profile_image_path: row.profile_image_path,
+        activePromo: promoByVendorId.get(row.id) ?? null,
         hoursByDay: {},
       };
       vendorMap.set(row.id, entry);
@@ -315,6 +364,17 @@ export default async function VendorsListPage() {
                     {vendor.tagline && (
                       <p className="mt-2 line-clamp-2 text-xs text-[#616161]">
                         {vendor.tagline}
+                      </p>
+                    )}
+
+                    {vendor.activePromo && (
+                      <p className="mt-2 line-clamp-1 text-xs font-medium text-[var(--dr-primary)]">
+                        Deal: {vendor.activePromo.discountLabel || vendor.activePromo.title}
+                        {typeof vendor.activePromo.remainingClaims === "number" && (
+                          <span className="ml-1 text-[10px] text-[#757575]">
+                            ({vendor.activePromo.remainingClaims} left)
+                          </span>
+                        )}
                       </p>
                     )}
 

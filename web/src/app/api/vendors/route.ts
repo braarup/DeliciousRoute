@@ -17,6 +17,16 @@ type DbVendorRow = {
   close_time: any;
 };
 
+type DbPromoRow = {
+  vendor_id: string;
+  id: string;
+  title: string;
+  discount_label: string | null;
+  max_claims: number | null;
+  claim_count: number;
+  expires_at: Date | string | null;
+};
+
 const dayLabels = [
   "Sunday",
   "Monday",
@@ -204,6 +214,31 @@ export async function GET() {
     }
   }
 
+  const promosResult = await sql<DbPromoRow>`
+    SELECT DISTINCT ON (vp.vendor_id)
+      vp.vendor_id,
+      vp.id,
+      vp.title,
+      vp.discount_label,
+      vp.max_claims,
+      vp.ends_at AS expires_at,
+      (
+        SELECT COUNT(*)::int
+        FROM customer_promo_claims cpc
+        WHERE cpc.promo_id = vp.id
+      ) AS claim_count
+    FROM vendor_promos vp
+    WHERE vp.is_active = true
+      AND (vp.starts_at IS NULL OR vp.starts_at <= now())
+      AND (vp.ends_at IS NULL OR vp.ends_at > now())
+    ORDER BY vp.vendor_id, vp.created_at DESC
+  `;
+
+  const promoByVendorId = new Map<string, DbPromoRow>();
+  for (const row of promosResult.rows) {
+    promoByVendorId.set(row.vendor_id, row);
+  }
+
   const vendorMap = new Map<
     string,
     {
@@ -249,6 +284,12 @@ export async function GET() {
   const vendors = Array.from(vendorMap.values()).map((row) => {
     const consolidated = buildConsolidatedHours(row.hoursByDay, row.hours_text);
     const openNow = isOpenNow(row.hoursByDay);
+    const promo = promoByVendorId.get(row.id);
+    const remainingClaims =
+      promo?.max_claims != null
+        ? Math.max(promo.max_claims - (promo.claim_count ?? 0), 0)
+        : null;
+
     return {
       id: row.id,
       slug: slugifyVendorName(row.name ?? "Untitled venue", row.id),
@@ -262,6 +303,15 @@ export async function GET() {
       profileImagePath: row.profile_image_path ?? null,
       favoriteCount: favoriteCounts.get(row.id) ?? 0,
       isFavorited: userFavoriteVendorIds.has(row.id),
+      activePromo: promo
+        ? {
+            id: promo.id,
+            title: promo.title,
+            discountLabel: promo.discount_label,
+            remainingClaims,
+            expiresAt: promo.expires_at,
+          }
+        : null,
     };
   });
 

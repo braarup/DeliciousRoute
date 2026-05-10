@@ -13,6 +13,19 @@ import {
 import { FavoriteTrucksSection } from "../../../components/FavoriteTrucksSection";
 import { PasswordPolicyDialog } from "@/components/PasswordPolicyDialog";
 
+type ClaimedPromoRow = {
+  claim_id: string;
+  claim_code: string;
+  claim_status: "claimed" | "redeemed";
+  claimed_at: Date | string;
+  redeemed_at: Date | string | null;
+  vendor_name: string | null;
+  vendor_id: string;
+  promo_title: string;
+  promo_discount_label: string | null;
+  promo_expires_at: Date | string | null;
+};
+
 async function changeCustomerPassword(formData: FormData) {
   "use server";
 
@@ -332,6 +345,28 @@ export default async function CustomerProfilePage({
     favorite_count: number;
   }>;
 
+  const claimedPromosResult = await sql<ClaimedPromoRow>`
+    SELECT
+      cpc.id AS claim_id,
+      cpc.claim_code,
+      cpc.status AS claim_status,
+      cpc.claimed_at,
+      cpc.redeemed_at,
+      v.name AS vendor_name,
+      v.id AS vendor_id,
+      vp.title AS promo_title,
+      vp.discount_label AS promo_discount_label,
+      vp.ends_at AS promo_expires_at
+    FROM customer_promo_claims cpc
+    JOIN vendor_promos vp ON vp.id = cpc.promo_id
+    JOIN vendors v ON v.id = cpc.vendor_id
+    WHERE cpc.customer_user_id = ${currentUser.id}
+    ORDER BY cpc.created_at DESC
+    LIMIT 30
+  `;
+
+  const claimedPromos = claimedPromosResult.rows;
+
   return (
     <div className="min-h-screen bg-[var(--dr-neutral)] text-[var(--dr-text)]">
       <div className="mx-auto flex min-h-screen max-w-3xl flex-col px-4 pb-10 pt-6 sm:px-6 lg:px-8">
@@ -566,6 +601,61 @@ export default async function CustomerProfilePage({
               Update password
             </button>
           </form>
+        </section>
+        <section className="mt-6 rounded-3xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
+          <h2 className="text-sm font-semibold text-[var(--dr-text)]">Claimed promos</h2>
+          <p className="mt-1 text-xs text-[#757575]">
+            These are your saved vendor deals. Show the QR code when redeeming.
+          </p>
+
+          {claimedPromos.length === 0 ? (
+            <p className="mt-3 text-xs text-[#9e9e9e]">
+              You have not claimed any promos yet.
+            </p>
+          ) : (
+            <div className="mt-4 space-y-3">
+              {claimedPromos.map((claim) => {
+                const qrValue = `DRPROMO:${claim.claim_code}`;
+                const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(
+                  qrValue,
+                )}`;
+
+                return (
+                  <article
+                    key={claim.claim_id}
+                    className="rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)] p-3"
+                  >
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--dr-primary)]">
+                          {claim.vendor_name || "Vendor"}
+                        </p>
+                        <p className="mt-1 text-sm font-semibold text-[var(--dr-text)]">
+                          {claim.promo_discount_label || claim.promo_title}
+                        </p>
+                        <p className="mt-1 text-xs text-[#616161]">
+                          Claim code: {claim.claim_code}
+                        </p>
+                        <p className="mt-1 text-xs text-[#616161]">
+                          Status: {claim.claim_status === "redeemed" ? "Redeemed" : "Claimed"}
+                        </p>
+                        {claim.promo_expires_at && (
+                          <p className="mt-1 text-xs text-[#9e9e9e]">
+                            Expires: {new Date(claim.promo_expires_at).toLocaleString()}
+                          </p>
+                        )}
+                      </div>
+                      <img
+                        src={qrUrl}
+                        alt="Claim QR code"
+                        className="h-24 w-24 rounded-xl border border-[#e0e0e0] bg-white p-1"
+                      />
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
         </section>
         <FavoriteTrucksSection favoriteVendors={favoriteVendors} />
         <footer className="mt-6 border-t border-[#e0e0e0] pt-3 text-xs text-[#757575]">

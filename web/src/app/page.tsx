@@ -19,6 +19,13 @@ type VendorsTabVendor = {
   profileImagePath?: string | null;
   favoriteCount?: number;
   isFavorited?: boolean;
+  activePromo?: {
+    id: string;
+    title: string;
+    discountLabel?: string | null;
+    remainingClaims?: number | null;
+    expiresAt?: string | null;
+  } | null;
 };
 
 const ads = [
@@ -381,6 +388,16 @@ function VendorsTab({ search, onSearchChange, vendors }: VendorsTabProps) {
               <p className="line-clamp-2 text-xs text-slate-300">
                 {vendor.tagline}
               </p>
+              {vendor.activePromo && (
+                <p className="line-clamp-1 text-[11px] font-medium text-amber-200">
+                  Deal: {vendor.activePromo.discountLabel || vendor.activePromo.title}
+                  {typeof vendor.activePromo.remainingClaims === "number" && (
+                    <span className="ml-1 text-[10px] text-amber-300/80">
+                      ({vendor.activePromo.remainingClaims} left)
+                    </span>
+                  )}
+                </p>
+              )}
               <div className="mt-1 flex items-center justify-between text-[11px] text-slate-400">
                 <p>
                   {vendor.city}

@@ -23,6 +23,7 @@ import {
 } from "@/lib/passwordHistory";
 import { PasswordPolicyDialog } from "@/components/PasswordPolicyDialog";
 import { TierDowngradeButton } from "@/components/TierDowngradeButton";
+import { PromoCodeScanner } from "@/components/PromoCodeScanner";
 import {
   canUseVendorFeature,
   getPhotoUploadLimit,
@@ -762,6 +763,240 @@ async function signOutVendor() {
   redirect("/");
 }
 
+async function saveVendorPromo(formData: FormData) {
+  "use server";
+
+  const currentUser = await getCurrentUser();
+
+  if (!currentUser?.id) {
+    redirect("/login");
+  }
+
+  const rolesResult = await sql`
+    SELECT r.name
+    FROM roles r
+    JOIN user_roles ur ON ur.role_id = r.id
+    WHERE ur.user_id = ${currentUser.id}
+  `;
+
+  const roleNames = rolesResult.rows.map((row) =>
+    (row.name as string).toLowerCase(),
+  );
+
+  if (!roleNames.includes("vendor_admin")) {
+    redirect("/customer/profile");
+  }
+
+  const vendorResult = await sql`
+    SELECT id
+    FROM vendors
+    WHERE owner_user_id = ${currentUser.id}
+    ORDER BY created_at DESC
+    LIMIT 1
+  `;
+
+  const vendorId = vendorResult.rows[0]?.id as string | undefined;
+
+  if (!vendorId) {
+    redirect("/vendor/profile?promoStatus=missing_vendor");
+  }
+
+  const promoId = (formData.get("promoId") || "").toString().trim();
+  const title = (formData.get("promoTitle") || "").toString().trim();
+  const discountLabel = (formData.get("promoDiscountLabel") || "")
+    .toString()
+    .trim();
+  const summary = (formData.get("promoSummary") || "").toString().trim();
+  const details = (formData.get("promoDetails") || "").toString().trim();
+  const terms = (formData.get("promoTerms") || "").toString().trim();
+  const startsAtRaw = (formData.get("promoStartsAt") || "").toString().trim();
+  const endsAtRaw = (formData.get("promoEndsAt") || "").toString().trim();
+  const maxClaimsRaw = (formData.get("promoMaxClaims") || "").toString().trim();
+  const isActive = formData.get("promoIsActive") === "on";
+
+  if (!title || !details) {
+    redirect("/vendor/profile?promoStatus=missing_fields");
+  }
+
+  const startsAtIso = startsAtRaw ? new Date(startsAtRaw).toISOString() : null;
+  const endsAtIso = endsAtRaw ? new Date(endsAtRaw).toISOString() : null;
+
+  const maxClaims = maxClaimsRaw ? Number(maxClaimsRaw) : null;
+
+  if (maxClaimsRaw && (!Number.isInteger(maxClaims) || Number(maxClaims) <= 0)) {
+    redirect("/vendor/profile?promoStatus=invalid_max_claims");
+  }
+
+  if (startsAtIso && endsAtIso && new Date(endsAtIso) <= new Date(startsAtIso)) {
+    redirect("/vendor/profile?promoStatus=invalid_window");
+  }
+
+  if (isActive) {
+    await sql`
+      UPDATE vendor_promos
+      SET is_active = false, updated_at = now()
+      WHERE vendor_id = ${vendorId}
+        AND id::text <> ${promoId || "00000000-0000-0000-0000-000000000000"}
+    `;
+  }
+
+  if (promoId) {
+    await sql`
+      UPDATE vendor_promos
+      SET
+        title = ${title},
+        discount_label = ${discountLabel || null},
+        summary = ${summary || null},
+        details = ${details},
+        terms = ${terms || null},
+        starts_at = ${startsAtIso}::timestamptz,
+        ends_at = ${endsAtIso}::timestamptz,
+        max_claims = ${maxClaims}::int,
+        is_active = ${isActive},
+        updated_at = now()
+      WHERE id = ${promoId}
+        AND vendor_id = ${vendorId}
+    `;
+  } else {
+    await sql`
+      INSERT INTO vendor_promos (
+        id,
+        vendor_id,
+        created_by_user_id,
+        title,
+        discount_label,
+        summary,
+        details,
+        terms,
+        starts_at,
+        ends_at,
+        max_claims,
+        is_active
+      )
+      VALUES (
+        ${randomUUID()},
+        ${vendorId},
+        ${currentUser.id},
+        ${title},
+        ${discountLabel || null},
+        ${summary || null},
+        ${details},
+        ${terms || null},
+        ${startsAtIso}::timestamptz,
+        ${endsAtIso}::timestamptz,
+        ${maxClaims}::int,
+        ${isActive}
+      )
+    `;
+  }
+
+  redirect("/vendor/profile?promoStatus=saved");
+}
+
+async function deactivateVendorPromo(formData: FormData) {
+  "use server";
+
+  const currentUser = await getCurrentUser();
+
+  if (!currentUser?.id) {
+    redirect("/login");
+  }
+
+  const promoId = (formData.get("promoId") || "").toString().trim();
+
+  if (!promoId) {
+    redirect("/vendor/profile");
+  }
+
+  await sql`
+    UPDATE vendor_promos
+    SET is_active = false, updated_at = now()
+    WHERE id = ${promoId}
+      AND vendor_id IN (
+        SELECT id
+        FROM vendors
+        WHERE owner_user_id = ${currentUser.id}
+      )
+  `;
+
+  redirect("/vendor/profile?promoStatus=deactivated");
+}
+
+async function redeemVendorPromoClaim(formData: FormData) {
+  "use server";
+
+  const currentUser = await getCurrentUser();
+
+  if (!currentUser?.id) {
+    redirect("/login");
+  }
+
+  const claimCode = (formData.get("claimCode") || "").toString().trim();
+
+  if (!claimCode) {
+    redirect("/vendor/profile?promoStatus=missing_claim_code");
+  }
+
+  const vendorResult = await sql`
+    SELECT id
+    FROM vendors
+    WHERE owner_user_id = ${currentUser.id}
+    ORDER BY created_at DESC
+    LIMIT 1
+  `;
+
+  const vendorId = vendorResult.rows[0]?.id as string | undefined;
+
+  if (!vendorId) {
+    redirect("/vendor/profile?promoStatus=missing_vendor");
+  }
+
+  const claimResult = await sql<{
+    id: string;
+    status: string;
+    promo_id: string;
+    customer_user_id: string;
+  }>`
+    SELECT id, status, promo_id, customer_user_id
+    FROM customer_promo_claims
+    WHERE claim_code = ${claimCode}
+      AND vendor_id = ${vendorId}
+    LIMIT 1
+  `;
+
+  const claim = claimResult.rows[0];
+
+  if (!claim) {
+    redirect(`/vendor/profile?promoStatus=invalid_code&redeemCode=${encodeURIComponent(claimCode)}`);
+  }
+
+  if (claim.status === "redeemed") {
+    redirect(`/vendor/profile?promoStatus=already_redeemed&redeemCode=${encodeURIComponent(claimCode)}`);
+  }
+
+  await sql`
+    UPDATE customer_promo_claims
+    SET
+      status = 'redeemed',
+      redeemed_at = now(),
+      redeemed_by_user_id = ${currentUser.id}
+    WHERE id = ${claim.id}
+  `;
+
+  await sql`
+    INSERT INTO vendor_audit_events (id, vendor_id, user_id, event_type, description)
+    VALUES (
+      ${randomUUID()},
+      ${vendorId},
+      ${currentUser.id},
+      'promo_claim_redeemed',
+      ${`Redeemed promo claim ${claimCode}.`}
+    )
+  `;
+
+  redirect(`/vendor/profile?promoStatus=redeemed&redeemCode=${encodeURIComponent(claimCode)}`);
+}
+
 async function changeVendorTier(formData: FormData) {
   "use server";
 
@@ -1174,6 +1409,8 @@ export default async function VendorProfileManagePage({
     passwordStatus?: string;
     tierStatus?: string;
     tier?: string;
+    promoStatus?: string;
+    redeemCode?: string;
   };
 }) {
   noStore();
@@ -1255,6 +1492,29 @@ export default async function VendorProfileManagePage({
     is_vegetarian: boolean | null;
   }> = [];
 
+  let latestPromo: {
+    id: string;
+    title: string;
+    discount_label: string | null;
+    summary: string | null;
+    details: string;
+    terms: string | null;
+    starts_at: string | null;
+    ends_at: string | null;
+    max_claims: number | null;
+    is_active: boolean;
+    claimed_count: number;
+    redeemed_count: number;
+  } | null = null;
+
+  let recentPromoClaims: Array<{
+    id: string;
+    claim_code: string;
+    status: string;
+    claimed_at: string;
+    redeemed_at: string | null;
+  }> = [];
+
   if (vendorId) {
     const hoursResult = await sql`
       SELECT lh.day_of_week, lh.open_time, lh.close_time
@@ -1323,6 +1583,71 @@ export default async function VendorProfileManagePage({
 
       menuItems = itemsResult.rows;
     }
+
+    const latestPromoResult = await sql<{
+      id: string;
+      title: string;
+      discount_label: string | null;
+      summary: string | null;
+      details: string;
+      terms: string | null;
+      starts_at: string | null;
+      ends_at: string | null;
+      max_claims: number | null;
+      is_active: boolean;
+      claimed_count: number;
+      redeemed_count: number;
+    }>`
+      SELECT
+        vp.id,
+        vp.title,
+        vp.discount_label,
+        vp.summary,
+        vp.details,
+        vp.terms,
+        vp.starts_at::text,
+        vp.ends_at::text,
+        vp.max_claims,
+        vp.is_active,
+        (
+          SELECT COUNT(*)::int
+          FROM customer_promo_claims cpc
+          WHERE cpc.promo_id = vp.id
+        ) AS claimed_count,
+        (
+          SELECT COUNT(*)::int
+          FROM customer_promo_claims cpc
+          WHERE cpc.promo_id = vp.id
+            AND cpc.status = 'redeemed'
+        ) AS redeemed_count
+      FROM vendor_promos vp
+      WHERE vp.vendor_id = ${vendorId}
+      ORDER BY vp.created_at DESC
+      LIMIT 1
+    `;
+
+    latestPromo = latestPromoResult.rows[0] ?? null;
+
+    const recentClaimsResult = await sql<{
+      id: string;
+      claim_code: string;
+      status: string;
+      claimed_at: string;
+      redeemed_at: string | null;
+    }>`
+      SELECT
+        id,
+        claim_code,
+        status,
+        claimed_at::text,
+        redeemed_at::text
+      FROM customer_promo_claims
+      WHERE vendor_id = ${vendorId}
+      ORDER BY claimed_at DESC
+      LIMIT 10
+    `;
+
+    recentPromoClaims = recentClaimsResult.rows;
   }
 
   const dayLabels = [
@@ -1428,7 +1753,8 @@ export default async function VendorProfileManagePage({
           ? "Photo upload is not available yet in this deployment. Ask your admin to configure Vercel Blob."
           : null;
   const starterPhotoLimitReached =
-    vendorTier === "starter" && photos.length >= tierDefinition.photoUploadLimit;
+    vendorTier === "starter" &&
+    photos.length >= tierDefinition.photoUploadLimit;
 
   const reelErrorCodeFromQuery = searchParams?.reelError;
   const reelErrorMessage =
@@ -1480,6 +1806,32 @@ export default async function VendorProfileManagePage({
             ? "We couldn't find a vendor account to update."
             : null;
   const tierIsError = tierStatus === "missing_vendor";
+
+  const promoStatus = searchParams?.promoStatus;
+  const promoMessage =
+    promoStatus === "saved"
+      ? "Promo saved successfully."
+      : promoStatus === "deactivated"
+        ? "Promo deactivated."
+        : promoStatus === "redeemed"
+          ? "Promo redeemed successfully. This customer cannot use it again."
+          : promoStatus === "already_redeemed"
+            ? "This promo code has already been redeemed."
+            : promoStatus === "invalid_code"
+              ? "Promo code not found for your vendor account."
+              : promoStatus === "missing_claim_code"
+                ? "Enter a promo claim code to redeem."
+                : promoStatus === "missing_fields"
+                  ? "Promo title and full details are required."
+                  : promoStatus === "invalid_max_claims"
+                    ? "Max claims must be a whole number greater than 0."
+                    : promoStatus === "invalid_window"
+                      ? "Promo end date must be later than the start date."
+                      : promoStatus === "missing_vendor"
+                        ? "No vendor account was found for this action."
+                        : null;
+  const promoIsError =
+    !!promoStatus && !["saved", "deactivated", "redeemed"].includes(promoStatus);
 
   return (
     <div className="min-h-screen bg-[var(--dr-neutral)] text-[var(--dr-text)]">
@@ -2232,6 +2584,237 @@ export default async function VendorProfileManagePage({
             </div>
           </section>
         </form>
+
+        <section className="mt-6 rounded-3xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
+          <h2 className="text-sm font-semibold text-[var(--dr-text)]">
+            Promotions & deals
+          </h2>
+          <p className="mt-1 text-xs text-[#757575]">
+            Create a custom promo for customers. Customers can claim once,
+            receive a unique QR code, and your team can redeem that code
+            in-store.
+          </p>
+
+          {promoMessage && (
+            <div
+              className={`mt-3 rounded-2xl px-3 py-2 text-[11px] ${
+                promoIsError
+                  ? "border border-[#ffcdd2] bg-[#ffebee] text-[#c62828]"
+                  : "border border-[#c8e6c9] bg-[#e8f5e9] text-[#2e7d32]"
+              }`}
+            >
+              {promoMessage}
+            </div>
+          )}
+
+          <form action={saveVendorPromo} className="mt-4 space-y-3 text-sm">
+            <input type="hidden" name="promoId" value={latestPromo?.id || ""} />
+            <div className="space-y-1">
+              <label className="text-xs font-medium uppercase tracking-[0.18em] text-[#757575]">
+                Promo title
+              </label>
+              <input
+                name="promoTitle"
+                type="text"
+                placeholder="e.g. Taco Tuesday Special"
+                defaultValue={latestPromo?.title || ""}
+                className="w-full rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)] px-3 py-2 text-sm text-[var(--dr-text)] placeholder:text-[#bdbdbd] focus:border-[var(--dr-primary)] focus:outline-none"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-medium uppercase tracking-[0.18em] text-[#757575]">
+                Discount label
+              </label>
+              <input
+                name="promoDiscountLabel"
+                type="text"
+                placeholder="e.g. 20% OFF"
+                defaultValue={latestPromo?.discount_label || ""}
+                className="w-full rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)] px-3 py-2 text-sm text-[var(--dr-text)] placeholder:text-[#bdbdbd] focus:border-[var(--dr-primary)] focus:outline-none"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-medium uppercase tracking-[0.18em] text-[#757575]">
+                Short summary
+              </label>
+              <input
+                name="promoSummary"
+                type="text"
+                placeholder="Shown on vendor cards"
+                defaultValue={latestPromo?.summary || ""}
+                className="w-full rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)] px-3 py-2 text-sm text-[var(--dr-text)] placeholder:text-[#bdbdbd] focus:border-[var(--dr-primary)] focus:outline-none"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-medium uppercase tracking-[0.18em] text-[#757575]">
+                Full details
+              </label>
+              <textarea
+                name="promoDetails"
+                rows={3}
+                placeholder="Describe what the customer gets and redemption rules"
+                defaultValue={latestPromo?.details || ""}
+                className="w-full resize-none rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)] px-3 py-2 text-sm text-[var(--dr-text)] placeholder:text-[#bdbdbd] focus:border-[var(--dr-primary)] focus:outline-none"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-medium uppercase tracking-[0.18em] text-[#757575]">
+                Terms (optional)
+              </label>
+              <textarea
+                name="promoTerms"
+                rows={2}
+                placeholder="Optional fine print"
+                defaultValue={latestPromo?.terms || ""}
+                className="w-full resize-none rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)] px-3 py-2 text-sm text-[var(--dr-text)] placeholder:text-[#bdbdbd] focus:border-[var(--dr-primary)] focus:outline-none"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="space-y-1">
+                <label className="text-xs font-medium uppercase tracking-[0.18em] text-[#757575]">
+                  Max claims
+                </label>
+                <input
+                  name="promoMaxClaims"
+                  type="number"
+                  min={1}
+                  placeholder="e.g. 100"
+                  defaultValue={latestPromo?.max_claims ?? ""}
+                  className="w-full rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)] px-3 py-2 text-sm text-[var(--dr-text)] placeholder:text-[#bdbdbd] focus:border-[var(--dr-primary)] focus:outline-none"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium uppercase tracking-[0.18em] text-[#757575]">
+                  Starts at
+                </label>
+                <input
+                  name="promoStartsAt"
+                  type="datetime-local"
+                  defaultValue={
+                    latestPromo?.starts_at
+                      ? new Date(latestPromo.starts_at).toISOString().slice(0, 16)
+                      : ""
+                  }
+                  className="w-full rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)] px-3 py-2 text-sm text-[var(--dr-text)] focus:border-[var(--dr-primary)] focus:outline-none"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium uppercase tracking-[0.18em] text-[#757575]">
+                  Ends at
+                </label>
+                <input
+                  name="promoEndsAt"
+                  type="datetime-local"
+                  defaultValue={
+                    latestPromo?.ends_at
+                      ? new Date(latestPromo.ends_at).toISOString().slice(0, 16)
+                      : ""
+                  }
+                  className="w-full rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)] px-3 py-2 text-sm text-[var(--dr-text)] focus:border-[var(--dr-primary)] focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <label className="inline-flex items-center gap-2 text-xs text-[#616161]">
+              <input
+                name="promoIsActive"
+                type="checkbox"
+                defaultChecked={latestPromo?.is_active ?? true}
+                className="h-4 w-4 rounded border-[#cfcfcf] text-[var(--dr-primary)]"
+              />
+              Promo is active
+            </label>
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="submit"
+                className="inline-flex items-center justify-center rounded-full bg-[var(--dr-primary)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white shadow-sm shadow-[var(--dr-primary)]/50 hover:bg-[var(--dr-accent)]"
+              >
+                Save promo
+              </button>
+              {latestPromo?.id && latestPromo.is_active && (
+                <button
+                  type="submit"
+                  formAction={deactivateVendorPromo}
+                  name="promoId"
+                  value={latestPromo.id}
+                  className="inline-flex items-center justify-center rounded-full border border-[#e0e0e0] bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#757575] hover:border-[var(--dr-primary)] hover:text-[var(--dr-primary)]"
+                >
+                  Deactivate promo
+                </button>
+              )}
+            </div>
+          </form>
+
+          {latestPromo && (
+            <div className="mt-4 rounded-2xl bg-[var(--dr-neutral)] px-3 py-2 text-[11px] text-[#616161]">
+              <p className="font-semibold text-[var(--dr-text)]">
+                Current promo snapshot
+              </p>
+              <p className="mt-1">
+                Claims: {latestPromo.claimed_count}
+                {latestPromo.max_claims != null
+                  ? ` / ${latestPromo.max_claims}`
+                  : " (unlimited)"}
+                {" · Redeemed: "}
+                {latestPromo.redeemed_count}
+              </p>
+            </div>
+          )}
+
+          <div className="mt-4 rounded-2xl border border-[#e0e0e0] bg-white px-3 py-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#757575]">
+              Redeem customer promo QR/code
+            </p>
+            <p className="mt-1 text-[11px] text-[#757575]">
+              Use your camera to scan DR promo QR codes, or paste a claim code
+              manually to redeem it once.
+            </p>
+            <div className="mt-2">
+              <PromoCodeScanner targetInputId="claimCode" />
+            </div>
+            <form action={redeemVendorPromoClaim} className="mt-2 flex flex-col gap-2 sm:flex-row">
+              <input
+                id="claimCode"
+                name="claimCode"
+                type="text"
+                defaultValue={searchParams?.redeemCode || ""}
+                placeholder="Paste claim code"
+                className="w-full rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)] px-3 py-2 text-sm text-[var(--dr-text)] placeholder:text-[#bdbdbd] focus:border-[var(--dr-primary)] focus:outline-none"
+              />
+              <button
+                type="submit"
+                className="inline-flex items-center justify-center rounded-full bg-[var(--dr-primary)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white shadow-sm shadow-[var(--dr-primary)]/50 hover:bg-[var(--dr-accent)]"
+              >
+                Redeem code
+              </button>
+            </form>
+          </div>
+
+          {recentPromoClaims.length > 0 && (
+            <div className="mt-4 rounded-2xl border border-[#e0e0e0] bg-white px-3 py-3 text-xs">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#757575]">
+                Recent promo claims
+              </p>
+              <div className="mt-2 space-y-1 text-[11px] text-[#616161]">
+                {recentPromoClaims.map((claim) => (
+                  <p key={claim.id}>
+                    <span className="font-semibold text-[var(--dr-text)]">{claim.claim_code.slice(0, 10)}...</span>
+                    {" · "}
+                    {claim.status}
+                    {" · "}
+                    {new Date(claim.claimed_at).toLocaleString()}
+                  </p>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
 
         {false && photos.length > 0 && null}
 
