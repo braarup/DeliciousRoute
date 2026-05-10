@@ -15,7 +15,11 @@ async function verifyMfaCode(formData: FormData) {
   "use server";
 
   const code = (formData.get("code") || "").toString().trim();
-  const challengeId = await getLoginMfaChallengeCookie();
+  const challengeFromForm = (formData.get("challenge") || "")
+    .toString()
+    .trim();
+  const challengeFromCookie = await getLoginMfaChallengeCookie();
+  const challengeId = challengeFromCookie || challengeFromForm;
 
   if (!challengeId) {
     redirect("/login?error=mfa_expired");
@@ -43,7 +47,7 @@ async function verifyMfaCode(formData: FormData) {
 export default async function LoginVerifyPage({
   searchParams,
 }: {
-  searchParams?: { error?: string; sent?: string };
+  searchParams?: { error?: string; sent?: string; challenge?: string };
 }) {
   const currentUser = await getCurrentUser();
 
@@ -106,6 +110,11 @@ export default async function LoginVerifyPage({
                 required
                 className="w-full rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)] px-3 py-2 text-sm text-[var(--dr-text)] placeholder:text-[#bdbdbd] focus:border-[var(--dr-primary)] focus:outline-none"
                 placeholder="123456"
+              />
+              <input
+                type="hidden"
+                name="challenge"
+                value={(searchParams?.challenge || "").toString()}
               />
             </div>
 

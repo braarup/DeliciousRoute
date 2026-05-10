@@ -79,7 +79,9 @@ async function loginUser(formData: FormData) {
           LIMIT 1
         `;
 
-        const roleName = ((roleResult.rows[0]?.name as string) || "").toLowerCase();
+        const roleName = (
+          (roleResult.rows[0]?.name as string) || ""
+        ).toLowerCase();
         const roleForEmail: "vendor" | "customer" | "other" =
           roleName === "vendor_admin"
             ? "vendor"
@@ -135,12 +137,14 @@ async function loginUser(formData: FormData) {
     });
 
     await setLoginMfaChallengeCookie(mfaChallenge.challengeId);
+
+    redirect(
+      `/login/verify?sent=1&challenge=${encodeURIComponent(mfaChallenge.challengeId)}`,
+    );
   } catch (error) {
     console.error("Failed to send login MFA email", error);
     redirect("/login?error=email_delivery_failed");
   }
-
-  redirect("/login/verify?sent=1");
 }
 
 export default async function LoginSelectorPage({
