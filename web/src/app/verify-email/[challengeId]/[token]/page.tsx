@@ -10,16 +10,34 @@ import { sql } from "@vercel/postgres";
 
 export const dynamic = "force-dynamic";
 
+function safeShort(value: unknown) {
+  return typeof value === "string" ? value.slice(0, 8) : "none";
+}
+
 export default async function VerifyEmailChallengeTokenPage({
   params,
 }: {
-  params: { challengeId: string; token: string };
+  params?: { challengeId?: string; token?: string };
 }) {
+  const challengeId =
+    typeof params?.challengeId === "string" ? params.challengeId : "";
+  const token = typeof params?.token === "string" ? params.token : "";
+
   console.info("[email-verification-page] request", {
     at: new Date().toISOString(),
-    challengeId: params.challengeId.slice(0, 8),
-    tokenLength: params.token.length,
+    challengeId: safeShort(challengeId),
+    tokenLength: token.length,
   });
+
+  if (!challengeId || !token) {
+    console.info("[email-verification-page] missing_route_params", {
+      at: new Date().toISOString(),
+      challengeIdPresent: !!challengeId,
+      tokenPresent: !!token,
+    });
+
+    redirect("/verify-email?error=invalid_link");
+  }
 
   const currentUser = await getCurrentUser();
 
@@ -32,8 +50,8 @@ export default async function VerifyEmailChallengeTokenPage({
   }
 
   const result = await previewEmailVerificationChallenge({
-    challengeId: params.challengeId,
-    token: params.token,
+    challengeId,
+    token,
   });
 
   async function confirmVerification() {
@@ -41,19 +59,19 @@ export default async function VerifyEmailChallengeTokenPage({
 
     console.info("[email-verification-page] confirm_clicked", {
       at: new Date().toISOString(),
-      challengeId: params.challengeId.slice(0, 8),
-      tokenLength: params.token.length,
+      challengeId: safeShort(challengeId),
+      tokenLength: token.length,
     });
 
     const verified = await verifyEmailVerificationChallenge({
-      challengeId: params.challengeId,
-      token: params.token,
+      challengeId,
+      token,
     });
 
     if (!verified.ok) {
       console.info("[email-verification-page] confirm_rejected", {
         at: new Date().toISOString(),
-        challengeId: params.challengeId.slice(0, 8),
+        challengeId: safeShort(challengeId),
         reason: verified.reason,
       });
 
@@ -95,8 +113,8 @@ export default async function VerifyEmailChallengeTokenPage({
 
     console.info("[email-verification-page] confirm_success", {
       at: new Date().toISOString(),
-      challengeId: params.challengeId.slice(0, 8),
-      userId: verified.userId.slice(0, 8),
+      challengeId: safeShort(challengeId),
+      userId: safeShort(verified.userId),
       role: isVendor ? "vendor" : "customer",
     });
 
@@ -106,7 +124,7 @@ export default async function VerifyEmailChallengeTokenPage({
   if (!result.ok) {
     console.info("[email-verification-page] preview_rejected", {
       at: new Date().toISOString(),
-      challengeId: params.challengeId.slice(0, 8),
+      challengeId: safeShort(challengeId),
       reason: result.reason,
     });
 
@@ -166,7 +184,7 @@ export default async function VerifyEmailChallengeTokenPage({
 
   console.info("[email-verification-page] preview_valid", {
     at: new Date().toISOString(),
-    challengeId: params.challengeId.slice(0, 8),
+    challengeId: safeShort(challengeId),
   });
 
   return (
