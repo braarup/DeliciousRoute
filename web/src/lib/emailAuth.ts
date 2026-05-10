@@ -9,7 +9,9 @@ const LOGIN_MFA_MAX_ATTEMPTS = 5;
 
 function getAppBaseUrlForEmail() {
   const raw =
-    process.env.NEXT_PUBLIC_APP_BASE_URL || process.env.VERCEL_URL || "";
+    process.env.NEXT_PUBLIC_APP_BASE_URL ||
+    process.env.APP_BASE_URL ||
+    "https://www.deliciousroute.com";
 
   if (!raw) {
     return "";
