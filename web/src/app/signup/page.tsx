@@ -136,7 +136,7 @@ async function createAccount(formData: FormData) {
           ${displayName},
           'food_truck',
           ${vendorTier},
-          'trialing',
+          'active',
           now()
         )
       `;
