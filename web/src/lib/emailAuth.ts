@@ -131,7 +131,7 @@ export async function sendEmailVerificationChallenge(params: {
   });
 
   const verifyUrl = buildEmailPath(
-    `/verify-email/${encodeURIComponent(challenge.challengeId)}?token=${encodeURIComponent(challenge.token)}`,
+    `/verify-email/${encodeURIComponent(challenge.challengeId)}/${encodeURIComponent(challenge.token)}`,
   );
 
   await sendEmailVerificationEmail({
