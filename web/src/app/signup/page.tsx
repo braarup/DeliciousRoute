@@ -22,6 +22,37 @@ async function getAllowedVendorSignupStatus() {
   const preferredStatuses = ["trialing", "active", "past_due", "canceled"];
 
   try {
+    const defaultResult = await sql<{ column_default: string | null }>`
+      SELECT column_default
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'vendors'
+        AND column_name = 'subscription_status'
+      LIMIT 1
+    `;
+
+    const rawDefault = (defaultResult.rows[0]?.column_default || "").toLowerCase();
+    const defaultLiteralMatch = rawDefault.match(/'([^']+)'/);
+    const defaultStatus = defaultLiteralMatch?.[1]?.trim();
+
+    if (defaultStatus) {
+      return defaultStatus;
+    }
+
+    const existingStatusResult = await sql<{ subscription_status: string | null }>`
+      SELECT subscription_status
+      FROM vendors
+      WHERE subscription_status IS NOT NULL
+      LIMIT 1
+    `;
+
+    const existingStatus =
+      existingStatusResult.rows[0]?.subscription_status?.toLowerCase().trim() || "";
+
+    if (existingStatus) {
+      return existingStatus;
+    }
+
     const constraintResult = await sql<{ constraint_def: string | null }>`
       SELECT pg_get_constraintdef(c.oid) AS constraint_def
       FROM pg_constraint c
@@ -33,28 +64,30 @@ async function getAllowedVendorSignupStatus() {
       LIMIT 1
     `;
 
-    const constraintDef = (constraintResult.rows[0]?.constraint_def || "").toLowerCase();
-    const inClauseMatch = constraintDef.match(/in\s*\(([^)]+)\)/);
+    const constraintDef = (
+      constraintResult.rows[0]?.constraint_def || ""
+    ).toLowerCase();
+    const quotedValues = Array.from(
+      constraintDef.matchAll(/'([^']+)'/g),
+      (match) => match[1]?.trim(),
+    ).filter((value): value is string => Boolean(value));
 
-    if (inClauseMatch?.[1]) {
-      const allowedValues = inClauseMatch[1]
-        .split(",")
-        .map((value) => value.trim().replace(/^'+|'+$/g, ""));
-
+    if (quotedValues.length > 0) {
       const preferredMatch = preferredStatuses.find((status) =>
-        allowedValues.includes(status),
+        quotedValues.includes(status),
       );
 
       if (preferredMatch) {
         return preferredMatch;
       }
 
-      if (allowedValues[0]) {
-        return allowedValues[0];
-      }
+      return quotedValues[0];
     }
   } catch (error) {
-    console.error("Failed to inspect vendors subscription status constraint", error);
+    console.error(
+      "Failed to inspect vendors subscription status constraint",
+      error,
+    );
   }
 
   return "active";
