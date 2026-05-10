@@ -5,6 +5,16 @@ import { isEmailDeliveryConfigured, sendPasswordResetEmail } from "@/lib/email";
 
 const RESET_TOKEN_TTL_HOURS = 2;
 
+function getCanonicalAppBaseUrl() {
+  const raw =
+    process.env.NEXT_PUBLIC_APP_BASE_URL ||
+    process.env.APP_BASE_URL ||
+    process.env.VERCEL_PROJECT_PRODUCTION_URL ||
+    "https://www.deliciousroute.com";
+
+  return raw.startsWith("http") ? raw : `https://${raw}`;
+}
+
 export async function POST(request: Request) {
   try {
     if (!isEmailDeliveryConfigured()) {
@@ -46,17 +56,7 @@ export async function POST(request: Request) {
       VALUES (${tokenId}, ${user.id}, ${token}, ${expiresAt})
     `;
 
-    const baseUrl =
-      process.env.NEXT_PUBLIC_APP_BASE_URL || process.env.VERCEL_URL || "";
-    const origin = baseUrl
-      ? baseUrl.startsWith("http")
-        ? baseUrl
-        : `https://${baseUrl}`
-      : undefined;
-
-    const resetUrl = origin
-      ? `${origin}/reset-password/${encodeURIComponent(token)}`
-      : `/reset-password/${encodeURIComponent(token)}`;
+    const resetUrl = `${getCanonicalAppBaseUrl()}/reset-password/${encodeURIComponent(token)}`;
 
     try {
       await sendPasswordResetEmail({ to: email, resetUrl });
