@@ -101,7 +101,7 @@ export async function createEmailVerificationChallenge(params: {
   await sql`
     DELETE FROM email_verification_tokens
     WHERE user_id = ${params.userId}
-      AND used_at IS NULL
+      AND (used_at IS NOT NULL OR expires_at <= now() - interval '7 days')
   `;
 
   await sql`
