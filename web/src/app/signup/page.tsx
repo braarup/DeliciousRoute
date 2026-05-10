@@ -18,6 +18,48 @@ import {
   getStripePriceIdForTier,
 } from "@/lib/stripe";
 
+async function getAllowedVendorSignupStatus() {
+  const preferredStatuses = ["trialing", "active", "past_due", "canceled"];
+
+  try {
+    const constraintResult = await sql<{ constraint_def: string | null }>`
+      SELECT pg_get_constraintdef(c.oid) AS constraint_def
+      FROM pg_constraint c
+      JOIN pg_class t ON t.oid = c.conrelid
+      JOIN pg_namespace n ON n.oid = t.relnamespace
+      WHERE n.nspname = 'public'
+        AND t.relname = 'vendors'
+        AND c.conname = 'vendors_subscription_status_check'
+      LIMIT 1
+    `;
+
+    const constraintDef = (constraintResult.rows[0]?.constraint_def || "").toLowerCase();
+    const inClauseMatch = constraintDef.match(/in\s*\(([^)]+)\)/);
+
+    if (inClauseMatch?.[1]) {
+      const allowedValues = inClauseMatch[1]
+        .split(",")
+        .map((value) => value.trim().replace(/^'+|'+$/g, ""));
+
+      const preferredMatch = preferredStatuses.find((status) =>
+        allowedValues.includes(status),
+      );
+
+      if (preferredMatch) {
+        return preferredMatch;
+      }
+
+      if (allowedValues[0]) {
+        return allowedValues[0];
+      }
+    }
+  } catch (error) {
+    console.error("Failed to inspect vendors subscription status constraint", error);
+  }
+
+  return "active";
+}
+
 async function createAccount(formData: FormData) {
   "use server";
 
@@ -119,6 +161,7 @@ async function createAccount(formData: FormData) {
 
     if (accountType === "vendor") {
       const vendorId = randomUUID();
+      const vendorSubscriptionStatus = await getAllowedVendorSignupStatus();
 
       await sql`
         INSERT INTO vendors (
@@ -136,7 +179,7 @@ async function createAccount(formData: FormData) {
           ${displayName},
           'food_truck',
           ${vendorTier},
-          'active',
+          ${vendorSubscriptionStatus},
           now()
         )
       `;
