@@ -15,9 +15,19 @@ export default async function VerifyEmailChallengeTokenPage({
 }: {
   params: { challengeId: string; token: string };
 }) {
+  console.info("[email-verification-page] request", {
+    at: new Date().toISOString(),
+    challengeId: params.challengeId.slice(0, 8),
+    tokenLength: params.token.length,
+  });
+
   const currentUser = await getCurrentUser();
 
   if (currentUser) {
+    console.info("[email-verification-page] current_user_redirect_login", {
+      at: new Date().toISOString(),
+      userId: currentUser.id?.slice(0, 8) || "none",
+    });
     redirect("/login");
   }
 
@@ -29,12 +39,24 @@ export default async function VerifyEmailChallengeTokenPage({
   async function confirmVerification() {
     "use server";
 
+    console.info("[email-verification-page] confirm_clicked", {
+      at: new Date().toISOString(),
+      challengeId: params.challengeId.slice(0, 8),
+      tokenLength: params.token.length,
+    });
+
     const verified = await verifyEmailVerificationChallenge({
       challengeId: params.challengeId,
       token: params.token,
     });
 
     if (!verified.ok) {
+      console.info("[email-verification-page] confirm_rejected", {
+        at: new Date().toISOString(),
+        challengeId: params.challengeId.slice(0, 8),
+        reason: verified.reason,
+      });
+
       if (verified.reason === "already_verified") {
         redirect("/login?verified=1");
       }
@@ -71,10 +93,23 @@ export default async function VerifyEmailChallengeTokenPage({
       });
     }
 
+    console.info("[email-verification-page] confirm_success", {
+      at: new Date().toISOString(),
+      challengeId: params.challengeId.slice(0, 8),
+      userId: verified.userId.slice(0, 8),
+      role: isVendor ? "vendor" : "customer",
+    });
+
     redirect("/login?verified=1");
   }
 
   if (!result.ok) {
+    console.info("[email-verification-page] preview_rejected", {
+      at: new Date().toISOString(),
+      challengeId: params.challengeId.slice(0, 8),
+      reason: result.reason,
+    });
+
     if (result.reason === "already_verified") {
       return (
         <div className="min-h-screen bg-[var(--dr-neutral)] text-[var(--dr-text)]">
@@ -128,6 +163,11 @@ export default async function VerifyEmailChallengeTokenPage({
       </div>
     );
   }
+
+  console.info("[email-verification-page] preview_valid", {
+    at: new Date().toISOString(),
+    challengeId: params.challengeId.slice(0, 8),
+  });
 
   return (
     <div className="min-h-screen bg-[var(--dr-neutral)] text-[var(--dr-text)]">

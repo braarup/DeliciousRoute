@@ -7,6 +7,29 @@ const EMAIL_VERIFICATION_TTL_HOURS = 24;
 const LOGIN_MFA_TTL_MINUTES = 10;
 const LOGIN_MFA_MAX_ATTEMPTS = 5;
 
+function shortId(value: string | null | undefined) {
+  if (!value) return "none";
+  return value.slice(0, 8);
+}
+
+function maskEmail(email: string | null | undefined) {
+  if (!email) return "none";
+
+  const [local = "", domain = ""] = email.split("@");
+  const maskedLocal =
+    local.length <= 2 ? `${local.slice(0, 1)}*` : `${local.slice(0, 2)}***`;
+
+  return `${maskedLocal}@${domain}`;
+}
+
+function logEmailVerification(event: string, details: Record<string, unknown>) {
+  console.info("[email-verification]", {
+    event,
+    at: new Date().toISOString(),
+    ...details,
+  });
+}
+
 function getAppBaseUrlForEmail() {
   const raw =
     process.env.NEXT_PUBLIC_APP_BASE_URL || process.env.VERCEL_URL || "";
@@ -119,6 +142,12 @@ export async function createEmailVerificationChallenge(params: {
     )
   `;
 
+  logEmailVerification("challenge_created", {
+    userId: shortId(params.userId),
+    challengeId: shortId(challengeId),
+    expiresAt,
+  });
+
   return { challengeId, token };
 }
 
@@ -137,6 +166,12 @@ export async function sendEmailVerificationChallenge(params: {
   await sendEmailVerificationEmail({
     to: params.email,
     verifyUrl,
+  });
+
+  logEmailVerification("challenge_email_sent", {
+    userId: shortId(params.userId),
+    challengeId: shortId(challenge.challengeId),
+    email: maskEmail(params.email),
   });
 
   return challenge;
@@ -196,9 +231,18 @@ export async function verifyEmailVerificationChallenge(params: {
 }) {
   await ensureEmailAuthSchema();
 
+  logEmailVerification("confirm_started", {
+    challengeId: shortId(params.challengeId),
+    tokenLength: params.token.length,
+  });
+
   const preview = await previewEmailVerificationChallenge(params);
 
   if (!preview.ok) {
+    logEmailVerification("confirm_rejected", {
+      challengeId: shortId(params.challengeId),
+      reason: preview.reason,
+    });
     return preview;
   }
 
@@ -243,6 +287,11 @@ export async function previewEmailVerificationChallenge(params: {
 }) {
   await ensureEmailAuthSchema();
 
+  logEmailVerification("preview_started", {
+    challengeId: shortId(params.challengeId),
+    tokenLength: params.token.length,
+  });
+
   const result = await sql<{
     id: string;
     user_id: string;
@@ -262,22 +311,48 @@ export async function previewEmailVerificationChallenge(params: {
   const row = result.rows[0];
 
   if (!row) {
+    logEmailVerification("preview_missing_challenge", {
+      challengeId: shortId(params.challengeId),
+    });
     return { ok: false as const, reason: "invalid" as const };
   }
 
   if (row.email_verified_at) {
+    logEmailVerification("preview_already_verified", {
+      challengeId: shortId(params.challengeId),
+      userId: shortId(row.user_id),
+      email: maskEmail(row.email),
+    });
     return { ok: false as const, reason: "already_verified" as const };
   }
 
   if (row.used_at || new Date(row.expires_at).getTime() <= Date.now()) {
+    logEmailVerification("preview_expired_or_used", {
+      challengeId: shortId(params.challengeId),
+      userId: shortId(row.user_id),
+      usedAt: row.used_at,
+      expiresAt: row.expires_at,
+    });
     return { ok: false as const, reason: "expired" as const };
   }
 
   const tokenOk = await verifyPassword(params.token, row.token_hash);
 
   if (!tokenOk) {
+    logEmailVerification("preview_token_mismatch", {
+      challengeId: shortId(params.challengeId),
+      userId: shortId(row.user_id),
+      email: maskEmail(row.email),
+    });
     return { ok: false as const, reason: "invalid" as const };
   }
+
+  logEmailVerification("preview_valid", {
+    challengeId: shortId(row.id),
+    userId: shortId(row.user_id),
+    email: maskEmail(row.email),
+    expiresAt: row.expires_at,
+  });
 
   return {
     ok: true as const,
