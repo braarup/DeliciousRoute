@@ -130,21 +130,24 @@ async function loginUser(formData: FormData) {
     redirect(`/verify-email?email=${encodeURIComponent(user.email)}&sent=1`);
   }
 
+  let mfaChallengeId = "";
+
   try {
     const mfaChallenge = await sendLoginMfaChallenge({
       userId: user.id,
       email: user.email,
     });
 
-    await setLoginMfaChallengeCookie(mfaChallenge.challengeId);
-
-    redirect(
-      `/login/verify?sent=1&challenge=${encodeURIComponent(mfaChallenge.challengeId)}`,
-    );
+    mfaChallengeId = mfaChallenge.challengeId;
+    await setLoginMfaChallengeCookie(mfaChallengeId);
   } catch (error) {
     console.error("Failed to send login MFA email", error);
     redirect("/login?error=email_delivery_failed");
   }
+
+  redirect(
+    `/login/verify?sent=1&challenge=${encodeURIComponent(mfaChallengeId)}`,
+  );
 }
 
 export default async function LoginSelectorPage({
