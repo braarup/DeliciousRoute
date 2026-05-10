@@ -19,89 +19,8 @@ import {
 } from "@/lib/stripe";
 
 async function getVendorSignupStatusCandidates() {
-  const candidates: string[] = [];
-  const bannedVendorStatuses = new Set(["incomplete", "unpaid"]);
-  const fallbackStatuses = [
-    "trialing",
-    "active",
-    "pending",
-    "past_due",
-    "canceled",
-  ];
-
-  const addCandidate = (value: string | null | undefined) => {
-    const normalized = (value || "").toLowerCase().trim();
-
-    if (
-      normalized &&
-      !bannedVendorStatuses.has(normalized) &&
-      !candidates.includes(normalized)
-    ) {
-      candidates.push(normalized);
-    }
-  };
-
-  try {
-    const defaultResult = await sql<{ column_default: string | null }>`
-      SELECT column_default
-      FROM information_schema.columns
-      WHERE table_schema = 'public'
-        AND table_name = 'vendors'
-        AND column_name = 'subscription_status'
-      LIMIT 1
-    `;
-
-    const rawDefault = (
-      defaultResult.rows[0]?.column_default || ""
-    ).toLowerCase();
-    const defaultLiteralMatch = rawDefault.match(/'([^']+)'/);
-    const defaultStatus = defaultLiteralMatch?.[1]?.trim();
-    addCandidate(defaultStatus);
-
-    const existingStatusResult = await sql<{
-      subscription_status: string | null;
-    }>`
-      SELECT subscription_status
-      FROM vendors
-      WHERE subscription_status IS NOT NULL
-      LIMIT 1
-    `;
-
-    const existingStatus =
-      existingStatusResult.rows[0]?.subscription_status?.toLowerCase().trim() ||
-      "";
-    addCandidate(existingStatus);
-
-    const constraintResult = await sql<{ constraint_def: string | null }>`
-      SELECT pg_get_constraintdef(c.oid) AS constraint_def
-      FROM pg_constraint c
-      JOIN pg_class t ON t.oid = c.conrelid
-      JOIN pg_namespace n ON n.oid = t.relnamespace
-      WHERE n.nspname = 'public'
-        AND t.relname = 'vendors'
-        AND c.conname = 'vendors_subscription_status_check'
-      LIMIT 1
-    `;
-
-    const constraintDef = (
-      constraintResult.rows[0]?.constraint_def || ""
-    ).toLowerCase();
-    const quotedValues = Array.from(
-      constraintDef.matchAll(/'([^']+)'/g),
-      (match) => match[1]?.trim(),
-    ).filter((value): value is string => Boolean(value));
-
-    quotedValues.forEach(addCandidate);
-  } catch (error) {
-    console.error(
-      "Failed to inspect vendors subscription status constraint",
-      error,
-    );
-  }
-
-  fallbackStatuses.forEach(addCandidate);
-
-  return candidates;
+  // Intentionally exclude subscription-only states like "incomplete"/"unpaid" for vendors.
+  return ["active", "trialing", "pending", "past_due", "canceled"];
 }
 
 async function createAccount(formData: FormData) {
@@ -209,6 +128,12 @@ async function createAccount(formData: FormData) {
         await getVendorSignupStatusCandidates();
       let vendorInsertSucceeded = false;
 
+      console.error("vendor-signup-status-candidates:v2", {
+        vendorId,
+        candidateCount: vendorSubscriptionStatuses.length,
+        candidateStatuses: vendorSubscriptionStatuses,
+      });
+
       for (const vendorSubscriptionStatus of vendorSubscriptionStatuses) {
         try {
           await sql`SAVEPOINT vendor_signup_status_insert`;
@@ -236,11 +161,21 @@ async function createAccount(formData: FormData) {
 
           await sql`RELEASE SAVEPOINT vendor_signup_status_insert`;
           vendorInsertSucceeded = true;
+          console.error("vendor-signup-status-selected:v2", {
+            vendorId,
+            vendorSubscriptionStatus,
+          });
           break;
         } catch (error) {
           await sql`ROLLBACK TO SAVEPOINT vendor_signup_status_insert`;
 
           const errorMessage = error instanceof Error ? error.message : "";
+
+          console.error("vendor-signup-status-rejected:v2", {
+            vendorId,
+            vendorSubscriptionStatus,
+            errorMessage,
+          });
 
           if (errorMessage.includes("vendors_subscription_status_check")) {
             continue;
