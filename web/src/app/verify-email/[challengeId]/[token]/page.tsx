@@ -17,11 +17,17 @@ function safeShort(value: unknown) {
 export default async function VerifyEmailChallengeTokenPage({
   params,
 }: {
-  params?: { challengeId?: string; token?: string };
+  params?:
+    | { challengeId?: string; token?: string }
+    | Promise<{ challengeId?: string; token?: string }>;
 }) {
+  const resolvedParams = await Promise.resolve(params);
   const challengeId =
-    typeof params?.challengeId === "string" ? params.challengeId : "";
-  const token = typeof params?.token === "string" ? params.token : "";
+    typeof resolvedParams?.challengeId === "string"
+      ? resolvedParams.challengeId
+      : "";
+  const token =
+    typeof resolvedParams?.token === "string" ? resolvedParams.token : "";
 
   console.info("[email-verification-page] request", {
     at: new Date().toISOString(),

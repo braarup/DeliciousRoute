@@ -7,10 +7,23 @@ export default async function VerifyEmailChallengePage({
   params,
   searchParams,
 }: {
-  params: { challengeId: string };
-  searchParams?: { token?: string };
+  params:
+    | { challengeId?: string }
+    | Promise<{ challengeId?: string }>;
+  searchParams?: { token?: string } | Promise<{ token?: string }>;
 }) {
-  const token = (searchParams?.token || "").toString().trim();
+  const resolvedParams = await Promise.resolve(params);
+  const resolvedSearchParams = await Promise.resolve(searchParams);
+
+  const challengeId =
+    typeof resolvedParams?.challengeId === "string"
+      ? resolvedParams.challengeId
+      : "";
+  const token = (resolvedSearchParams?.token || "").toString().trim();
+
+  if (!challengeId) {
+    redirect("/verify-email?error=invalid_link");
+  }
 
   if (!token) {
     return (
@@ -41,6 +54,6 @@ export default async function VerifyEmailChallengePage({
   }
 
   redirect(
-    `/verify-email/${encodeURIComponent(params.challengeId)}/${encodeURIComponent(token)}`,
+    `/verify-email/${encodeURIComponent(challengeId)}/${encodeURIComponent(token)}`,
   );
 }
