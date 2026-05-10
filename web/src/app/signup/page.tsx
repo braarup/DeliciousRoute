@@ -20,20 +20,23 @@ import {
 
 async function getVendorSignupStatusCandidates() {
   const candidates: string[] = [];
+  const bannedVendorStatuses = new Set(["incomplete", "unpaid"]);
   const fallbackStatuses = [
     "trialing",
     "active",
     "pending",
     "past_due",
     "canceled",
-    "incomplete",
-    "unpaid",
   ];
 
   const addCandidate = (value: string | null | undefined) => {
     const normalized = (value || "").toLowerCase().trim();
 
-    if (normalized && !candidates.includes(normalized)) {
+    if (
+      normalized &&
+      !bannedVendorStatuses.has(normalized) &&
+      !candidates.includes(normalized)
+    ) {
       candidates.push(normalized);
     }
   };
@@ -48,12 +51,16 @@ async function getVendorSignupStatusCandidates() {
       LIMIT 1
     `;
 
-    const rawDefault = (defaultResult.rows[0]?.column_default || "").toLowerCase();
+    const rawDefault = (
+      defaultResult.rows[0]?.column_default || ""
+    ).toLowerCase();
     const defaultLiteralMatch = rawDefault.match(/'([^']+)'/);
     const defaultStatus = defaultLiteralMatch?.[1]?.trim();
     addCandidate(defaultStatus);
 
-    const existingStatusResult = await sql<{ subscription_status: string | null }>`
+    const existingStatusResult = await sql<{
+      subscription_status: string | null;
+    }>`
       SELECT subscription_status
       FROM vendors
       WHERE subscription_status IS NOT NULL
@@ -61,7 +68,8 @@ async function getVendorSignupStatusCandidates() {
     `;
 
     const existingStatus =
-      existingStatusResult.rows[0]?.subscription_status?.toLowerCase().trim() || "";
+      existingStatusResult.rows[0]?.subscription_status?.toLowerCase().trim() ||
+      "";
     addCandidate(existingStatus);
 
     const constraintResult = await sql<{ constraint_def: string | null }>`
@@ -197,7 +205,8 @@ async function createAccount(formData: FormData) {
 
     if (accountType === "vendor") {
       const vendorId = randomUUID();
-      const vendorSubscriptionStatuses = await getVendorSignupStatusCandidates();
+      const vendorSubscriptionStatuses =
+        await getVendorSignupStatusCandidates();
       let vendorInsertSucceeded = false;
 
       for (const vendorSubscriptionStatus of vendorSubscriptionStatuses) {
