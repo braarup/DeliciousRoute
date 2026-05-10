@@ -106,6 +106,19 @@ const PROMO_CLAIM_STATUS_COPY: Record<string, string> = {
   customer_only: "Promo claiming is available to customer accounts only.",
 };
 
+async function isConsumerUser(userId: string): Promise<boolean> {
+  const roleCheckResult = await sql`
+    SELECT 1
+    FROM user_roles ur
+    JOIN roles r ON r.id = ur.role_id
+    WHERE ur.user_id = ${userId}
+      AND r.name = 'consumer'
+    LIMIT 1
+  `;
+
+  return !!roleCheckResult.rowCount;
+}
+
 async function setVendorVerified(formData: FormData) {
   "use server";
 
@@ -159,15 +172,8 @@ async function claimVendorPromo(formData: FormData) {
     redirect(`${fallbackPath}?promoClaimStatus=invalid`);
   }
 
-  const userTypeResult = await sql<{ account_type: string | null }>`
-    SELECT account_type
-    FROM users
-    WHERE id = ${currentUserId}
-    LIMIT 1
-  `;
-
-  const accountType = (userTypeResult.rows[0]?.account_type || "").toLowerCase();
-  if (accountType !== "customer") {
+  const isConsumer = await isConsumerUser(currentUserId);
+  if (!isConsumer) {
     redirect(`${fallbackPath}?promoClaimStatus=customer_only`);
   }
 
@@ -480,20 +486,10 @@ export default async function PublicVendorPage({
     myPromoClaim = myPromoClaimResult.rows[0] ?? null;
   }
 
-  let currentAccountType = "";
+  let canCurrentUserClaimPromos = false;
   if (currentUser?.id) {
-    const userTypeResult = await sql<{ account_type: string | null }>`
-      SELECT account_type
-      FROM users
-      WHERE id = ${currentUser.id}
-      LIMIT 1
-    `;
-    currentAccountType = (
-      userTypeResult.rows[0]?.account_type || ""
-    ).toLowerCase();
+    canCurrentUserClaimPromos = await isConsumerUser(currentUser.id);
   }
-
-  const canCurrentUserClaimPromos = currentAccountType === "customer";
 
   const promoQrValue = myPromoClaim
     ? `DRPROMO:${myPromoClaim.claim_code}`
