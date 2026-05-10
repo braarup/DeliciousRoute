@@ -887,122 +887,17 @@ export default async function PublicVendorPage({
           {/* Left column: vendor info */}
           <section className="space-y-4">
             <div className="h-full rounded-3xl border border-[#e0e0e0] bg-white p-4 sm:p-5">
-              <div className="mb-3 flex items-start justify-between gap-3">
-                <div className="flex items-start gap-3">
-                  <div className="h-11 w-11 overflow-hidden rounded-full border border-[#e0e0e0] bg-[var(--dr-neutral)]">
+              <div className="mb-4 flex items-start justify-between gap-3">
+                <div className="flex min-w-0 items-start gap-3">
+                  <div className="h-12 w-12 overflow-hidden rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)] shadow-sm">
                     <img
                       src={vendor.profile_image_path || "/icon_01.png"}
                       alt="Vendor profile"
                       className="h-full w-full object-cover"
                     />
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <h2 className="relative inline-block pr-4 text-base font-semibold text-[var(--dr-text)] sm:text-lg">
-
-                {promoClaimStatusMessage && (
-                  <div
-                    className={`mt-3 rounded-2xl border px-4 py-3 text-sm ${
-                      promoClaimStatusIsSuccess
-                        ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                        : "border-amber-200 bg-amber-50 text-amber-800"
-                    }`}
-                  >
-                    {promoClaimStatusMessage}
-                  </div>
-                )}
-
-                {activePromo && (
-                  <section className="mt-3 rounded-3xl border border-[var(--dr-primary)]/20 bg-white p-4 shadow-sm">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--dr-primary)]">
-                      Vendor promo
-                    </p>
-                    <h2 className="mt-1 text-lg font-semibold text-[var(--dr-text)]">
-                      {activePromo.title}
-                    </h2>
-
-                    {activePromo.discount_label && (
-                      <p className="mt-1 inline-flex rounded-full bg-[var(--dr-primary)]/10 px-2.5 py-1 text-xs font-semibold text-[var(--dr-primary)]">
-                        {activePromo.discount_label}
-                      </p>
-                    )}
-
-                    {(activePromo.summary || activePromo.details) && (
-                      <p className="mt-2 text-sm text-[#424242]">
-                        {activePromo.summary || activePromo.details}
-                      </p>
-                    )}
-
-                    <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-[#616161]">
-                      {promoClaimsRemaining != null && (
-                        <span className="inline-flex rounded-full border border-[#e0e0e0] px-2 py-1">
-                          Remaining claims: {promoClaimsRemaining}
-                        </span>
-                      )}
-                      {activePromo.ends_at && (
-                        <span className="inline-flex rounded-full border border-[#e0e0e0] px-2 py-1">
-                          Expires: {new Date(activePromo.ends_at).toLocaleString()}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="mt-4 rounded-2xl border border-dashed border-[#e0e0e0] p-3">
-                      {myPromoClaim ? (
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                          <div>
-                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--dr-primary)]">
-                              Your claim
-                            </p>
-                            <p className="mt-1 text-sm font-semibold text-[var(--dr-text)]">
-                              Claim code: {myPromoClaim.claim_code}
-                            </p>
-                            <p className="mt-1 text-xs text-[#616161]">
-                              Status: {myPromoClaim.status === "redeemed" ? "Redeemed" : "Claimed"}
-                            </p>
-                          </div>
-                          {promoQrUrl && (
-                            <img
-                              src={promoQrUrl}
-                              alt="Promo claim QR code"
-                              className="h-24 w-24 rounded-xl border border-[#e0e0e0] bg-white p-1"
-                            />
-                          )}
-                        </div>
-                      ) : !currentUser?.id ? (
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                          <p className="text-sm text-[#616161]">
-                            Sign in with a customer account to claim this promo.
-                          </p>
-                          <Link
-                            href={`/login?next=${encodeURIComponent(`/vendor/${slugStr}`)}`}
-                            className="inline-flex items-center justify-center rounded-full bg-[var(--dr-primary)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white hover:bg-[var(--dr-accent)]"
-                          >
-                            Sign in to claim
-                          </Link>
-                        </div>
-                      ) : !canCurrentUserClaimPromos ? (
-                        <p className="text-sm text-[#616161]">
-                          Promo claiming is available to customer accounts.
-                        </p>
-                      ) : promoClaimsRemaining === 0 ? (
-                        <p className="text-sm font-medium text-amber-700">
-                          This promo is fully claimed.
-                        </p>
-                      ) : (
-                        <form action={claimVendorPromo} className="flex flex-wrap items-center gap-2">
-                          <input type="hidden" name="promoId" value={activePromo.id} />
-                          <input type="hidden" name="vendorId" value={vendor.id} />
-                          <input type="hidden" name="returnSlug" value={slugStr} />
-                          <button
-                            type="submit"
-                            className="inline-flex items-center justify-center rounded-full bg-[var(--dr-primary)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white hover:bg-[var(--dr-accent)]"
-                          >
-                            Claim this promo
-                          </button>
-                        </form>
-                      )}
-                    </div>
-                  </section>
-                )}
                       {vendor.name || "Untitled venue"}
                       {isVerifiedVendor && (
                         <img
@@ -1019,18 +914,123 @@ export default async function PublicVendorPage({
                       </p>
                     )}
                     {vendor.tagline && (
-                      <p className="mt-2 text-xs text-[#616161]">
+                      <p className="mt-1 line-clamp-2 text-xs text-[#616161]">
                         {vendor.tagline}
                       </p>
                     )}
                   </div>
-                  <FavoriteButton
-                    vendorId={vendor.id}
-                    initialCount={favoriteCount}
-                    initialFavorited={isFavoritedByCurrentUser}
-                  />
                 </div>
+                <FavoriteButton
+                  vendorId={vendor.id}
+                  initialCount={favoriteCount}
+                  initialFavorited={isFavoritedByCurrentUser}
+                />
               </div>
+
+              {promoClaimStatusMessage && (
+                <div
+                  className={`mb-3 rounded-2xl border px-4 py-3 text-sm ${
+                    promoClaimStatusIsSuccess
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                      : "border-amber-200 bg-amber-50 text-amber-800"
+                  }`}
+                >
+                  {promoClaimStatusMessage}
+                </div>
+              )}
+
+              {activePromo && (
+                <section className="mb-4 rounded-3xl border border-[var(--dr-primary)]/20 bg-white p-4 shadow-sm">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--dr-primary)]">
+                    Vendor promo
+                  </p>
+                  <h3 className="mt-1 text-2xl font-bold leading-tight text-[var(--dr-text)]">
+                    {activePromo.title}
+                  </h3>
+
+                  {activePromo.discount_label && (
+                    <p className="mt-2 inline-flex rounded-full bg-[var(--dr-primary)]/10 px-2.5 py-1 text-xs font-semibold text-[var(--dr-primary)]">
+                      {activePromo.discount_label}
+                    </p>
+                  )}
+
+                  {(activePromo.summary || activePromo.details) && (
+                    <p className="mt-3 text-base font-medium text-[#424242]">
+                      {activePromo.summary || activePromo.details}
+                    </p>
+                  )}
+
+                  <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-[#616161]">
+                    {promoClaimsRemaining != null && (
+                      <span className="inline-flex rounded-full border border-[#e0e0e0] bg-[#fafafa] px-2.5 py-1">
+                        Remaining claims: {promoClaimsRemaining}
+                      </span>
+                    )}
+                    {activePromo.ends_at && (
+                      <span className="inline-flex rounded-full border border-[#e0e0e0] bg-[#fafafa] px-2.5 py-1">
+                        Expires: {new Date(activePromo.ends_at).toLocaleString()}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="mt-4 rounded-2xl border border-dashed border-[#e0e0e0] p-3.5">
+                    {myPromoClaim ? (
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--dr-primary)]">
+                            Your claim
+                          </p>
+                          <p className="mt-1 text-sm font-semibold text-[var(--dr-text)]">
+                            Claim code: {myPromoClaim.claim_code}
+                          </p>
+                          <p className="mt-1 text-xs text-[#616161]">
+                            Status: {myPromoClaim.status === "redeemed" ? "Redeemed" : "Claimed"}
+                          </p>
+                        </div>
+                        {promoQrUrl && (
+                          <img
+                            src={promoQrUrl}
+                            alt="Promo claim QR code"
+                            className="h-24 w-24 rounded-xl border border-[#e0e0e0] bg-white p-1"
+                          />
+                        )}
+                      </div>
+                    ) : !currentUser?.id ? (
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <p className="max-w-[22ch] text-sm font-medium leading-relaxed text-[#616161]">
+                          Sign in with a customer account to claim this promo.
+                        </p>
+                        <Link
+                          href={`/login?next=${encodeURIComponent(`/vendor/${slugStr}`)}`}
+                          className="inline-flex items-center justify-center rounded-full bg-[var(--dr-primary)] px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.22em] text-white hover:bg-[var(--dr-accent)]"
+                        >
+                          Sign in to claim
+                        </Link>
+                      </div>
+                    ) : !canCurrentUserClaimPromos ? (
+                      <p className="text-sm text-[#616161]">
+                        Promo claiming is available to customer accounts.
+                      </p>
+                    ) : promoClaimsRemaining === 0 ? (
+                      <p className="text-sm font-medium text-amber-700">
+                        This promo is fully claimed.
+                      </p>
+                    ) : (
+                      <form action={claimVendorPromo} className="flex flex-wrap items-center gap-2">
+                        <input type="hidden" name="promoId" value={activePromo.id} />
+                        <input type="hidden" name="vendorId" value={vendor.id} />
+                        <input type="hidden" name="returnSlug" value={slugStr} />
+                        <button
+                          type="submit"
+                          className="inline-flex items-center justify-center rounded-full bg-[var(--dr-primary)] px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.22em] text-white hover:bg-[var(--dr-accent)]"
+                        >
+                          Claim this promo
+                        </button>
+                      </form>
+                    )}
+                  </div>
+                </section>
+              )}
 
               {todayEntry && (
                 <p className="mt-1 inline-flex items-center gap-2 rounded-full bg-[var(--dr-primary)]/10 px-3 py-1 text-[11px] font-semibold text-[var(--dr-primary)]">
