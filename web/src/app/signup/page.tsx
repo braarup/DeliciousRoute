@@ -46,11 +46,35 @@ async function createAccount(formData: FormData) {
     throw new Error("Password does not meet complexity requirements");
   }
 
-  const existingUser = await sql`
-    SELECT id FROM users WHERE email = ${email} LIMIT 1
+  const existingUser = await sql<{
+    id: string;
+    email_verified_at: string | null;
+  }>`
+    SELECT id, email_verified_at
+    FROM users
+    WHERE email = ${email}
+    LIMIT 1
   `;
 
   if (existingUser.rows.length > 0) {
+    const matchedUser = existingUser.rows[0];
+
+    if (!matchedUser.email_verified_at) {
+      try {
+        await sendEmailVerificationChallenge({
+          userId: matchedUser.id,
+          email,
+        });
+      } catch (error) {
+        console.error("Failed to resend verification email", error);
+        redirect(
+          `/verify-email?email=${encodeURIComponent(email)}&error=email_delivery_failed`,
+        );
+      }
+
+      redirect(`/verify-email?email=${encodeURIComponent(email)}&sent=1`);
+    }
+
     redirect("/login?error=already_registered");
   }
 

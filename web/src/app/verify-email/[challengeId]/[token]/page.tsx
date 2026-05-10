@@ -5,10 +5,7 @@ import {
   getAccountLandingPath,
   getCurrentUser,
 } from "@/lib/auth";
-import {
-  sendCustomerWelcomeEmail,
-  sendVendorWelcomeEmail,
-} from "@/lib/email";
+import { sendCustomerWelcomeEmail, sendVendorWelcomeEmail } from "@/lib/email";
 import { verifyEmailVerificationChallenge } from "@/lib/emailAuth";
 
 export const dynamic = "force-dynamic";
