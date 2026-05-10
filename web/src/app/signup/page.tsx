@@ -87,7 +87,6 @@ async function createAccount(formData: FormData) {
   const userId = randomUUID();
   const displayName = `${firstName} ${lastName}`.trim();
 
-  await sql`BEGIN`;
   try {
     await sql`
       INSERT INTO users (id, email, password_hash, display_name)
@@ -136,8 +135,6 @@ async function createAccount(formData: FormData) {
 
       for (const vendorSubscriptionStatus of vendorSubscriptionStatuses) {
         try {
-          await sql`SAVEPOINT vendor_signup_status_insert`;
-
           await sql`
             INSERT INTO vendors (
               id,
@@ -158,8 +155,6 @@ async function createAccount(formData: FormData) {
               now()
             )
           `;
-
-          await sql`RELEASE SAVEPOINT vendor_signup_status_insert`;
           vendorInsertSucceeded = true;
           console.error("vendor-signup-status-selected:v2", {
             vendorId,
@@ -167,8 +162,6 @@ async function createAccount(formData: FormData) {
           });
           break;
         } catch (error) {
-          await sql`ROLLBACK TO SAVEPOINT vendor_signup_status_insert`;
-
           const errorMessage = error instanceof Error ? error.message : "";
 
           console.error("vendor-signup-status-rejected:v2", {
@@ -247,8 +240,6 @@ async function createAccount(formData: FormData) {
         `;
       }
 
-      await sql`COMMIT`;
-
       try {
         await sendEmailVerificationChallenge({
           userId,
@@ -309,8 +300,6 @@ async function createAccount(formData: FormData) {
         VALUES (${profileId}, ${userId}, ${displayName})
       `;
 
-      await sql`COMMIT`;
-
       try {
         await sendEmailVerificationChallenge({
           userId,
@@ -326,7 +315,15 @@ async function createAccount(formData: FormData) {
       redirect(`/verify-email?email=${encodeURIComponent(email)}&sent=1`);
     }
   } catch (error) {
-    await sql`ROLLBACK`;
+    try {
+      await sql`
+        DELETE FROM users
+        WHERE id = ${userId}
+      `;
+    } catch (cleanupError) {
+      console.error("Failed to cleanup user after signup error", cleanupError);
+    }
+
     console.error("Error creating account", error);
     throw error;
   }
