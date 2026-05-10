@@ -6,6 +6,12 @@ const fromAddress = process.env.EMAIL_FROM || defaultFromAddress;
 
 const resend = resendApiKey ? new Resend(resendApiKey) : null;
 
+function requireEmailService() {
+  if (!resend) {
+    throw new Error("email_service_not_configured");
+  }
+}
+
 export function isEmailDeliveryConfigured(): boolean {
   return !!resend;
 }
@@ -92,6 +98,72 @@ export async function sendPasswordResetEmail(params: {
       "We received a request to reset your Delicious Route password.\n\n" +
       `You can choose a new password by visiting this link:\n${params.resetUrl}\n\n` +
       "If you didn't request this, you can ignore this email.",
+  });
+
+  if ((result as any)?.error) {
+    const reason =
+      (result as any)?.error?.message ||
+      (result as any)?.error?.name ||
+      "unknown_error";
+    throw new Error(`email_send_failed:${reason}`);
+  }
+}
+
+export async function sendEmailVerificationEmail(params: {
+  to: string;
+  verifyUrl: string;
+}) {
+  requireEmailService();
+
+  const result = await resend!.emails.send({
+    from: fromAddress,
+    to: params.to,
+    subject: "Verify your Delicious Route email address",
+    text:
+      "Welcome to Delicious Route!" +
+      "\n\n" +
+      "Please verify your email address to finish creating your account:" +
+      "\n" +
+      params.verifyUrl +
+      "\n\n" +
+      "If you did not create this account, you can safely ignore this email.",
+    html:
+      `<div style="font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 16px; color: #212121; line-height: 1.5;">` +
+      `<p style="margin: 0 0 16px;">Welcome to <strong>Delicious Route</strong>!</p>` +
+      `<p style="margin: 0 0 16px;">Please verify your email address to finish creating your account.</p>` +
+      `<p style="margin: 0 0 16px;"><a href="${params.verifyUrl}" style="color: #1976d2; text-decoration: underline;">Verify your email address</a></p>` +
+      `<p style="margin: 0; font-size: 13px; color: #757575;">If you did not create this account, you can safely ignore this email.</p>` +
+      `</div>`,
+  });
+
+  if ((result as any)?.error) {
+    const reason =
+      (result as any)?.error?.message ||
+      (result as any)?.error?.name ||
+      "unknown_error";
+    throw new Error(`email_send_failed:${reason}`);
+  }
+}
+
+export async function sendLoginMfaEmail(params: { to: string; code: string }) {
+  requireEmailService();
+
+  const result = await resend!.emails.send({
+    from: fromAddress,
+    to: params.to,
+    subject: "Your Delicious Route sign-in code",
+    text:
+      "Use this code to finish signing in to your Delicious Route account:" +
+      "\n\n" +
+      params.code +
+      "\n\n" +
+      "This code expires in 10 minutes. If you did not try to sign in, you can ignore this email.",
+    html:
+      `<div style="font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 16px; color: #212121; line-height: 1.5;">` +
+      `<p style="margin: 0 0 16px;">Use this code to finish signing in to your Delicious Route account:</p>` +
+      `<p style="margin: 0 0 20px; font-size: 28px; font-weight: 700; letter-spacing: 0.18em;">${params.code}</p>` +
+      `<p style="margin: 0 0 16px; font-size: 13px; color: #757575;">This code expires in 10 minutes. If you did not try to sign in, you can ignore this email.</p>` +
+      `</div>`,
   });
 
   if ((result as any)?.error) {

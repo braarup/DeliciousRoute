@@ -9,6 +9,7 @@ CREATE TABLE users (
   phone TEXT,
   password_hash TEXT,
   display_name TEXT,
+  email_verified_at TIMESTAMPTZ,
   status TEXT NOT NULL DEFAULT 'active', -- active, suspended, deleted, locked
   failed_login_attempts INT NOT NULL DEFAULT 0,
   locked_at TIMESTAMPTZ,
@@ -307,7 +308,8 @@ CREATE TABLE IF NOT EXISTS customer_profiles (
 -- Additional user profile fields for first-time signup
 ALTER TABLE users
   ADD COLUMN IF NOT EXISTS first_name TEXT,
-  ADD COLUMN IF NOT EXISTS last_name TEXT;
+  ADD COLUMN IF NOT EXISTS last_name TEXT,
+  ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMPTZ;
 
 -- Login sessions for persistent sign-in
 CREATE TABLE IF NOT EXISTS sessions (
@@ -317,6 +319,32 @@ CREATE TABLE IF NOT EXISTS sessions (
   expires_at TIMESTAMPTZ,
   revoked_at TIMESTAMPTZ
 );
+
+-- Email verification tokens and login MFA challenges
+CREATE TABLE IF NOT EXISTS email_verification_tokens (
+  id UUID PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token_hash TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  expires_at TIMESTAMPTZ NOT NULL,
+  used_at TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS login_mfa_challenges (
+  id UUID PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  code_hash TEXT NOT NULL,
+  attempts INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  expires_at TIMESTAMPTZ NOT NULL,
+  used_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_email_verification_tokens_user_id_expires_at
+  ON email_verification_tokens (user_id, expires_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_login_mfa_challenges_user_id_expires_at
+  ON login_mfa_challenges (user_id, expires_at DESC);
 
 -- Password reset tokens
 CREATE TABLE IF NOT EXISTS password_reset_tokens (

@@ -3,8 +3,11 @@ import { redirect } from "next/navigation";
 import { sql } from "@vercel/postgres";
 import { hashPassword } from "@/lib/bcrypt";
 import { randomUUID } from "crypto";
-import { createSession, getCurrentUser } from "@/lib/auth";
-import { sendCustomerWelcomeEmail, sendVendorWelcomeEmail } from "@/lib/email";
+import { getCurrentUser } from "@/lib/auth";
+import {
+  ensureEmailAuthSchema,
+  sendEmailVerificationChallenge,
+} from "@/lib/emailAuth";
 import { validatePasswordComplexity } from "@/lib/passwordPolicy";
 import { recordPasswordInHistory } from "@/lib/passwordHistory";
 import { normalizeVendorTier } from "@/lib/vendorSubscription";
@@ -16,6 +19,8 @@ import {
 
 async function createAccount(formData: FormData) {
   "use server";
+
+  await ensureEmailAuthSchema();
 
   const firstName = (formData.get("firstName") || "").toString().trim();
   const lastName = (formData.get("lastName") || "").toString().trim();
@@ -171,6 +176,18 @@ async function createAccount(formData: FormData) {
 
       await sql`COMMIT`;
 
+      try {
+        await sendEmailVerificationChallenge({
+          userId,
+          email,
+        });
+      } catch (error) {
+        console.error("Failed to send vendor verification email", error);
+        redirect(
+          `/verify-email?email=${encodeURIComponent(email)}&error=email_delivery_failed`,
+        );
+      }
+
       const stripe = getStripeClient();
       const priceId = getStripePriceIdForTier(vendorTier);
       const appBaseUrl = getAppBaseUrl();
@@ -192,8 +209,6 @@ async function createAccount(formData: FormData) {
         throw new Error("stripe_checkout_url_missing");
       }
 
-      await sendVendorWelcomeEmail({ to: email, vendorName: displayName });
-      await createSession(userId);
       redirect(checkoutSession.url);
     } else {
       const roleResult = await sql`
@@ -222,9 +237,20 @@ async function createAccount(formData: FormData) {
       `;
 
       await sql`COMMIT`;
-      await sendCustomerWelcomeEmail({ to: email, displayName });
-      await createSession(userId);
-      redirect("/customer/profile");
+
+      try {
+        await sendEmailVerificationChallenge({
+          userId,
+          email,
+        });
+      } catch (error) {
+        console.error("Failed to send customer verification email", error);
+        redirect(
+          `/verify-email?email=${encodeURIComponent(email)}&error=email_delivery_failed`,
+        );
+      }
+
+      redirect(`/verify-email?email=${encodeURIComponent(email)}&sent=1`);
     }
   } catch (error) {
     await sql`ROLLBACK`;
@@ -236,7 +262,12 @@ async function createAccount(formData: FormData) {
 export default async function SignupPage({
   searchParams,
 }: {
-  searchParams?: { type?: string };
+  searchParams?: {
+    type?: string;
+    sent?: string;
+    error?: string;
+    email?: string;
+  };
 }) {
   const existingUser = await getCurrentUser();
 
@@ -266,6 +297,13 @@ export default async function SignupPage({
       ? searchParams.type
       : "customer";
 
+  const notice =
+    searchParams?.sent === "1"
+      ? "We sent a verification email. Check your inbox to finish creating your account."
+      : searchParams?.error === "email_delivery_failed"
+        ? "We created your account, but we could not send the verification email right now. Please try again from the verification page."
+        : null;
+
   return (
     <div className="min-h-screen bg-[var(--dr-neutral)] text-[var(--dr-text)]">
       <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4 py-10 sm:px-6 lg:px-8">
@@ -279,6 +317,15 @@ export default async function SignupPage({
           <p className="mt-1 text-sm text-[#616161]">
             Use one account whether you&apos;re a vendor or a customer.
           </p>
+          <p className="mt-2 text-xs text-[#616161]">
+            Sign-in now requires a verified email and a one-time code sent by
+            email.
+          </p>
+          {notice ? (
+            <p className="mt-3 rounded-2xl bg-[var(--dr-neutral)] px-3 py-2 text-xs text-[var(--dr-text)]">
+              {notice}
+            </p>
+          ) : null}
         </header>
 
         <main className="rounded-3xl border border-[#e0e0e0] bg-white p-5 shadow-sm">

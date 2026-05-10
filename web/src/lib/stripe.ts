@@ -1,5 +1,8 @@
 import Stripe from "stripe";
-import { VendorSubscriptionTier, normalizeVendorTier } from "@/lib/vendorSubscription";
+import {
+  VendorSubscriptionTier,
+  normalizeVendorTier,
+} from "@/lib/vendorSubscription";
 
 let stripeClient: Stripe | null = null;
 

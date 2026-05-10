@@ -2,15 +2,26 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { sql } from "@vercel/postgres";
 import { verifyPassword } from "@/lib/bcrypt";
-import { createSession, getCurrentUser } from "@/lib/auth";
+import {
+  getAccountLandingPath,
+  getCurrentUser,
+  setLoginMfaChallengeCookie,
+} from "@/lib/auth";
 import { LoginErrorNotice } from "@/components/LoginErrorNotice";
 import { PasswordPolicyDialog } from "@/components/PasswordPolicyDialog";
 import { sendAccountLockedEmail } from "@/lib/email";
+import {
+  ensureEmailAuthSchema,
+  sendEmailVerificationChallenge,
+  sendLoginMfaChallenge,
+} from "@/lib/emailAuth";
 
 export const dynamic = "force-dynamic";
 
 async function loginUser(formData: FormData) {
   "use server";
+
+  await ensureEmailAuthSchema();
 
   const email = (formData.get("email") || "").toString().trim().toLowerCase();
   const password = (formData.get("password") || "").toString();
@@ -20,7 +31,7 @@ async function loginUser(formData: FormData) {
   }
 
   const userResult = await sql`
-    SELECT id, password_hash, status, failed_login_attempts, locked_at, email
+    SELECT id, password_hash, status, failed_login_attempts, locked_at, email, email_verified_at
     FROM users
     WHERE email = ${email}
     LIMIT 1
@@ -34,6 +45,7 @@ async function loginUser(formData: FormData) {
         failed_login_attempts: number | null;
         locked_at: string | null;
         email: string;
+        email_verified_at: string | null;
       }
     | undefined;
 
@@ -76,19 +88,6 @@ async function loginUser(formData: FormData) {
     }
   }
 
-  const rolesResult = await sql`
-    SELECT r.name
-    FROM roles r
-    JOIN user_roles ur ON ur.role_id = r.id
-    WHERE ur.user_id = ${user.id}
-  `;
-
-  const roleNames = rolesResult.rows.map((row) =>
-    (row.name as string).toLowerCase()
-  );
-
-  const isVendor = roleNames.includes("vendor_admin");
-
   if ((user.failed_login_attempts ?? 0) > 0 || user.locked_at) {
     await sql`
       UPDATE users
@@ -97,36 +96,41 @@ async function loginUser(formData: FormData) {
     `;
   }
 
-  await createSession(user.id as string);
+  if (!user.email_verified_at) {
+    try {
+      await sendEmailVerificationChallenge({
+        userId: user.id,
+        email: user.email,
+      });
+    } catch (error) {
+      console.error("Failed to send verification email", error);
+      redirect(
+        `/verify-email?email=${encodeURIComponent(user.email)}&error=email_delivery_failed`,
+      );
+    }
 
-  if (isVendor) {
-    redirect("/vendor/profile");
-  } else {
-    redirect("/customer/profile");
+    redirect(`/verify-email?email=${encodeURIComponent(user.email)}&sent=1`);
   }
+
+  try {
+    const mfaChallenge = await sendLoginMfaChallenge({
+      userId: user.id,
+      email: user.email,
+    });
+
+    await setLoginMfaChallengeCookie(mfaChallenge.challengeId);
+  } catch (error) {
+    console.error("Failed to send login MFA email", error);
+    redirect("/login?error=email_delivery_failed");
+  }
+
+  redirect("/login/verify?sent=1");
 }
 
 export default async function LoginSelectorPage() {
   const existingUser = await getCurrentUser();
   if (existingUser) {
-    const rolesResult = await sql`
-      SELECT r.name
-      FROM roles r
-      JOIN user_roles ur ON ur.role_id = r.id
-      WHERE ur.user_id = ${existingUser.id}
-    `;
-
-    const roleNames = rolesResult.rows.map((row) =>
-      (row.name as string).toLowerCase()
-    );
-
-    const isVendor = roleNames.includes("vendor_admin");
-
-    if (isVendor) {
-      redirect("/vendor/profile");
-    } else {
-      redirect("/customer/profile");
-    }
+    redirect(await getAccountLandingPath(existingUser.id));
   }
 
   return (

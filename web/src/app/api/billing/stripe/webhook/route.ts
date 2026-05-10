@@ -9,7 +9,10 @@ export async function POST(request: Request) {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
   if (!signature || !webhookSecret) {
-    return NextResponse.json({ error: "webhook_not_configured" }, { status: 400 });
+    return NextResponse.json(
+      { error: "webhook_not_configured" },
+      { status: 400 },
+    );
   }
 
   const rawBody = await request.text();
@@ -147,6 +150,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ received: true });
   } catch (error) {
     console.error("Stripe webhook processing error", error);
-    return NextResponse.json({ error: "webhook_processing_failed" }, { status: 500 });
+    return NextResponse.json(
+      { error: "webhook_processing_failed" },
+      { status: 500 },
+    );
   }
 }
