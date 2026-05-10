@@ -1421,10 +1421,14 @@ export default async function VendorProfileManagePage({
     photoErrorCodeFromQuery === "invalid_photo"
       ? "Photo not uploaded. Please upload JPEG, PNG, WEBP, GIF, or SVG up to 5MB."
       : photoErrorCodeFromQuery === "photo_limit"
-        ? `Photo limit reached for ${tierDefinition.name} tier (max ${tierDefinition.photoUploadLimit} photos).`
+        ? vendorTier === "starter"
+          ? "Starter tier allows up to 5 photos. To upload more, upgrade to Growth tier."
+          : `Photo limit reached for ${tierDefinition.name} tier (max ${tierDefinition.photoUploadLimit} photos).`
         : photoErrorCodeFromQuery === "storage_unavailable"
           ? "Photo upload is not available yet in this deployment. Ask your admin to configure Vercel Blob."
           : null;
+  const starterPhotoLimitReached =
+    vendorTier === "starter" && photos.length >= tierDefinition.photoUploadLimit;
 
   const reelErrorCodeFromQuery = searchParams?.reelError;
   const reelErrorMessage =
@@ -1930,6 +1934,12 @@ export default async function VendorProfileManagePage({
                     JPEG, PNG, WEBP, GIF, SVG up to 5MB each.
                     {` ${tierDefinition.name} tier limit: ${tierDefinition.photoUploadLimit} photos total.`}
                   </p>
+                  {starterPhotoLimitReached && (
+                    <p className="text-[0.7rem] text-amber-600">
+                      Starter tier allows only 5 photos. Upgrade to Growth to
+                      upload more.
+                    </p>
+                  )}
                   {photoErrorMessage && (
                     <p className="text-[0.7rem] text-red-500">
                       {photoErrorMessage}
