@@ -18,8 +18,25 @@ import {
   getStripePriceIdForTier,
 } from "@/lib/stripe";
 
-async function getAllowedVendorSignupStatus() {
-  const preferredStatuses = ["trialing", "active", "past_due", "canceled"];
+async function getVendorSignupStatusCandidates() {
+  const candidates: string[] = [];
+  const fallbackStatuses = [
+    "trialing",
+    "active",
+    "pending",
+    "past_due",
+    "canceled",
+    "incomplete",
+    "unpaid",
+  ];
+
+  const addCandidate = (value: string | null | undefined) => {
+    const normalized = (value || "").toLowerCase().trim();
+
+    if (normalized && !candidates.includes(normalized)) {
+      candidates.push(normalized);
+    }
+  };
 
   try {
     const defaultResult = await sql<{ column_default: string | null }>`
@@ -34,10 +51,7 @@ async function getAllowedVendorSignupStatus() {
     const rawDefault = (defaultResult.rows[0]?.column_default || "").toLowerCase();
     const defaultLiteralMatch = rawDefault.match(/'([^']+)'/);
     const defaultStatus = defaultLiteralMatch?.[1]?.trim();
-
-    if (defaultStatus) {
-      return defaultStatus;
-    }
+    addCandidate(defaultStatus);
 
     const existingStatusResult = await sql<{ subscription_status: string | null }>`
       SELECT subscription_status
@@ -48,10 +62,7 @@ async function getAllowedVendorSignupStatus() {
 
     const existingStatus =
       existingStatusResult.rows[0]?.subscription_status?.toLowerCase().trim() || "";
-
-    if (existingStatus) {
-      return existingStatus;
-    }
+    addCandidate(existingStatus);
 
     const constraintResult = await sql<{ constraint_def: string | null }>`
       SELECT pg_get_constraintdef(c.oid) AS constraint_def
@@ -72,17 +83,7 @@ async function getAllowedVendorSignupStatus() {
       (match) => match[1]?.trim(),
     ).filter((value): value is string => Boolean(value));
 
-    if (quotedValues.length > 0) {
-      const preferredMatch = preferredStatuses.find((status) =>
-        quotedValues.includes(status),
-      );
-
-      if (preferredMatch) {
-        return preferredMatch;
-      }
-
-      return quotedValues[0];
-    }
+    quotedValues.forEach(addCandidate);
   } catch (error) {
     console.error(
       "Failed to inspect vendors subscription status constraint",
@@ -90,7 +91,9 @@ async function getAllowedVendorSignupStatus() {
     );
   }
 
-  return "active";
+  fallbackStatuses.forEach(addCandidate);
+
+  return candidates;
 }
 
 async function createAccount(formData: FormData) {
@@ -194,28 +197,53 @@ async function createAccount(formData: FormData) {
 
     if (accountType === "vendor") {
       const vendorId = randomUUID();
-      const vendorSubscriptionStatus = await getAllowedVendorSignupStatus();
+      const vendorSubscriptionStatuses = await getVendorSignupStatusCandidates();
+      let vendorInsertSucceeded = false;
 
-      await sql`
-        INSERT INTO vendors (
-          id,
-          owner_user_id,
-          name,
-          vendor_type,
-          subscription_tier,
-          subscription_status,
-          subscription_started_at
-        )
-        VALUES (
-          ${vendorId},
-          ${userId},
-          ${displayName},
-          'food_truck',
-          ${vendorTier},
-          ${vendorSubscriptionStatus},
-          now()
-        )
-      `;
+      for (const vendorSubscriptionStatus of vendorSubscriptionStatuses) {
+        try {
+          await sql`SAVEPOINT vendor_signup_status_insert`;
+
+          await sql`
+            INSERT INTO vendors (
+              id,
+              owner_user_id,
+              name,
+              vendor_type,
+              subscription_tier,
+              subscription_status,
+              subscription_started_at
+            )
+            VALUES (
+              ${vendorId},
+              ${userId},
+              ${displayName},
+              'food_truck',
+              ${vendorTier},
+              ${vendorSubscriptionStatus},
+              now()
+            )
+          `;
+
+          await sql`RELEASE SAVEPOINT vendor_signup_status_insert`;
+          vendorInsertSucceeded = true;
+          break;
+        } catch (error) {
+          await sql`ROLLBACK TO SAVEPOINT vendor_signup_status_insert`;
+
+          const errorMessage = error instanceof Error ? error.message : "";
+
+          if (errorMessage.includes("vendors_subscription_status_check")) {
+            continue;
+          }
+
+          throw error;
+        }
+      }
+
+      if (!vendorInsertSucceeded) {
+        throw new Error("Unable to find valid vendor subscription status");
+      }
 
       const roleResult = await sql`
         INSERT INTO roles (name)
