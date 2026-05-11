@@ -100,19 +100,16 @@ export function SiteHeader({
                 />
               )}
               {isAuthenticated && (
-                <form
-                  action="/api/auth/signout"
-                  method="post"
-                  className="px-1 pt-1"
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await fetch("/api/auth/signout", { method: "POST" });
+                    window.location.href = "/";
+                  }}
+                  className="mx-1 mt-1 flex w-full items-center rounded-xl px-3 py-2 text-left text-sm text-[#c62828] hover:bg-[#ffebee]"
                 >
-                  <button
-                    type="submit"
-                    onClick={() => setMenuOpen(false)}
-                    className="flex w-full items-center rounded-xl px-3 py-2 text-left text-sm text-[#c62828] hover:bg-[#ffebee]"
-                  >
-                    Sign out
-                  </button>
-                </form>
+                  Sign out
+                </button>
               )}
             </nav>
           </div>
