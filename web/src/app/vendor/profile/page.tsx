@@ -1391,25 +1391,18 @@ async function deleteVendorPhoto(formData: FormData) {
         : null;
 
   if (!photoId) {
-    redirect("/vendor/profile");
+    redirect("/vendor/profile?section=photos");
   }
 
-  const ownedResult = await sql`
-    SELECT vm.id
-    FROM vendor_media vm
-    JOIN vendors v ON v.id = vm.vendor_id
-    WHERE vm.id = ${photoId} AND v.owner_user_id = ${currentUser.id}
-    LIMIT 1
+  await sql`
+    DELETE FROM vendor_media
+    WHERE id = ${photoId}
+      AND vendor_id IN (
+        SELECT id FROM vendors WHERE owner_user_id = ${currentUser.id}
+      )
   `;
 
-  if (ownedResult.rowCount && ownedResult.rows[0]?.id) {
-    await sql`
-      DELETE FROM vendor_media
-      WHERE id = ${photoId}
-    `;
-  }
-
-  redirect("/vendor/profile");
+  redirect("/vendor/profile?section=photos");
 }
 
 export default async function VendorProfileManagePage({
@@ -2480,9 +2473,7 @@ export default async function VendorProfileManagePage({
                           />
                           <button
                             type="submit"
-                            formAction={deleteVendorPhoto}
-                            name="photoId"
-                            value={photo.id}
+                            form={`del-photo-${photo.id}`}
                             className="absolute right-1 top-1 rounded-full bg-black/70 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-white hover:bg-black/80"
                           >
                             Remove
@@ -2756,6 +2747,18 @@ export default async function VendorProfileManagePage({
             )}
           </section>
         </form>
+
+        {/* Hidden per-photo delete forms — outside the multipart main form so formAction works reliably */}
+        {photos.map((photo) => (
+          <form
+            key={photo.id}
+            id={`del-photo-${photo.id}`}
+            action={deleteVendorPhoto}
+            className="hidden"
+          >
+            <input type="hidden" name="photoId" value={photo.id} />
+          </form>
+        ))}
 
         <section className={`mt-6 rounded-3xl border border-[#e0e0e0] bg-white p-5 shadow-sm ${mobileHide("promos")}`}>
           <h2 className="text-sm font-semibold text-[var(--dr-text)]">
