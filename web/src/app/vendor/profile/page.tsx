@@ -1425,6 +1425,7 @@ export default async function VendorProfileManagePage({
     tier?: string;
     promoStatus?: string;
     redeemCode?: string;
+    section?: string;
   };
 }) {
   noStore();
@@ -1747,6 +1748,72 @@ export default async function VendorProfileManagePage({
 
   const openNow = isOpenNow(hoursByDay);
 
+  const activeSection = (searchParams?.section || "").trim();
+
+  const mobileSectionDefs = [
+    {
+      id: "links",
+      label: "Links & Socials",
+      description:
+        vendor?.website_url ||
+        vendor?.instagram_url ||
+        (vendor as any)?.facebook_url
+          ? "Social links configured"
+          : "Add website and social links",
+    },
+    {
+      id: "photos",
+      label: "Truck Photos",
+      description: `${photos.length} photo${photos.length !== 1 ? "s" : ""} uploaded`,
+    },
+    {
+      id: "menu",
+      label: "Menu",
+      description: canUseVendorFeature(vendorTier, "menu_upload")
+        ? `${menuItems.length} item${menuItems.length !== 1 ? "s" : ""}`
+        : "Growth tier required",
+    },
+    {
+      id: "hours",
+      label: "Hours of Operation",
+      description:
+        Object.keys(hoursByDay).length > 0
+          ? `${Object.keys(hoursByDay).length} day${Object.keys(hoursByDay).length !== 1 ? "s" : ""} set`
+          : "Not configured",
+    },
+    {
+      id: "reel",
+      label: "Grub Reel",
+      description: currentReel ? "Active reel running" : "No active reel",
+    },
+    {
+      id: "gps",
+      label: "GPS & Location",
+      description: vendor?.default_lat ? "Location set" : "Not set",
+    },
+    {
+      id: "promos",
+      label: "Promotions & Deals",
+      description: latestPromo?.is_active
+        ? "Active promo running"
+        : latestPromo
+          ? "Promo inactive"
+          : "No promo set up",
+    },
+    {
+      id: "security",
+      label: "Account Security",
+      description: "Change your password",
+    },
+  ];
+
+  const mobileHide = (sectionId: string): string => {
+    const isActive =
+      activeSection === sectionId ||
+      (sectionId === "basic" && !activeSection);
+    return isActive ? "" : "hidden lg:block";
+  };
+
   const imageErrorCode = searchParams?.imageError;
   const imageErrorMessage =
     imageErrorCode === "invalid_image"
@@ -1945,6 +2012,52 @@ export default async function VendorProfileManagePage({
           </div>
         </header>
 
+        {/* Mobile: section navigation (shown only on small/medium screens when no section is active) */}
+        {!activeSection && (
+          <div className="mb-6 lg:hidden">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[#757575]">
+              Profile sections
+            </p>
+            <nav className="overflow-hidden rounded-3xl border border-[#e0e0e0] bg-white shadow-sm">
+              {mobileSectionDefs.map((sec) => (
+                <a
+                  key={sec.id}
+                  href={`/vendor/profile?section=${sec.id}`}
+                  className="flex items-center justify-between border-b border-[#f0f0f0] px-5 py-4 last:border-b-0 hover:bg-(--dr-neutral)"
+                >
+                  <div>
+                    <p className="text-sm font-medium text-foreground">
+                      {sec.label}
+                    </p>
+                    <p className="mt-0.5 text-xs text-[#9e9e9e]">
+                      {sec.description}
+                    </p>
+                  </div>
+                  <span className="ml-3 text-xl leading-none text-[#bdbdbd]">
+                    ›
+                  </span>
+                </a>
+              ))}
+            </nav>
+          </div>
+        )}
+
+        {/* Mobile: back button and section title when a section is active */}
+        {activeSection && (
+          <div className="mb-5 lg:hidden">
+            <a
+              href="/vendor/profile"
+              className="inline-flex items-center gap-1 text-sm font-medium text-(--dr-primary) hover:text-(--dr-accent)"
+            >
+              ‹ Back to profile
+            </a>
+            <h2 className="mt-2 text-lg font-semibold text-foreground">
+              {mobileSectionDefs.find((s) => s.id === activeSection)?.label ??
+                "Profile"}
+            </h2>
+          </div>
+        )}
+
         <form
           action={updateVendorProfile}
           encType="multipart/form-data"
@@ -1952,7 +2065,7 @@ export default async function VendorProfileManagePage({
         >
           {/* Left: core profile fields */}
           <section className="space-y-4">
-            <div className="rounded-3xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
+            <div className={`rounded-3xl border border-[#e0e0e0] bg-white p-5 shadow-sm ${mobileHide("basic")}`}>
               <h2 className="text-sm font-semibold text-[var(--dr-text)]">
                 Basic info
               </h2>
@@ -2194,7 +2307,7 @@ export default async function VendorProfileManagePage({
               </div>
             </div>
 
-            <div className="rounded-3xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
+            <div className={`rounded-3xl border border-[#e0e0e0] bg-white p-5 shadow-sm ${mobileHide("links")}`}>
               <h2 className="text-sm font-semibold text-[var(--dr-text)]">
                 Links & socials
               </h2>
@@ -2290,7 +2403,7 @@ export default async function VendorProfileManagePage({
               </div>
             </div>
 
-            <div className="rounded-3xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
+            <div className={`rounded-3xl border border-[#e0e0e0] bg-white p-5 shadow-sm ${mobileHide("photos")}`}>
               <h2 className="text-sm font-semibold text-[var(--dr-text)]">
                 Truck photos
               </h2>
@@ -2370,19 +2483,21 @@ export default async function VendorProfileManagePage({
 
           {/* Right: menu, hours and location */}
           <section className="space-y-4">
-            <VendorManageMenuSection
-              items={menuItems}
-              addMenuItem={addMenuItem}
-              deleteMenuItem={deleteMenuItem}
-              canManageMenu={canUseVendorFeature(vendorTier, "menu_upload")}
-              tierName={tierDefinition.name}
-            />
+            <div className={mobileHide("menu")}>
+              <VendorManageMenuSection
+                items={menuItems}
+                addMenuItem={addMenuItem}
+                deleteMenuItem={deleteMenuItem}
+                canManageMenu={canUseVendorFeature(vendorTier, "menu_upload")}
+                tierName={tierDefinition.name}
+              />
+            </div>
             {menuErrorMessage && (
-              <div className="rounded-2xl border border-[#ffcdd2] bg-[#ffebee] px-3 py-2 text-[11px] text-[#c62828]">
+              <div className={`rounded-2xl border border-[#ffcdd2] bg-[#ffebee] px-3 py-2 text-[11px] text-[#c62828] ${mobileHide("menu")}`}>
                 {menuErrorMessage}
               </div>
             )}
-            <div className="rounded-3xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
+            <div className={`rounded-3xl border border-[#e0e0e0] bg-white p-5 shadow-sm ${mobileHide("hours")}`}>
               <h2 className="text-sm font-semibold text-[var(--dr-text)]">
                 Hours of operation
               </h2>
@@ -2469,7 +2584,7 @@ export default async function VendorProfileManagePage({
               </div>
             </div>
 
-            <div className="rounded-3xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
+            <div className={`rounded-3xl border border-[#e0e0e0] bg-white p-5 shadow-sm ${mobileHide("reel")}`}>
               <h2 className="text-sm font-semibold text-[var(--dr-text)]">
                 Grub Reel
               </h2>
@@ -2540,7 +2655,7 @@ export default async function VendorProfileManagePage({
               </div>
             </div>
 
-            <div className="rounded-3xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
+            <div className={`rounded-3xl border border-[#e0e0e0] bg-white p-5 shadow-sm ${mobileHide("gps")}`}>
               <h2 className="text-sm font-semibold text-[var(--dr-text)]">
                 GPS & map settings
               </h2>
@@ -2601,7 +2716,7 @@ export default async function VendorProfileManagePage({
               <UpdateGpsButton />
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="hidden flex-wrap items-center justify-between gap-3 lg:flex">
               <button
                 type="submit"
                 className="inline-flex items-center justify-center rounded-full bg-[var(--dr-primary)] px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.18em] text-white shadow-sm shadow-[var(--dr-primary)]/50 hover:bg-[var(--dr-accent)]"
@@ -2612,10 +2727,23 @@ export default async function VendorProfileManagePage({
                 Changes are now saved to your vendor record in the database.
               </p>
             </div>
+            {(!activeSection ||
+              ["links", "photos", "hours", "reel", "gps"].includes(
+                activeSection,
+              )) && (
+              <div className="lg:hidden">
+                <button
+                  type="submit"
+                  className="inline-flex items-center justify-center rounded-full bg-[var(--dr-primary)] px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.18em] text-white shadow-sm shadow-[var(--dr-primary)]/50 hover:bg-[var(--dr-accent)]"
+                >
+                  Save changes
+                </button>
+              </div>
+            )}
           </section>
         </form>
 
-        <section className="mt-6 rounded-3xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
+        <section className={`mt-6 rounded-3xl border border-[#e0e0e0] bg-white p-5 shadow-sm ${mobileHide("promos")}`}>
           <h2 className="text-sm font-semibold text-[var(--dr-text)]">
             Promotions & deals
           </h2>
@@ -2862,7 +2990,7 @@ export default async function VendorProfileManagePage({
 
         {false && photos.length > 0 && null}
 
-        <section className="mt-6 rounded-3xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
+        <section className={`mt-6 rounded-3xl border border-[#e0e0e0] bg-white p-5 shadow-sm ${mobileHide("security")}`}>
           <h2 className="text-sm font-semibold text-[var(--dr-text)]">
             Account security
           </h2>
