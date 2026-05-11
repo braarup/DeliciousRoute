@@ -103,7 +103,10 @@ export function PromoCodeScanner({ targetInputId }: PromoCodeScannerProps) {
             }
           }
 
-          if (error && !(error as { name?: string }).name?.includes("NotFound")) {
+          if (
+            error &&
+            !(error as { name?: string }).name?.includes("NotFound")
+          ) {
             // Keep scanning on transient decode errors.
           }
         },

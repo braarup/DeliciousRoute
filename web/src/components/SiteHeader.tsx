@@ -9,14 +9,12 @@ type SiteHeaderProps = {
   ctaHref: string;
   ctaLabel: string;
   isAuthenticated: boolean;
-  onSignOut: () => Promise<void>;
 };
 
 export function SiteHeader({
   ctaHref,
   ctaLabel,
   isAuthenticated,
-  onSignOut,
 }: SiteHeaderProps) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -102,7 +100,11 @@ export function SiteHeader({
                 />
               )}
               {isAuthenticated && (
-                <form action={onSignOut} className="px-1 pt-1">
+                <form
+                  action="/api/auth/signout"
+                  method="post"
+                  className="px-1 pt-1"
+                >
                   <button
                     type="submit"
                     onClick={() => setMenuOpen(false)}

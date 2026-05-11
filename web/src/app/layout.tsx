@@ -4,8 +4,6 @@ import "./globals.css";
 import { SiteHeader } from "@/components/SiteHeader";
 import { getCurrentUser } from "@/lib/auth";
 import { sql } from "@vercel/postgres";
-import { destroySession } from "@/lib/auth";
-import { redirect } from "next/navigation";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,13 +32,6 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const currentUser = await getCurrentUser();
-
-  async function signOut() {
-    "use server";
-
-    await destroySession();
-    redirect("/");
-  }
 
   let ctaHref = "/login";
   let ctaLabel = "Sign in";
@@ -71,7 +62,6 @@ export default async function RootLayout({
           ctaHref={ctaHref}
           ctaLabel={ctaLabel}
           isAuthenticated={!!currentUser?.id}
-          onSignOut={signOut}
         />
         {children}
       </body>
