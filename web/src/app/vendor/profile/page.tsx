@@ -1415,7 +1415,21 @@ async function deleteVendorPhoto(formData: FormData) {
 export default async function VendorProfileManagePage({
   searchParams,
 }: {
-  searchParams?: {
+  searchParams?: Promise<{
+    imageError?: string;
+    photoError?: string;
+    reelError?: string;
+    menuError?: string;
+    passwordStatus?: string;
+    tierStatus?: string;
+    tier?: string;
+    promoStatus?: string;
+    redeemCode?: string;
+    section?: string;
+  }>;
+}) {
+  noStore();
+  const sp = await (searchParams ?? Promise.resolve({})) as {
     imageError?: string;
     photoError?: string;
     reelError?: string;
@@ -1427,8 +1441,6 @@ export default async function VendorProfileManagePage({
     redeemCode?: string;
     section?: string;
   };
-}) {
-  noStore();
   const currentUser = await getCurrentUser();
 
   if (!currentUser?.id) {
@@ -1748,9 +1760,14 @@ export default async function VendorProfileManagePage({
 
   const openNow = isOpenNow(hoursByDay);
 
-  const activeSection = (searchParams?.section || "").trim();
+  const activeSection = (sp.section || "").trim();
 
   const mobileSectionDefs = [
+    {
+      id: "basic",
+      label: "Basic Info",
+      description: vendor?.name ? `${vendor.name}` : "Truck name, cuisine, description",
+    },
     {
       id: "links",
       label: "Links & Socials",
@@ -1808,13 +1825,11 @@ export default async function VendorProfileManagePage({
   ];
 
   const mobileHide = (sectionId: string): string => {
-    const isActive =
-      activeSection === sectionId ||
-      (sectionId === "basic" && !activeSection);
+    const isActive = activeSection === sectionId;
     return isActive ? "" : "hidden lg:block";
   };
 
-  const imageErrorCode = searchParams?.imageError;
+  const imageErrorCode = sp.imageError;
   const imageErrorMessage =
     imageErrorCode === "invalid_image"
       ? "Image not updated. Please upload JPEG, PNG, WEBP, GIF, or SVG up to 5MB."
@@ -1822,7 +1837,7 @@ export default async function VendorProfileManagePage({
         ? "Image upload is not available yet in this deployment. Ask your admin to configure Vercel Blob (VERCEL_BLOB_READ_WRITE_TOKEN)."
         : null;
 
-  const photoErrorCodeFromQuery = searchParams?.photoError;
+  const photoErrorCodeFromQuery = sp.photoError;
   const photoErrorMessage =
     photoErrorCodeFromQuery === "invalid_photo"
       ? "Photo not uploaded. Please upload JPEG, PNG, WEBP, GIF, or SVG up to 5MB."
@@ -1837,7 +1852,7 @@ export default async function VendorProfileManagePage({
     vendorTier === "starter" &&
     photos.length >= tierDefinition.photoUploadLimit;
 
-  const reelErrorCodeFromQuery = searchParams?.reelError;
+  const reelErrorCodeFromQuery = sp.reelError;
   const reelErrorMessage =
     reelErrorCodeFromQuery === "invalid_reel"
       ? "Video not uploaded. Please upload MP4, WebM, or QuickTime (MOV) up to 50MB."
@@ -1847,13 +1862,13 @@ export default async function VendorProfileManagePage({
           ? "Grub Reel upload is not available yet in this deployment. Ask your admin to configure Vercel Blob."
           : null;
 
-  const menuErrorCode = searchParams?.menuError;
+  const menuErrorCode = sp.menuError;
   const menuErrorMessage =
     menuErrorCode === "tier_restricted"
       ? `${tierDefinition.name} tier does not include menu uploads. Upgrade to Growth to unlock this feature.`
       : null;
 
-  const passwordStatus = searchParams?.passwordStatus;
+  const passwordStatus = sp.passwordStatus;
   const passwordMessage =
     passwordStatus === "success"
       ? "Your password has been updated."
@@ -1874,8 +1889,8 @@ export default async function VendorProfileManagePage({
                     : null;
   const passwordIsError = !!passwordStatus && passwordStatus !== "success";
 
-  const tierStatus = searchParams?.tierStatus;
-  const tierLabelFromQuery = getTierDefinition(searchParams?.tier).name;
+  const tierStatus = sp.tierStatus;
+  const tierLabelFromQuery = getTierDefinition(sp.tier).name;
   const tierMessage =
     tierStatus === "upgraded"
       ? `Tier updated: you are now on ${tierLabelFromQuery}.`
@@ -1888,7 +1903,7 @@ export default async function VendorProfileManagePage({
             : null;
   const tierIsError = tierStatus === "missing_vendor";
 
-  const promoStatus = searchParams?.promoStatus;
+  const promoStatus = sp.promoStatus;
   const promoMessage =
     promoStatus === "saved"
       ? "Promo saved successfully."
@@ -2727,10 +2742,9 @@ export default async function VendorProfileManagePage({
                 Changes are now saved to your vendor record in the database.
               </p>
             </div>
-            {(!activeSection ||
-              ["links", "photos", "hours", "reel", "gps"].includes(
-                activeSection,
-              )) && (
+            {["basic", "links", "photos", "hours", "reel", "gps"].includes(
+              activeSection,
+            ) && (
               <div className="lg:hidden">
                 <button
                   type="submit"
@@ -2953,7 +2967,7 @@ export default async function VendorProfileManagePage({
                 id="claimCode"
                 name="claimCode"
                 type="text"
-                defaultValue={searchParams?.redeemCode || ""}
+                defaultValue={sp.redeemCode || ""}
                 placeholder="Paste claim code"
                 className="w-full rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)] px-3 py-2 text-sm text-[var(--dr-text)] placeholder:text-[#bdbdbd] focus:border-[var(--dr-primary)] focus:outline-none"
               />
