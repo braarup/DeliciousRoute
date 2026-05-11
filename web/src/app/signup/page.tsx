@@ -241,7 +241,9 @@ async function createAccount(formData: FormData) {
           console.error("Vendor Stripe checkout setup failed", stripeError);
         }
       } else {
-        console.error("Vendor Stripe checkout skipped: missing Stripe env config");
+        console.error(
+          "Vendor Stripe checkout skipped: missing Stripe env config",
+        );
       }
 
       redirect(`/verify-email?email=${encodeURIComponent(email)}&sent=1`);

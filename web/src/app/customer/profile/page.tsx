@@ -3,7 +3,10 @@ import { sql } from "@vercel/postgres";
 import { redirect } from "next/navigation";
 import { randomUUID } from "crypto";
 import { destroySession, getCurrentUser } from "@/lib/auth";
-import { sendCustomerProfileChangeEmail, sendPasswordChangedEmail } from "@/lib/email";
+import {
+  sendCustomerProfileChangeEmail,
+  sendPasswordChangedEmail,
+} from "@/lib/email";
 import { hashPassword, verifyPassword } from "@/lib/bcrypt";
 import { validatePasswordComplexity } from "@/lib/passwordPolicy";
 import {
@@ -62,13 +65,18 @@ async function changeCustomerPassword(formData: FormData) {
     LIMIT 1
   `;
 
-  const userRow = userResult.rows[0] as { password_hash: string | null } | undefined;
+  const userRow = userResult.rows[0] as
+    | { password_hash: string | null }
+    | undefined;
 
   if (!userRow?.password_hash) {
     redirect(`${baseRedirect}?passwordStatus=no_password`);
   }
 
-  const ok = await verifyPassword(currentPassword, userRow.password_hash as string);
+  const ok = await verifyPassword(
+    currentPassword,
+    userRow.password_hash as string,
+  );
 
   if (!ok) {
     redirect(`${baseRedirect}?passwordStatus=invalid_current`);
@@ -81,7 +89,7 @@ async function changeCustomerPassword(formData: FormData) {
   const reused = await isPasswordReusedRecently(
     currentUser.id as string,
     newPassword,
-    3
+    3,
   );
 
   if (reused) {
@@ -115,9 +123,17 @@ async function updateCustomerProfile(formData: FormData) {
 
   const displayName = (formData.get("displayName") || "").toString().trim();
   const homeCity = (formData.get("homeCity") || "").toString().trim();
-  const favoriteCuisines = (formData.get("favoriteCuisines") || "").toString().trim();
-  const dietaryPreferences = (formData.get("dietaryPreferences") || "").toString().trim();
-  const notificationPreferences = (formData.get("notificationPreferences") || "").toString().trim();
+  const favoriteCuisines = (formData.get("favoriteCuisines") || "")
+    .toString()
+    .trim();
+  const dietaryPreferences = (formData.get("dietaryPreferences") || "")
+    .toString()
+    .trim();
+  const notificationPreferences = (
+    formData.get("notificationPreferences") || ""
+  )
+    .toString()
+    .trim();
 
   const currentUser = await getCurrentUser();
 
@@ -146,8 +162,7 @@ async function updateCustomerProfile(formData: FormData) {
 
   const existingId = existingRow?.id as string | undefined;
 
-  const normalize = (value: string | null | undefined) =>
-    (value || "").trim();
+  const normalize = (value: string | null | undefined) => (value || "").trim();
 
   const changes: string[] = [];
 
@@ -188,12 +203,14 @@ async function updateCustomerProfile(formData: FormData) {
       auditEvents.push({ event_type: "home_city_updated", description });
     }
     if (
-      normalize(favoriteCuisines) !==
-      normalize(existingRow?.favorite_cuisines)
+      normalize(favoriteCuisines) !== normalize(existingRow?.favorite_cuisines)
     ) {
       const description = "Updated favorite cuisines.";
       changes.push(description);
-      auditEvents.push({ event_type: "favorite_cuisines_updated", description });
+      auditEvents.push({
+        event_type: "favorite_cuisines_updated",
+        description,
+      });
     }
     if (
       normalize(dietaryPreferences) !==
@@ -201,7 +218,10 @@ async function updateCustomerProfile(formData: FormData) {
     ) {
       const description = "Updated dietary preferences.";
       changes.push(description);
-      auditEvents.push({ event_type: "dietary_preferences_updated", description });
+      auditEvents.push({
+        event_type: "dietary_preferences_updated",
+        description,
+      });
     }
     if (
       normalize(notificationPreferences) !==
@@ -209,7 +229,10 @@ async function updateCustomerProfile(formData: FormData) {
     ) {
       const description = "Updated notification preferences.";
       changes.push(description);
-      auditEvents.push({ event_type: "notification_preferences_updated", description });
+      auditEvents.push({
+        event_type: "notification_preferences_updated",
+        description,
+      });
     }
 
     await sql`
@@ -271,7 +294,7 @@ export default async function CustomerProfilePage({
   `;
 
   const roleNames = rolesResult.rows.map((row) =>
-    (row.name as string).toLowerCase()
+    (row.name as string).toLowerCase(),
   );
 
   const isVendor = roleNames.includes("vendor_admin");
@@ -300,22 +323,21 @@ export default async function CustomerProfilePage({
     passwordStatus === "success"
       ? "Your password has been updated."
       : passwordStatus === "missing_fields"
-      ? "Please fill in your current password, new password, and confirmation."
-      : passwordStatus === "weak_password"
-      ? "Please choose a stronger password with at least 8 characters, including at least one uppercase letter, one number, and one special character."
-      : passwordStatus === "mismatch"
-      ? "New password and confirmation do not match."
-      : passwordStatus === "invalid_current"
-      ? "Your current password was incorrect."
-      : passwordStatus === "no_password"
-      ? "We couldn't find an existing password for this account. Try resetting it from the login page instead."
-      : passwordStatus === "no_change"
-      ? "Your new password must be different from your current password."
-      : passwordStatus === "reused_recent"
-      ? "Your new password cannot be the same as any of your last 3 passwords."
-      : null;
-  const passwordIsError =
-    !!passwordStatus && passwordStatus !== "success";
+        ? "Please fill in your current password, new password, and confirmation."
+        : passwordStatus === "weak_password"
+          ? "Please choose a stronger password with at least 8 characters, including at least one uppercase letter, one number, and one special character."
+          : passwordStatus === "mismatch"
+            ? "New password and confirmation do not match."
+            : passwordStatus === "invalid_current"
+              ? "Your current password was incorrect."
+              : passwordStatus === "no_password"
+                ? "We couldn't find an existing password for this account. Try resetting it from the login page instead."
+                : passwordStatus === "no_change"
+                  ? "Your new password must be different from your current password."
+                  : passwordStatus === "reused_recent"
+                    ? "Your new password cannot be the same as any of your last 3 passwords."
+                    : null;
+  const passwordIsError = !!passwordStatus && passwordStatus !== "success";
 
   const favoritesResult = await sql`
     SELECT
@@ -361,6 +383,7 @@ export default async function CustomerProfilePage({
     JOIN vendor_promos vp ON vp.id = cpc.promo_id
     JOIN vendors v ON v.id = cpc.vendor_id
     WHERE cpc.customer_user_id = ${currentUser.id}
+      AND cpc.status = 'claimed'
     ORDER BY cpc.created_at DESC
     LIMIT 30
   `;
@@ -379,7 +402,8 @@ export default async function CustomerProfilePage({
               Your Delicious Route profile
             </h1>
             <p className="mt-1 text-sm text-[#616161]">
-              Save your preferences so we can surface the right trucks and reels for you.
+              Save your preferences so we can surface the right trucks and reels
+              for you.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -585,8 +609,8 @@ export default async function CustomerProfilePage({
             </div>
 
             <p className="text-[11px] text-[#9e9e9e]">
-              Must be at least 8 characters and include an uppercase letter,
-              a number, and a special character. You also can&apos;t reuse your
+              Must be at least 8 characters and include an uppercase letter, a
+              number, and a special character. You also can&apos;t reuse your
               last 3 passwords.
             </p>
             <p className="text-[11px] text-[#9e9e9e]">
@@ -603,7 +627,9 @@ export default async function CustomerProfilePage({
           </form>
         </section>
         <section className="mt-6 rounded-3xl border border-[#e0e0e0] bg-white p-5 shadow-sm">
-          <h2 className="text-sm font-semibold text-[var(--dr-text)]">Claimed promos</h2>
+          <h2 className="text-sm font-semibold text-[var(--dr-text)]">
+            Claimed promos
+          </h2>
           <p className="mt-1 text-xs text-[#757575]">
             These are your saved vendor deals. Show the QR code when redeeming.
           </p>
@@ -637,11 +663,15 @@ export default async function CustomerProfilePage({
                           Claim code: {claim.claim_code}
                         </p>
                         <p className="mt-1 text-xs text-[#616161]">
-                          Status: {claim.claim_status === "redeemed" ? "Redeemed" : "Claimed"}
+                          Status:{" "}
+                          {claim.claim_status === "redeemed"
+                            ? "Redeemed"
+                            : "Claimed"}
                         </p>
                         {claim.promo_expires_at && (
                           <p className="mt-1 text-xs text-[#9e9e9e]">
-                            Expires: {new Date(claim.promo_expires_at).toLocaleString()}
+                            Expires:{" "}
+                            {new Date(claim.promo_expires_at).toLocaleString()}
                           </p>
                         )}
                       </div>
@@ -661,7 +691,8 @@ export default async function CustomerProfilePage({
         <footer className="mt-6 border-t border-[#e0e0e0] pt-3 text-xs text-[#757575]">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p>
-              © 2026 Delicious Route. Built for modern street food culture and more.
+              © 2026 Delicious Route. Built for modern street food culture and
+              more.
             </p>
             <nav className="flex flex-wrap items-center gap-3 text-[11px]">
               <Link href="/terms" className="hover:text-[var(--dr-primary)]">
@@ -672,7 +703,10 @@ export default async function CustomerProfilePage({
                 Privacy Policy
               </Link>
               <span aria-hidden>•</span>
-              <Link href="/disclaimer" className="hover:text-[var(--dr-primary)]">
+              <Link
+                href="/disclaimer"
+                className="hover:text-[var(--dr-primary)]"
+              >
                 Disclaimer
               </Link>
               <span aria-hidden>•</span>

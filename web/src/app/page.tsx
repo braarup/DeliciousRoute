@@ -390,7 +390,8 @@ function VendorsTab({ search, onSearchChange, vendors }: VendorsTabProps) {
               </p>
               {vendor.activePromo && (
                 <p className="line-clamp-1 text-[11px] font-medium text-amber-200">
-                  Deal: {vendor.activePromo.discountLabel || vendor.activePromo.title}
+                  Deal:{" "}
+                  {vendor.activePromo.discountLabel || vendor.activePromo.title}
                   {typeof vendor.activePromo.remainingClaims === "number" && (
                     <span className="ml-1 text-[10px] text-amber-300/80">
                       ({vendor.activePromo.remainingClaims} left)

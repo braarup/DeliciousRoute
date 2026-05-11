@@ -369,8 +369,11 @@ export default async function VendorsListPage() {
 
                     {vendor.activePromo && (
                       <p className="mt-2 line-clamp-1 text-xs font-medium text-[var(--dr-primary)]">
-                        Deal: {vendor.activePromo.discountLabel || vendor.activePromo.title}
-                        {typeof vendor.activePromo.remainingClaims === "number" && (
+                        Deal:{" "}
+                        {vendor.activePromo.discountLabel ||
+                          vendor.activePromo.title}
+                        {typeof vendor.activePromo.remainingClaims ===
+                          "number" && (
                           <span className="ml-1 text-[10px] text-[#757575]">
                             ({vendor.activePromo.remainingClaims} left)
                           </span>

@@ -99,6 +99,7 @@ type DbPromoClaim = {
 const PROMO_CLAIM_STATUS_COPY: Record<string, string> = {
   success: "Promo claimed. Show your QR code at the truck to redeem.",
   already_claimed: "You already claimed this promo.",
+  already_used: "You already used this deal and cannot claim it again.",
   sold_out: "This promo has reached its claim limit.",
   inactive: "This promo is no longer active.",
   invalid: "Could not claim that promo. Please try again.",
@@ -197,16 +198,24 @@ async function claimVendorPromo(formData: FormData) {
     redirect(`${fallbackPath}?promoClaimStatus=inactive`);
   }
 
-  const existingClaimResult = await sql<{ id: string }>`
-    SELECT id
+  const existingClaimResult = await sql<{
+    id: string;
+    status: "claimed" | "redeemed";
+  }>`
+    SELECT id, status
     FROM customer_promo_claims
     WHERE promo_id = ${promo.id}
       AND customer_user_id = ${currentUserId}
     LIMIT 1
   `;
 
-  if (existingClaimResult.rowCount) {
-    redirect(`${fallbackPath}?promoClaimStatus=already_claimed`);
+  const existingClaim = existingClaimResult.rows[0];
+  if (existingClaim) {
+    redirect(
+      `${fallbackPath}?promoClaimStatus=${
+        existingClaim.status === "redeemed" ? "already_used" : "already_claimed"
+      }`,
+    );
   }
 
   if (promo.max_claims != null && promo.claimed_count >= promo.max_claims) {
@@ -274,7 +283,22 @@ async function claimVendorPromo(formData: FormData) {
   }
 
   if (!attempt.inserted_count) {
-    redirect(`${fallbackPath}?promoClaimStatus=already_claimed`);
+    const conflictClaimResult = await sql<{
+      status: "claimed" | "redeemed";
+    }>`
+      SELECT status
+      FROM customer_promo_claims
+      WHERE promo_id = ${promo.id}
+        AND customer_user_id = ${currentUserId}
+      LIMIT 1
+    `;
+
+    const conflictStatus = conflictClaimResult.rows[0]?.status;
+    redirect(
+      `${fallbackPath}?promoClaimStatus=${
+        conflictStatus === "redeemed" ? "already_used" : "already_claimed"
+      }`,
+    );
   }
 
   redirect(`${fallbackPath}?promoClaimStatus=success`);
@@ -491,9 +515,7 @@ export default async function PublicVendorPage({
     canCurrentUserClaimPromos = await isConsumerUser(currentUser.id);
   }
 
-  const promoQrValue = myPromoClaim
-    ? `DRPROMO:${myPromoClaim.claim_code}`
-    : "";
+  const promoQrValue = myPromoClaim ? `DRPROMO:${myPromoClaim.claim_code}` : "";
   const promoQrUrl = promoQrValue
     ? `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(
         promoQrValue,
@@ -964,7 +986,8 @@ export default async function PublicVendorPage({
                     )}
                     {activePromo.ends_at && (
                       <span className="inline-flex rounded-full border border-[#e0e0e0] bg-[#fafafa] px-2.5 py-1">
-                        Expires: {new Date(activePromo.ends_at).toLocaleString()}
+                        Expires:{" "}
+                        {new Date(activePromo.ends_at).toLocaleString()}
                       </span>
                     )}
                   </div>
@@ -980,7 +1003,10 @@ export default async function PublicVendorPage({
                             Claim code: {myPromoClaim.claim_code}
                           </p>
                           <p className="mt-1 text-xs text-[#616161]">
-                            Status: {myPromoClaim.status === "redeemed" ? "Redeemed" : "Claimed"}
+                            Status:{" "}
+                            {myPromoClaim.status === "redeemed"
+                              ? "Redeemed"
+                              : "Claimed"}
                           </p>
                         </div>
                         {promoQrUrl && (
@@ -1012,10 +1038,25 @@ export default async function PublicVendorPage({
                         This promo is fully claimed.
                       </p>
                     ) : (
-                      <form action={claimVendorPromo} className="flex flex-wrap items-center gap-2">
-                        <input type="hidden" name="promoId" value={activePromo.id} />
-                        <input type="hidden" name="vendorId" value={vendor.id} />
-                        <input type="hidden" name="returnSlug" value={slugStr} />
+                      <form
+                        action={claimVendorPromo}
+                        className="flex flex-wrap items-center gap-2"
+                      >
+                        <input
+                          type="hidden"
+                          name="promoId"
+                          value={activePromo.id}
+                        />
+                        <input
+                          type="hidden"
+                          name="vendorId"
+                          value={vendor.id}
+                        />
+                        <input
+                          type="hidden"
+                          name="returnSlug"
+                          value={slugStr}
+                        />
                         <button
                           type="submit"
                           className="inline-flex items-center justify-center rounded-full bg-[var(--dr-primary)] px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.22em] text-white hover:bg-[var(--dr-accent)]"

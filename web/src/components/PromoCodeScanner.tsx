@@ -21,14 +21,18 @@ declare global {
 export function PromoCodeScanner({ targetInputId }: PromoCodeScannerProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const detectorRef = useRef<{ detect: (source: CanvasImageSource) => Promise<BarcodeWithRawValue[]> } | null>(null);
+  const detectorRef = useRef<{
+    detect: (source: CanvasImageSource) => Promise<BarcodeWithRawValue[]>;
+  } | null>(null);
   const rafRef = useRef<number | null>(null);
 
   const [isScanning, setIsScanning] = useState(false);
   const [status, setStatus] = useState<string>("");
 
   const writeCodeToInput = (code: string) => {
-    const input = document.getElementById(targetInputId) as HTMLInputElement | null;
+    const input = document.getElementById(
+      targetInputId,
+    ) as HTMLInputElement | null;
     if (!input) return;
 
     input.value = code;
@@ -103,7 +107,8 @@ export function PromoCodeScanner({ targetInputId }: PromoCodeScannerProps) {
       typeof navigator !== "undefined" &&
       !!navigator.mediaDevices &&
       typeof navigator.mediaDevices.getUserMedia === "function";
-    const hasDetector = typeof window !== "undefined" && !!window.BarcodeDetector;
+    const hasDetector =
+      typeof window !== "undefined" && !!window.BarcodeDetector;
 
     if (!hasCamera || !hasDetector || !window.BarcodeDetector) {
       setStatus("Camera QR scanning is not supported on this browser.");
@@ -131,7 +136,9 @@ export function PromoCodeScanner({ targetInputId }: PromoCodeScannerProps) {
       setIsScanning(true);
       rafRef.current = requestAnimationFrame(scanLoop);
     } catch {
-      setStatus("Unable to access camera. You can still paste the claim code manually.");
+      setStatus(
+        "Unable to access camera. You can still paste the claim code manually.",
+      );
       stopScanner();
     }
   };

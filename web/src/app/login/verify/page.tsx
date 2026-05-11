@@ -15,9 +15,7 @@ async function verifyMfaCode(formData: FormData) {
   "use server";
 
   const code = (formData.get("code") || "").toString().trim();
-  const challengeFromForm = (formData.get("challenge") || "")
-    .toString()
-    .trim();
+  const challengeFromForm = (formData.get("challenge") || "").toString().trim();
   const challengeFromCookie = await getLoginMfaChallengeCookie();
   const challengeId = challengeFromCookie || challengeFromForm;
 

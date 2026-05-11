@@ -823,11 +823,18 @@ async function saveVendorPromo(formData: FormData) {
 
   const maxClaims = maxClaimsRaw ? Number(maxClaimsRaw) : null;
 
-  if (maxClaimsRaw && (!Number.isInteger(maxClaims) || Number(maxClaims) <= 0)) {
+  if (
+    maxClaimsRaw &&
+    (!Number.isInteger(maxClaims) || Number(maxClaims) <= 0)
+  ) {
     redirect("/vendor/profile?promoStatus=invalid_max_claims");
   }
 
-  if (startsAtIso && endsAtIso && new Date(endsAtIso) <= new Date(startsAtIso)) {
+  if (
+    startsAtIso &&
+    endsAtIso &&
+    new Date(endsAtIso) <= new Date(startsAtIso)
+  ) {
     redirect("/vendor/profile?promoStatus=invalid_window");
   }
 
@@ -967,11 +974,15 @@ async function redeemVendorPromoClaim(formData: FormData) {
   const claim = claimResult.rows[0];
 
   if (!claim) {
-    redirect(`/vendor/profile?promoStatus=invalid_code&redeemCode=${encodeURIComponent(claimCode)}`);
+    redirect(
+      `/vendor/profile?promoStatus=invalid_code&redeemCode=${encodeURIComponent(claimCode)}`,
+    );
   }
 
   if (claim.status === "redeemed") {
-    redirect(`/vendor/profile?promoStatus=already_redeemed&redeemCode=${encodeURIComponent(claimCode)}`);
+    redirect(
+      `/vendor/profile?promoStatus=already_redeemed&redeemCode=${encodeURIComponent(claimCode)}`,
+    );
   }
 
   await sql`
@@ -994,7 +1005,9 @@ async function redeemVendorPromoClaim(formData: FormData) {
     )
   `;
 
-  redirect(`/vendor/profile?promoStatus=redeemed&redeemCode=${encodeURIComponent(claimCode)}`);
+  redirect(
+    `/vendor/profile?promoStatus=redeemed&redeemCode=${encodeURIComponent(claimCode)}`,
+  );
 }
 
 async function changeVendorTier(formData: FormData) {
@@ -1816,7 +1829,7 @@ export default async function VendorProfileManagePage({
         : promoStatus === "redeemed"
           ? "Promo redeemed successfully. This customer cannot use it again."
           : promoStatus === "already_redeemed"
-            ? "This promo code has already been redeemed."
+            ? "This promo code was already redeemed and cannot be used again."
             : promoStatus === "invalid_code"
               ? "Promo code not found for your vendor account."
               : promoStatus === "missing_claim_code"
@@ -1831,7 +1844,23 @@ export default async function VendorProfileManagePage({
                         ? "No vendor account was found for this action."
                         : null;
   const promoIsError =
-    !!promoStatus && !["saved", "deactivated", "redeemed"].includes(promoStatus);
+    !!promoStatus &&
+    !["saved", "deactivated", "redeemed"].includes(promoStatus);
+
+  const scannerStatusMessage =
+    promoStatus === "redeemed"
+      ? "Code redeemed successfully."
+      : promoStatus === "already_redeemed"
+        ? "This customer code has already been redeemed."
+        : promoStatus === "invalid_code"
+          ? "That code was not found for your account."
+          : promoStatus === "missing_claim_code"
+            ? "Enter or scan a claim code to continue."
+            : null;
+  const scannerStatusIsError =
+    promoStatus === "already_redeemed" ||
+    promoStatus === "invalid_code" ||
+    promoStatus === "missing_claim_code";
 
   return (
     <div className="min-h-screen bg-[var(--dr-neutral)] text-[var(--dr-text)]">
@@ -2697,7 +2726,9 @@ export default async function VendorProfileManagePage({
                   type="datetime-local"
                   defaultValue={
                     latestPromo?.starts_at
-                      ? new Date(latestPromo.starts_at).toISOString().slice(0, 16)
+                      ? new Date(latestPromo.starts_at)
+                          .toISOString()
+                          .slice(0, 16)
                       : ""
                   }
                   className="w-full rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)] px-3 py-2 text-sm text-[var(--dr-text)] focus:border-[var(--dr-primary)] focus:outline-none"
@@ -2775,10 +2806,24 @@ export default async function VendorProfileManagePage({
               Use your camera to scan DR promo QR codes, or paste a claim code
               manually to redeem it once.
             </p>
+            {scannerStatusMessage && (
+              <div
+                className={`mt-2 rounded-xl border px-3 py-2 text-[11px] ${
+                  scannerStatusIsError
+                    ? "border-[#ffcdd2] bg-[#ffebee] text-[#c62828]"
+                    : "border-[#c8e6c9] bg-[#e8f5e9] text-[#2e7d32]"
+                }`}
+              >
+                {scannerStatusMessage}
+              </div>
+            )}
             <div className="mt-2">
               <PromoCodeScanner targetInputId="claimCode" />
             </div>
-            <form action={redeemVendorPromoClaim} className="mt-2 flex flex-col gap-2 sm:flex-row">
+            <form
+              action={redeemVendorPromoClaim}
+              className="mt-2 flex flex-col gap-2 sm:flex-row"
+            >
               <input
                 id="claimCode"
                 name="claimCode"
@@ -2804,7 +2849,9 @@ export default async function VendorProfileManagePage({
               <div className="mt-2 space-y-1 text-[11px] text-[#616161]">
                 {recentPromoClaims.map((claim) => (
                   <p key={claim.id}>
-                    <span className="font-semibold text-[var(--dr-text)]">{claim.claim_code.slice(0, 10)}...</span>
+                    <span className="font-semibold text-[var(--dr-text)]">
+                      {claim.claim_code.slice(0, 10)}...
+                    </span>
                     {" · "}
                     {claim.status}
                     {" · "}
