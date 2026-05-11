@@ -24,6 +24,7 @@ import {
 import { PasswordPolicyDialog } from "@/components/PasswordPolicyDialog";
 import { TierDowngradeButton } from "@/components/TierDowngradeButton";
 import { PromoCodeScanner } from "@/components/PromoCodeScanner";
+import { BlockingStatusModal } from "@/components/BlockingStatusModal";
 import {
   canUseVendorFeature,
   getPhotoUploadLimit,
@@ -2807,15 +2808,11 @@ export default async function VendorProfileManagePage({
               manually to redeem it once.
             </p>
             {scannerStatusMessage && (
-              <div
-                className={`mt-2 rounded-xl border px-3 py-2 text-[11px] ${
-                  scannerStatusIsError
-                    ? "border-[#ffcdd2] bg-[#ffebee] text-[#c62828]"
-                    : "border-[#c8e6c9] bg-[#e8f5e9] text-[#2e7d32]"
-                }`}
-              >
-                {scannerStatusMessage}
-              </div>
+              <BlockingStatusModal
+                title="Promo redemption result"
+                message={scannerStatusMessage}
+                isError={scannerStatusIsError}
+              />
             )}
             <div className="mt-2">
               <PromoCodeScanner targetInputId="claimCode" />
