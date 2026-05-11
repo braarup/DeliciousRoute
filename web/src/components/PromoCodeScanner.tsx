@@ -1,30 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { BrowserQRCodeReader } from "@zxing/browser";
 
 type PromoCodeScannerProps = {
   targetInputId: string;
 };
 
-type BarcodeWithRawValue = {
-  rawValue?: string;
-};
-
-declare global {
-  interface Window {
-    BarcodeDetector?: new (options?: { formats?: string[] }) => {
-      detect: (source: CanvasImageSource) => Promise<BarcodeWithRawValue[]>;
-    };
-  }
-}
-
 export function PromoCodeScanner({ targetInputId }: PromoCodeScannerProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const detectorRef = useRef<{
-    detect: (source: CanvasImageSource) => Promise<BarcodeWithRawValue[]>;
-  } | null>(null);
-  const rafRef = useRef<number | null>(null);
+  const readerRef = useRef<BrowserQRCodeReader | null>(null);
+  const controlsRef = useRef<{ stop: () => void } | null>(null);
 
   const [isScanning, setIsScanning] = useState(false);
   const [status, setStatus] = useState<string>("");
@@ -52,17 +38,8 @@ export function PromoCodeScanner({ targetInputId }: PromoCodeScannerProps) {
   };
 
   const stopScanner = () => {
-    if (rafRef.current != null) {
-      cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
-    }
-
-    if (streamRef.current) {
-      for (const track of streamRef.current.getTracks()) {
-        track.stop();
-      }
-      streamRef.current = null;
-    }
+    controlsRef.current?.stop();
+    controlsRef.current = null;
 
     if (videoRef.current) {
       videoRef.current.srcObject = null;
@@ -77,29 +54,6 @@ export function PromoCodeScanner({ targetInputId }: PromoCodeScannerProps) {
     };
   }, []);
 
-  const scanLoop = async () => {
-    if (!videoRef.current || !detectorRef.current) {
-      return;
-    }
-
-    try {
-      const barcodes = await detectorRef.current.detect(videoRef.current);
-      const rawValue = barcodes[0]?.rawValue || "";
-      const claimCode = normalizeClaimCode(rawValue);
-
-      if (claimCode) {
-        writeCodeToInput(claimCode);
-        setStatus(`Scanned: ${claimCode}`);
-        stopScanner();
-        return;
-      }
-    } catch {
-      // Keep scanning; camera frames can intermittently fail detection.
-    }
-
-    rafRef.current = requestAnimationFrame(scanLoop);
-  };
-
   const startScanner = async () => {
     if (isScanning) return;
 
@@ -107,34 +61,61 @@ export function PromoCodeScanner({ targetInputId }: PromoCodeScannerProps) {
       typeof navigator !== "undefined" &&
       !!navigator.mediaDevices &&
       typeof navigator.mediaDevices.getUserMedia === "function";
-    const hasDetector =
-      typeof window !== "undefined" && !!window.BarcodeDetector;
 
-    if (!hasCamera || !hasDetector || !window.BarcodeDetector) {
+    if (!hasCamera) {
       setStatus("Camera QR scanning is not supported on this browser.");
       return;
     }
 
-    detectorRef.current = new window.BarcodeDetector({ formats: ["qr_code"] });
+    if (!readerRef.current) {
+      readerRef.current = new BrowserQRCodeReader();
+    }
 
     setStatus("");
+    setIsScanning(true);
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: "environment" },
-        },
-      });
+      const videoElement = videoRef.current;
 
-      streamRef.current = stream;
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
+      if (!videoElement) {
+        setStatus("Unable to start the camera preview.");
+        stopScanner();
+        return;
       }
 
-      setIsScanning(true);
-      rafRef.current = requestAnimationFrame(scanLoop);
+      const controls = await readerRef.current.decodeFromConstraints(
+        {
+          audio: false,
+          video: {
+            facingMode: { ideal: "environment" },
+          },
+        },
+        videoElement,
+        (result, error, scanControls) => {
+          if (result) {
+            const claimCode = normalizeClaimCode(result.getText());
+            if (claimCode) {
+              writeCodeToInput(claimCode);
+              setStatus(`Scanned: ${claimCode}`);
+              scanControls.stop();
+              controlsRef.current = null;
+              setIsScanning(false);
+            }
+          }
+
+          if (error && !(error as { name?: string }).name?.includes("NotFound")) {
+            // Keep scanning on transient decode errors.
+          }
+        },
+      );
+
+      controlsRef.current = controls;
+
+      if (videoRef.current) {
+        await videoRef.current.play().catch(() => {
+          // Ignore play() rejections on iOS; decode can still proceed.
+        });
+      }
     } catch {
       setStatus(
         "Unable to access camera. You can still paste the claim code manually.",
@@ -144,7 +125,7 @@ export function PromoCodeScanner({ targetInputId }: PromoCodeScannerProps) {
   };
 
   return (
-    <div className="rounded-2xl border border-[#e0e0e0] bg-[var(--dr-neutral)] p-2">
+    <div className="rounded-2xl border border-[#e0e0e0] bg-(--dr-neutral) p-2">
       <div className="flex flex-wrap items-center gap-2">
         {!isScanning ? (
           <button
