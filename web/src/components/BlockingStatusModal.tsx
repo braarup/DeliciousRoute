@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 type BlockingStatusModalProps = {
   title: string;
@@ -15,6 +16,11 @@ export function BlockingStatusModal({
 }: BlockingStatusModalProps) {
   const [isOpen, setIsOpen] = useState(Boolean(message));
   const [canClose, setCanClose] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   useEffect(() => {
     setIsOpen(Boolean(message));
@@ -36,11 +42,11 @@ export function BlockingStatusModal({
     };
   }, [message]);
 
-  if (!message || !isOpen) {
+  if (!message || !isOpen || !isMounted) {
     return null;
   }
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-9999 flex items-start justify-center overflow-y-auto bg-black/55 px-4 pb-4 pt-[max(env(safe-area-inset-top),1rem)] sm:items-center sm:pt-4">
       <div className="w-full max-w-md rounded-2xl border border-[#e0e0e0] bg-white p-4 shadow-xl">
         <p
@@ -62,6 +68,7 @@ export function BlockingStatusModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
