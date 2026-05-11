@@ -4,6 +4,8 @@ import "./globals.css";
 import { SiteHeader } from "@/components/SiteHeader";
 import { getCurrentUser } from "@/lib/auth";
 import { sql } from "@vercel/postgres";
+import { destroySession } from "@/lib/auth";
+import { redirect } from "next/navigation";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,7 +16,6 @@ const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
-
 
 export const metadata: Metadata = {
   title: "Delicious Route – Food Trucks, Street Eats & More",
@@ -34,6 +35,13 @@ export default async function RootLayout({
 }>) {
   const currentUser = await getCurrentUser();
 
+  async function signOut() {
+    "use server";
+
+    await destroySession();
+    redirect("/");
+  }
+
   let ctaHref = "/login";
   let ctaLabel = "Sign in";
 
@@ -46,7 +54,7 @@ export default async function RootLayout({
     `;
 
     const roleNames = rolesResult.rows.map((row) =>
-      (row.name as string).toLowerCase()
+      (row.name as string).toLowerCase(),
     );
 
     const isVendor = roleNames.includes("vendor_admin");
@@ -57,9 +65,14 @@ export default async function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[var(--dr-neutral)] text-[var(--dr-text)] pt-16`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-(--dr-neutral) text-foreground pt-16`}
       >
-        <SiteHeader ctaHref={ctaHref} ctaLabel={ctaLabel} />
+        <SiteHeader
+          ctaHref={ctaHref}
+          ctaLabel={ctaLabel}
+          isAuthenticated={!!currentUser?.id}
+          onSignOut={signOut}
+        />
         {children}
       </body>
     </html>

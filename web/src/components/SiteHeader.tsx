@@ -8,9 +8,16 @@ import { usePathname } from "next/navigation";
 type SiteHeaderProps = {
   ctaHref: string;
   ctaLabel: string;
+  isAuthenticated: boolean;
+  onSignOut: () => Promise<void>;
 };
 
-export function SiteHeader({ ctaHref, ctaLabel }: SiteHeaderProps) {
+export function SiteHeader({
+  ctaHref,
+  ctaLabel,
+  isAuthenticated,
+  onSignOut,
+}: SiteHeaderProps) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -22,7 +29,7 @@ export function SiteHeader({ ctaHref, ctaLabel }: SiteHeaderProps) {
       <header className="fixed inset-x-0 top-0 z-30 flex items-center justify-between gap-6 border-b border-[#e0e0e0] bg-white/90 px-4 py-3 shadow-sm backdrop-blur md:px-6 lg:px-8">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-6">
           <Link href="/" className="flex items-center gap-2.5">
-            <div className="relative h-8 w-8 overflow-hidden rounded-full border border-[var(--dr-primary)] bg-white shadow-sm md:h-9 md:w-9">
+            <div className="relative h-8 w-8 overflow-hidden rounded-full border border-(--dr-primary) bg-white shadow-sm md:h-9 md:w-9">
               <Image
                 src="/icon_01.png"
                 alt="Delicious Route icon"
@@ -33,10 +40,12 @@ export function SiteHeader({ ctaHref, ctaLabel }: SiteHeaderProps) {
               />
             </div>
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--dr-primary)]">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-(--dr-primary)">
                 Delicious Route
               </p>
-              <p className="text-xs text-[#616161]">Real-time food trucks, street eats, and more</p>
+              <p className="text-xs text-[#616161]">
+                Real-time food trucks, street eats, and more
+              </p>
             </div>
           </Link>
 
@@ -44,7 +53,7 @@ export function SiteHeader({ ctaHref, ctaLabel }: SiteHeaderProps) {
             {showCta && (
               <Link
                 href={ctaHref}
-                className="rounded-full border border-[var(--dr-primary)] bg-[var(--dr-primary)]/5 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.15em] text-[var(--dr-primary)] shadow-sm hover:bg-[var(--dr-primary)]/10"
+                className="rounded-full border border-(--dr-primary) bg-(--dr-primary)/5 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.15em] text-(--dr-primary) shadow-sm hover:bg-(--dr-primary)/10"
               >
                 {ctaLabel}
               </Link>
@@ -55,13 +64,13 @@ export function SiteHeader({ ctaHref, ctaLabel }: SiteHeaderProps) {
           <button
             type="button"
             onClick={() => setMenuOpen(true)}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#e0e0e0] bg-white text-[var(--dr-text)] hover:bg-[var(--dr-neutral)] md:hidden"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#e0e0e0] bg-white text-foreground hover:bg-(--dr-neutral) md:hidden"
             aria-label="Open menu"
           >
             <span className="flex h-4 w-4 flex-col justify-between">
-              <span className="h-[2px] w-full rounded-full bg-current" />
-              <span className="h-[2px] w-full rounded-full bg-current" />
-              <span className="h-[2px] w-3/4 rounded-full bg-current" />
+              <span className="h-0.5 w-full rounded-full bg-current" />
+              <span className="h-0.5 w-full rounded-full bg-current" />
+              <span className="h-0.5 w-3/4 rounded-full bg-current" />
             </span>
           </button>
         </div>
@@ -72,13 +81,13 @@ export function SiteHeader({ ctaHref, ctaLabel }: SiteHeaderProps) {
         <div className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm md:hidden">
           <div className="absolute inset-y-0 right-0 w-72 max-w-full bg-white shadow-2xl shadow-black/30">
             <div className="flex items-center justify-between border-b border-[#e0e0e0] px-4 py-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--dr-primary)]">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-(--dr-primary)">
                 Menu
               </p>
               <button
                 type="button"
                 onClick={() => setMenuOpen(false)}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[var(--dr-neutral)] text-[var(--dr-text)] hover:bg-[#e0e0e0]"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-(--dr-neutral) text-foreground hover:bg-[#e0e0e0]"
                 aria-label="Close menu"
               >
                 <span className="h-4 w-4 rotate-45">+</span>
@@ -91,6 +100,17 @@ export function SiteHeader({ ctaHref, ctaLabel }: SiteHeaderProps) {
                   href={ctaHref}
                   onClick={() => setMenuOpen(false)}
                 />
+              )}
+              {isAuthenticated && (
+                <form action={onSignOut} className="px-1 pt-1">
+                  <button
+                    type="submit"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex w-full items-center rounded-xl px-3 py-2 text-left text-sm text-[#c62828] hover:bg-[#ffebee]"
+                  >
+                    Sign out
+                  </button>
+                </form>
               )}
             </nav>
           </div>
@@ -111,7 +131,7 @@ function MobileNavItem({ label, href, onClick }: MobileNavItemProps) {
     <a
       href={href}
       onClick={onClick}
-      className="rounded-xl px-3 py-2 text-sm text-[var(--dr-text)] hover:bg-[var(--dr-neutral)]"
+      className="rounded-xl px-3 py-2 text-sm text-foreground hover:bg-(--dr-neutral)"
     >
       {label}
     </a>
