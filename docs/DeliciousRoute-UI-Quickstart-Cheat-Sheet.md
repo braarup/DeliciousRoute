@@ -87,21 +87,28 @@ Use this as a fast onboarding guide to resume frontend/UI work in the Delicious 
 ### 5) Mobile Header + Signout
 
 - Verify menu open/close behavior and signout action on real devices.
+- Sign out uses `fetch("/api/auth/signout", { method: "POST" })` + `window.location.href = "/"`.
+- **Do not** replace with a `<form>` POST — the form gets unmounted when the
+  slide-over menu closes, cancelling the request before it fires.
 
 ## Vendor Profile UI Section Map
 
 Route: /vendor/profile
 
-1. Basic profile info
-2. Permits/licensing fields
-3. Social links
-4. GPS update + hours
-5. Profile/header/gallery media uploads
-6. Menu management
-7. Tier controls
-8. Promo authoring
-9. Promo redeem scanner + manual code entry
-10. Password/security section
+**Desktop:** all sections displayed simultaneously in a two-column grid.
+
+**Mobile/tablet:** section nav list — tap a row to open that section, "‹ Back" to return.
+Section IDs used in `?section=<id>` query param:
+
+1. `basic` — Basic profile info
+2. `links` — Links & socials
+3. `photos` — Truck photos / media
+4. `menu` — Menu management
+5. `hours` — Hours of operation
+6. `reel` — Grub Reel
+7. `gps` — GPS & map settings
+8. `promos` — Promotions & deals
+9. `security` — Account security / password
 
 ## Customer Profile UI Section Map
 
@@ -130,6 +137,30 @@ Route: /
 - Vendor scanner can start/stop and manual code fallback works.
 - Blocking modal appears for redemption status messages.
 - Login, MFA, reset, verification flows show useful error/success copy.
+- Vendor profile mobile section nav list renders; tapping each item opens the correct section.
+- "‹ Back to profile" link on each vendor profile section returns to the nav list.
+
+## Framework Gotchas (Next.js 16)
+
+### `searchParams` is a Promise — must be awaited
+
+In Next.js 16 App Router, `searchParams` in page components is a **Promise**.
+Reading a property on the unawaited Promise always returns `undefined`.
+
+```ts
+// Required pattern for any page using searchParams:
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<{ section?: string }>;
+}) {
+  const sp = await (searchParams ?? Promise.resolve({}));
+  const section = sp.section; // correct
+}
+```
+
+This affected the vendor profile mobile section nav: section links appeared to do nothing
+until the await was added.
 
 ## UI Change Log Practice (Recommended)
 
@@ -143,4 +174,4 @@ For each frontend release, record:
 
 ---
 
-Last updated: 2026-05-11
+Last updated: 2026-05-11 (session 2: sign out fix, vendor profile mobile section nav, Next.js 16 searchParams fix)

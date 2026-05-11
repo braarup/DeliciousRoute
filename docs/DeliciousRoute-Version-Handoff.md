@@ -5,7 +5,7 @@
 - Project: Delicious Route
 - Repository: braarup/DeliciousRoute
 - Branch at time of writing: feat/public-tier-content-enforcement
-- Snapshot commit at time of writing: fbddf9e
+- Snapshot commit at time of writing: 58c8f39
 - Date: 2026-05-11
 - Runtime stack: Next.js 16 (App Router), React 19, TypeScript, PostgreSQL, Vercel
 
@@ -175,15 +175,88 @@ docs/               # Project documentation (this file)
    - vercel --prod --yes
 3. Validate alias points to https://www.deliciousroute.com.
 
-## 7) Current Known Good Baseline
+## 7) Release History
 
-- Latest documented release commit in this doc context: fbddf9e
+### Session: 2026-05-11 (commits 6c4af03, 9cf61e3, 58c8f39)
+
+Branch: feat/public-tier-content-enforcement
+
+**Changes delivered:**
+
+1. **Mobile sign out fix** (`6c4af03`)
+   - Replaced `<form>` POST with a `fetch("/api/auth/signout", { method: "POST" })` call
+     followed by `window.location.href = "/"`.
+   - Root cause: `onClick={() => setMenuOpen(false)}` was unmounting the slide-over menu
+     (and the form inside it) before the POST request could fire.
+   - Also added explicit `response.cookies.delete("dr_session")` to the POST route handler
+     (`web/src/app/api/auth/signout/route.ts`) to guarantee the cookie is cleared even
+     when `destroySession()` alone is insufficient on the response object.
+
+2. **Vendor profile mobile section navigation** (`9cf61e3`)
+   - Mobile/tablet view of `/vendor/profile` now shows a section nav list instead of
+     the full scrollable page.
+   - Tapping a section opens only that section's card with a "‹ Back to profile" link.
+   - Desktop layout is completely unchanged (all sections always visible).
+   - Implementation: `?section=<id>` query param drives visibility; `mobileSectionDefs`
+     array defines the 9 sections; `mobileHide(sectionId)` returns `"hidden lg:block"`
+     when that section is not active.
+   - Section IDs: `basic`, `links`, `photos`, `menu`, `hours`, `reel`, `gps`, `promos`,
+     `security`.
+
+3. **Next.js 16 `searchParams` Promise fix** (`58c8f39`)
+   - Root cause of section nav doing nothing: Next.js 16 changed `searchParams` from a
+     plain object to a `Promise`. Reading `.section` on an unawaited Promise always
+     returns `undefined`.
+   - Fix: type changed to `Promise<{...}>`, awaited at top of component:
+     `const sp = await (searchParams ?? Promise.resolve({}))`.
+   - All 10 usages of `searchParams?.xxx` replaced with `sp.xxx`.
+   - **Applies to all App Router page components** — any page using `searchParams` must
+     await it on Next.js 16.
+
+### Session: 2026-05-11 (commit fbddf9e) — prior baseline
+
+Branch: feat/public-tier-content-enforcement
+
+- Mobile hamburger signout flow (earlier version)
+- iOS-compatible QR scanner (@zxing/browser)
+- Promo redemption modal visibility improvements
+- Verify image update in public runtime assets
+
+## 8) Current Known Good Baseline
+
+- Latest documented release commit: 58c8f39
 - Branch: feat/public-tier-content-enforcement
-- Includes:
-  - Mobile hamburger signout flow
-  - iOS-compatible QR scanner
-  - Promo redemption modal visibility improvements
-  - Verify image update in public runtime assets
+- Production URL: https://www.deliciousroute.com
+
+## 9) Architectural Notes — Important Gotchas
+
+### Next.js 16: `searchParams` is a Promise
+
+In Next.js 16 App Router, `searchParams` passed to page components is a **Promise**,
+not a plain object. You must `await` it before reading any property.
+
+```ts
+// WRONG (works in Next.js 14/15, silently broken in Next.js 16)
+export default async function Page({ searchParams }: { searchParams: { foo?: string } }) {
+  const value = searchParams?.foo; // undefined — searchParams is a Promise
+}
+
+// CORRECT
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<{ foo?: string }>;
+}) {
+  const sp = await (searchParams ?? Promise.resolve({}));
+  const value = sp.foo;
+}
+```
+
+### Mobile sign out: use fetch(), not a form
+
+Any sign-out button inside a React component that can be unmounted (e.g. a slide-over
+menu closed by an `onClick`) must use `fetch()` + `window.location.href` instead of
+a raw `<form>` POST. Closing the component that contains the form cancels the request.
 
 ## 8) Version History (Recent)
 

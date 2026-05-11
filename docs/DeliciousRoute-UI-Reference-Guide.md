@@ -63,6 +63,13 @@ flowchart TD
   - Mobile slide-over menu includes:
     - Profile/Sign in CTA
     - Sign out action (if authenticated)
+- Sign out implementation note:
+  - The sign out button uses `fetch("/api/auth/signout", { method: "POST" })` followed
+    by `window.location.href = "/"` — **not** a `<form>` POST.
+  - Reason: a form inside a slide-over menu can be unmounted (by closing the menu) before
+    the POST fires. The fetch approach fires the request before any navigation occurs.
+  - Route handler: `POST /api/auth/signout` calls `destroySession()` and also explicitly
+    calls `response.cookies.delete("dr_session")` on the redirect response object.
 
 ### Footer
 
@@ -304,16 +311,28 @@ flowchart TD
 ### Major UI sections
 
 1. Basic vendor identity/details
-2. Permits and compliance fields
-3. Social and website links
-4. GPS/location controls
-5. Operating hours controls
-6. Photo/media upload controls
-7. Menu management area
-8. Tier controls and downgrade action
-9. Promo creation/edit controls
-10. Promo redemption controls with QR scanner
-11. Security/password section
+2. Links & socials
+3. Truck photos / media
+4. Menu management
+5. Hours of operation
+6. Grub Reel
+7. GPS & map settings
+8. Promotions & deals
+9. Account security / password
+
+### Mobile section navigation
+
+On mobile and tablet (below the `lg` breakpoint), the page renders a **section nav list**
+instead of the full scrollable layout.
+
+- Each section appears as a tappable row with a label and description.
+- Tapping a row navigates to `?section=<id>` (e.g. `?section=menu`).
+- The selected section card is shown with a **"‹ Back to profile"** link at the top that
+  clears the `section` param and returns to the nav list.
+- Valid `section` IDs: `basic`, `links`, `photos`, `menu`, `hours`, `reel`, `gps`,
+  `promos`, `security`.
+- Desktop layout (`lg:` and above) is unaffected — all sections are always visible in the
+  two-column grid layout.
 
 ### Promo redemption UX
 
