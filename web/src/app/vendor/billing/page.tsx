@@ -177,6 +177,14 @@ export default async function VendorBillingPage({
 
       redirect(session.url);
     } catch (error: any) {
+      // Next.js redirect() throws a framework control-flow error; do not treat it as a checkout failure.
+      if (
+        typeof error?.digest === "string" &&
+        error.digest.startsWith("NEXT_REDIRECT")
+      ) {
+        throw error;
+      }
+
       const message =
         typeof error?.message === "string"
           ? encodeURIComponent(error.message.slice(0, 120))
