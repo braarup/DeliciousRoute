@@ -22,7 +22,6 @@ import {
   recordPasswordInHistory,
 } from "@/lib/passwordHistory";
 import { PasswordPolicyDialog } from "@/components/PasswordPolicyDialog";
-import { TierDowngradeButton } from "@/components/TierDowngradeButton";
 import { PromoCodeScanner } from "@/components/PromoCodeScanner";
 import { BlockingStatusModal } from "@/components/BlockingStatusModal";
 import {
@@ -1011,198 +1010,6 @@ async function redeemVendorPromoClaim(formData: FormData) {
   );
 }
 
-async function changeVendorTier(formData: FormData) {
-  "use server";
-
-  const currentUser = await getCurrentUser();
-
-  if (!currentUser?.id) {
-    redirect("/login");
-  }
-
-  const requestedTier = normalizeVendorTier(
-    (formData.get("tier") || "").toString().trim(),
-  );
-
-  const vendorResult = await sql`
-    SELECT id, name, subscription_tier
-    FROM vendors
-    WHERE owner_user_id = ${currentUser.id}
-    ORDER BY created_at DESC
-    LIMIT 1
-  `;
-
-  const vendorRow = vendorResult.rows[0] as
-    | {
-        id: string;
-        name: string | null;
-        subscription_tier: string | null;
-      }
-    | undefined;
-
-  if (!vendorRow?.id) {
-    redirect("/vendor/profile?tierStatus=missing_vendor");
-  }
-
-  const currentTier = normalizeVendorTier(vendorRow.subscription_tier);
-
-  if (currentTier === requestedTier) {
-    redirect(`/vendor/profile?tierStatus=no_change&tier=${requestedTier}`);
-  }
-
-  const newStatus = "active";
-  const changedAtIso = new Date().toISOString();
-  const endedAtIso = requestedTier === "starter" ? changedAtIso : null;
-  const renewalAtIso = requestedTier === "growth" ? changedAtIso : null;
-
-  // When downgrading to Starter, remove Growth-exclusive content
-  if (requestedTier === "starter") {
-    // Remove all Grub Reels (reel_media and reel_likes cascade via FK)
-    await sql`DELETE FROM reels WHERE vendor_id = ${vendorRow.id}`;
-
-    // Remove all menus and their items (menu_items cascade via FK)
-    await sql`DELETE FROM menus WHERE vendor_id = ${vendorRow.id}`;
-
-    // Remove photos beyond the Starter photo limit (keep the oldest 5)
-    await sql`
-      DELETE FROM vendor_media
-      WHERE vendor_id = ${vendorRow.id}
-        AND media_type = 'photo'
-        AND id NOT IN (
-          SELECT id FROM vendor_media
-          WHERE vendor_id = ${vendorRow.id}
-            AND media_type = 'photo'
-          ORDER BY sort_order NULLS LAST, created_at
-          LIMIT 5
-        )
-    `;
-  }
-
-  await sql`
-    UPDATE vendors
-    SET
-      subscription_tier = ${requestedTier},
-      subscription_status = ${newStatus},
-      subscription_started_at = COALESCE(subscription_started_at, ${changedAtIso}::timestamptz),
-      subscription_renewal_at = ${renewalAtIso}::timestamptz,
-      subscription_ended_at = ${endedAtIso}::timestamptz,
-      updated_at = now()
-    WHERE id = ${vendorRow.id}
-  `;
-
-  const billingTableResult = await sql`
-    SELECT to_regclass('public.vendor_subscriptions') AS table_name
-  `;
-
-  const billingTableExists = !!billingTableResult.rows[0]?.table_name;
-
-  if (billingTableExists) {
-    const subscriptionStatus =
-      requestedTier === "growth" ? "active" : "canceled";
-    const subscriptionId = randomUUID();
-
-    await sql`
-      INSERT INTO vendor_subscriptions (
-        id,
-        vendor_id,
-        provider,
-        tier,
-        status,
-        current_period_start,
-        current_period_end,
-        canceled_at,
-        updated_at
-      )
-      VALUES (
-        ${subscriptionId},
-        ${vendorRow.id},
-        'stripe',
-        ${requestedTier},
-        ${subscriptionStatus},
-        ${changedAtIso}::timestamptz,
-        NULL,
-        ${requestedTier === "starter" ? changedAtIso : null}::timestamptz,
-        now()
-      )
-      ON CONFLICT (vendor_id)
-      DO UPDATE SET
-        tier = EXCLUDED.tier,
-        status = EXCLUDED.status,
-        current_period_start = EXCLUDED.current_period_start,
-        canceled_at = EXCLUDED.canceled_at,
-        updated_at = now()
-    `;
-
-    const eventTypeForBilling =
-      requestedTier === "growth"
-        ? "subscription_upgraded"
-        : "subscription_downgraded";
-
-    const subscriptionRowResult = await sql`
-      SELECT id
-      FROM vendor_subscriptions
-      WHERE vendor_id = ${vendorRow.id}
-      LIMIT 1
-    `;
-
-    const vendorSubscriptionId = subscriptionRowResult.rows[0]?.id as
-      | string
-      | undefined;
-
-    if (vendorSubscriptionId) {
-      await sql`
-        INSERT INTO vendor_subscription_events (
-          id,
-          vendor_subscription_id,
-          vendor_id,
-          event_type,
-          payload,
-          created_at
-        )
-        VALUES (
-          ${randomUUID()},
-          ${vendorSubscriptionId},
-          ${vendorRow.id},
-          ${eventTypeForBilling},
-          ${JSON.stringify({
-            source: "self_serve_vendor_profile",
-            requestedTier,
-            changedAt: changedAtIso,
-          })}::jsonb,
-          now()
-        )
-      `;
-    }
-  }
-
-  const eventType =
-    requestedTier === "growth"
-      ? "subscription_upgraded"
-      : "subscription_downgraded";
-  const eventDescription =
-    requestedTier === "growth"
-      ? "Vendor upgraded to Growth tier."
-      : "Vendor downgraded to Starter tier.";
-
-  await sql`
-    INSERT INTO vendor_audit_events (id, vendor_id, user_id, event_type, description)
-    VALUES (${randomUUID()}, ${vendorRow.id}, ${currentUser.id}, ${eventType}, ${eventDescription})
-  `;
-
-  const to = (currentUser as any)?.email as string | undefined;
-
-  if (to) {
-    await sendVendorProfileChangeEmail({
-      to,
-      vendorName: vendorRow.name || null,
-      changes: [eventDescription],
-    });
-  }
-
-  const tierStatus = requestedTier === "growth" ? "upgraded" : "downgraded";
-  redirect(`/vendor/profile?tierStatus=${tierStatus}&tier=${requestedTier}`);
-}
-
 async function addMenuItem(formData: FormData) {
   "use server";
 
@@ -1965,24 +1772,12 @@ export default async function VendorProfileManagePage({
               )}
             </p>
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              {vendorTier === "starter" ? (
-                <form action={changeVendorTier}>
-                  <input type="hidden" name="tier" value="growth" />
-                  <button
-                    type="submit"
-                    className="rounded-full border border-[var(--dr-primary)] bg-[var(--dr-primary)] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-white hover:bg-[var(--dr-accent)]"
-                  >
-                    Upgrade to Growth
-                  </button>
-                </form>
-              ) : (
-                <TierDowngradeButton
-                  action={changeVendorTier}
-                  photoCount={photos.length}
-                  starterPhotoLimit={5}
-                  hasMenu={menuItems.length > 0}
-                />
-              )}
+              <Link
+                href="/vendor/billing"
+                className="rounded-full border border-[var(--dr-primary)] bg-[var(--dr-primary)] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-white hover:bg-[var(--dr-accent)]"
+              >
+                View plans & billing
+              </Link>
             </div>
             {tierMessage && (
               <p
@@ -2028,7 +1823,7 @@ export default async function VendorProfileManagePage({
             </p>
             <nav className="overflow-hidden rounded-3xl border border-[#e0e0e0] bg-white shadow-sm">
               {mobileSectionDefs.map((sec) => (
-                <a
+                <Link
                   key={sec.id}
                   href={`/vendor/profile?section=${sec.id}`}
                   className="flex items-center justify-between border-b border-[#f0f0f0] px-5 py-4 last:border-b-0 hover:bg-(--dr-neutral)"
@@ -2044,7 +1839,7 @@ export default async function VendorProfileManagePage({
                   <span className="ml-3 text-xl leading-none text-[#bdbdbd]">
                     ›
                   </span>
-                </a>
+                </Link>
               ))}
             </nav>
           </div>
@@ -2053,12 +1848,12 @@ export default async function VendorProfileManagePage({
         {/* Mobile: back button and section title when a section is active */}
         {activeSection && (
           <div className="mb-5 lg:hidden">
-            <a
+            <Link
               href="/vendor/profile"
               className="inline-flex items-center gap-1 text-sm font-medium text-(--dr-primary) hover:text-(--dr-accent)"
             >
               ‹ Back to profile
-            </a>
+            </Link>
             <h2 className="mt-2 text-lg font-semibold text-foreground">
               {mobileSectionDefs.find((s) => s.id === activeSection)?.label ??
                 "Profile"}
