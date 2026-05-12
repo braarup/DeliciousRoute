@@ -1229,7 +1229,7 @@ export default async function VendorProfileManagePage({
   }>;
 }) {
   noStore();
-  const sp = await (searchParams ?? Promise.resolve({})) as {
+  const sp = (await (searchParams ?? Promise.resolve({}))) as {
     imageError?: string;
     photoError?: string;
     reelError?: string;
@@ -1566,7 +1566,9 @@ export default async function VendorProfileManagePage({
     {
       id: "basic",
       label: "Basic Info",
-      description: vendor?.name ? `${vendor.name}` : "Truck name, cuisine, description",
+      description: vendor?.name
+        ? `${vendor.name}`
+        : "Truck name, cuisine, description",
     },
     {
       id: "links",
@@ -1868,7 +1870,9 @@ export default async function VendorProfileManagePage({
         >
           {/* Left: core profile fields */}
           <section className="space-y-4">
-            <div className={`rounded-3xl border border-[#e0e0e0] bg-white p-5 shadow-sm ${mobileHide("basic")}`}>
+            <div
+              className={`rounded-3xl border border-[#e0e0e0] bg-white p-5 shadow-sm ${mobileHide("basic")}`}
+            >
               <h2 className="text-sm font-semibold text-[var(--dr-text)]">
                 Basic info
               </h2>
@@ -2110,7 +2114,9 @@ export default async function VendorProfileManagePage({
               </div>
             </div>
 
-            <div className={`rounded-3xl border border-[#e0e0e0] bg-white p-5 shadow-sm ${mobileHide("links")}`}>
+            <div
+              className={`rounded-3xl border border-[#e0e0e0] bg-white p-5 shadow-sm ${mobileHide("links")}`}
+            >
               <h2 className="text-sm font-semibold text-[var(--dr-text)]">
                 Links & socials
               </h2>
@@ -2206,7 +2212,9 @@ export default async function VendorProfileManagePage({
               </div>
             </div>
 
-            <div className={`rounded-3xl border border-[#e0e0e0] bg-white p-5 shadow-sm ${mobileHide("photos")}`}>
+            <div
+              className={`rounded-3xl border border-[#e0e0e0] bg-white p-5 shadow-sm ${mobileHide("photos")}`}
+            >
               <h2 className="text-sm font-semibold text-[var(--dr-text)]">
                 Truck photos
               </h2>
@@ -2294,11 +2302,15 @@ export default async function VendorProfileManagePage({
               />
             </div>
             {menuErrorMessage && (
-              <div className={`rounded-2xl border border-[#ffcdd2] bg-[#ffebee] px-3 py-2 text-[11px] text-[#c62828] ${mobileHide("menu")}`}>
+              <div
+                className={`rounded-2xl border border-[#ffcdd2] bg-[#ffebee] px-3 py-2 text-[11px] text-[#c62828] ${mobileHide("menu")}`}
+              >
                 {menuErrorMessage}
               </div>
             )}
-            <div className={`rounded-3xl border border-[#e0e0e0] bg-white p-5 shadow-sm ${mobileHide("hours")}`}>
+            <div
+              className={`rounded-3xl border border-[#e0e0e0] bg-white p-5 shadow-sm ${mobileHide("hours")}`}
+            >
               <h2 className="text-sm font-semibold text-[var(--dr-text)]">
                 Hours of operation
               </h2>
@@ -2385,7 +2397,9 @@ export default async function VendorProfileManagePage({
               </div>
             </div>
 
-            <div className={`rounded-3xl border border-[#e0e0e0] bg-white p-5 shadow-sm ${mobileHide("reel")}`}>
+            <div
+              className={`rounded-3xl border border-[#e0e0e0] bg-white p-5 shadow-sm ${mobileHide("reel")}`}
+            >
               <h2 className="text-sm font-semibold text-[var(--dr-text)]">
                 Grub Reel
               </h2>
@@ -2456,7 +2470,9 @@ export default async function VendorProfileManagePage({
               </div>
             </div>
 
-            <div className={`rounded-3xl border border-[#e0e0e0] bg-white p-5 shadow-sm ${mobileHide("gps")}`}>
+            <div
+              className={`rounded-3xl border border-[#e0e0e0] bg-white p-5 shadow-sm ${mobileHide("gps")}`}
+            >
               <h2 className="text-sm font-semibold text-[var(--dr-text)]">
                 GPS & map settings
               </h2>
@@ -2555,7 +2571,9 @@ export default async function VendorProfileManagePage({
           </form>
         ))}
 
-        <section className={`mt-6 rounded-3xl border border-[#e0e0e0] bg-white p-5 shadow-sm ${mobileHide("promos")}`}>
+        <section
+          className={`mt-6 rounded-3xl border border-[#e0e0e0] bg-white p-5 shadow-sm ${mobileHide("promos")}`}
+        >
           <h2 className="text-sm font-semibold text-[var(--dr-text)]">
             Promotions & deals
           </h2>
@@ -2802,7 +2820,9 @@ export default async function VendorProfileManagePage({
 
         {false && photos.length > 0 && null}
 
-        <section className={`mt-6 rounded-3xl border border-[#e0e0e0] bg-white p-5 shadow-sm ${mobileHide("security")}`}>
+        <section
+          className={`mt-6 rounded-3xl border border-[#e0e0e0] bg-white p-5 shadow-sm ${mobileHide("security")}`}
+        >
           <h2 className="text-sm font-semibold text-[var(--dr-text)]">
             Account security
           </h2>

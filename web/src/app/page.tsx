@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { FavoriteButton } from "@/components/FavoriteButton";
 
-type TabKey = "grub" | "vendors" | "events";
+type TabKey = "grub" | "vendors" | "deals";
 
 type VendorsTabVendor = {
   id: string;
@@ -38,10 +38,10 @@ const ads = [
   },
   {
     id: 2,
-    title: "Host your next event with local trucks",
-    subtitle: "Curated lineups for festivals, offices, and private parties.",
-    cta: "Book Trucks",
-    href: "#events",
+    title: "Feature Deals from local trucks",
+    subtitle: "See limited-time promos before they expire or sell out.",
+    cta: "View Deals",
+    href: "#feature-deals",
   },
   {
     id: 3,
@@ -162,19 +162,16 @@ export default function Home() {
                   label="Grub Reels"
                   active={activeTab === "grub"}
                   onClick={() => setActiveTab("grub")}
-                  href="#grub-reels"
                 />
                 <TabButton
                   label="Vendors"
                   active={activeTab === "vendors"}
                   onClick={() => setActiveTab("vendors")}
-                  href="#vendors"
                 />
                 <TabButton
-                  label="Events"
-                  active={activeTab === "events"}
-                  onClick={() => setActiveTab("events")}
-                  href="#events"
+                  label="Feature Deals"
+                  active={activeTab === "deals"}
+                  onClick={() => setActiveTab("deals")}
                 />
               </nav>
 
@@ -187,7 +184,7 @@ export default function Home() {
                     vendors={filteredVendors}
                   />
                 )}
-                {activeTab === "events" && <EventsTab />}
+                {activeTab === "deals" && <FeatureDealsTab />}
               </div>
             </div>
           </section>
@@ -228,18 +225,18 @@ export default function Home() {
             </section>
 
             <section
-              id="events"
+              id="feature-deals"
               className="rounded-3xl border border-[#e0e0e0] bg-white px-5 py-4 text-sm text-[#424242]"
             >
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--dr-primary)]/90">
-                For organizers
+                Featured deals
               </p>
               <p className="mt-1 font-medium text-[var(--dr-text)]">
-                Planning a festival, office lunch, or block party?
+                Limited-time promos from trucks near you.
               </p>
               <p className="mt-1 text-xs text-[#616161]">
-                Use our Events tab to curate a lineup and share a live map so
-                guests always know where the flavor is.
+                Deals stay listed until they expire or all available claims are
+                claimed.
               </p>
             </section>
           </aside>
@@ -281,11 +278,10 @@ export default function Home() {
 type TabButtonProps = {
   label: string;
   active: boolean;
-  href: string;
   onClick: () => void;
 };
 
-function TabButton({ label, active, href, onClick }: TabButtonProps) {
+function TabButton({ label, active, onClick }: TabButtonProps) {
   return (
     <button
       type="button"
@@ -296,9 +292,7 @@ function TabButton({ label, active, href, onClick }: TabButtonProps) {
           : "text-slate-300 hover:bg-slate-800/80"
       }`}
     >
-      <span className="block text-[11px]">
-        <a href={href}>{label}</a>
-      </span>
+      <span className="block text-[11px]">{label}</span>
     </button>
   );
 }
@@ -555,30 +549,163 @@ function GrubReelsTab() {
   );
 }
 
-function EventsTab() {
+function FeatureDealsTab() {
+  const [deals, setDeals] = useState<
+    Array<{
+      promoId: string;
+      title: string;
+      discountLabel: string | null;
+      summary: string | null;
+      details: string;
+      terms: string | null;
+      startsAt: string | null;
+      endsAt: string | null;
+      maxClaims: number | null;
+      claimCount: number;
+      remainingClaims: number | null;
+      vendor: {
+        id: string;
+        slug: string;
+        name: string;
+        isVerifiedVendor: boolean;
+        city: string;
+        cuisine: string;
+        profileImagePath: string | null;
+      };
+    }>
+  >([]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadDeals() {
+      try {
+        const res = await fetch("/api/feature-deals");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled && Array.isArray(data.deals)) {
+          setDeals(data.deals);
+        }
+      } catch (err) {
+        console.error("Failed to load feature deals", err);
+      }
+    }
+
+    loadDeals();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const formatEndsAt = (value: string | null): string => {
+    if (!value) return "No expiration date";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "Limited time";
+    return `Ends ${date.toLocaleDateString()}`;
+  };
+
   return (
     <section
-      aria-label="Upcoming food truck events"
-      className="flex flex-col gap-3 text-sm text-slate-200"
+      id="feature-deals"
+      aria-label="Feature deals from vendors"
+      className="flex flex-col gap-3"
     >
       <div>
         <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-[var(--dr-primary)]">
-          Events
+          Feature Deals
         </h2>
         <p className="text-xs text-[#757575]">
-          Discover curated food truck rallies, night markets, and office
-          takeovers.
+          Every active vendor promo appears here until expiration or claim
+          limit is reached.
         </p>
       </div>
 
-      <div className="mt-1 rounded-2xl border border-[#e0e0e0] bg-white px-4 py-6 text-center shadow-sm">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--dr-primary)]">
-          Coming Soon
-        </p>
-        <p className="mt-2 text-xs text-[#616161]">
-          Event listings will be available soon. Check back for food truck
-          rallies, night markets, and local pop-ups.
-        </p>
+      <div className="mt-2 grid gap-3 sm:grid-cols-2">
+        {deals.length === 0 ? (
+          <p className="col-span-full text-xs text-[#757575]">
+            No active deals right now. Check back soon for new promos.
+          </p>
+        ) : (
+          deals.map((deal) => (
+            <article
+              key={deal.promoId}
+              className="flex flex-col gap-3 rounded-2xl border border-[#e0e0e0] bg-white p-3 text-xs text-[var(--dr-text)] shadow-sm"
+            >
+              <div className="flex items-start gap-3">
+                <div className="h-10 w-10 overflow-hidden rounded-full border border-[#e0e0e0] bg-[var(--dr-neutral)]">
+                  <img
+                    src={deal.vendor.profileImagePath || "/icon_01.png"}
+                    alt="Vendor profile"
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+                <div className="flex-1">
+                  <Link
+                    href={`/vendor/${deal.vendor.slug}`}
+                    className="group inline-flex items-center gap-1 text-sm font-semibold text-[var(--dr-text)] hover:text-[var(--dr-primary)]"
+                  >
+                    {deal.vendor.name}
+                    {deal.vendor.isVerifiedVendor && (
+                      <img
+                        src="/checkverify.png"
+                        alt="Verified Vendor"
+                        title="Verified Vendor"
+                        className="h-3.5 w-3.5"
+                      />
+                    )}
+                  </Link>
+                  <p className="text-[11px] text-[#757575]">
+                    {deal.vendor.cuisine}
+                    {deal.vendor.city && (
+                      <>
+                        <span className="mx-1">•</span>
+                        {deal.vendor.city}
+                      </>
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-[var(--dr-primary)]/20 bg-[var(--dr-primary)]/5 px-3 py-2">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--dr-primary)]">
+                  {deal.discountLabel || "Featured Promo"}
+                </p>
+                <h3 className="mt-1 text-sm font-semibold text-[var(--dr-text)]">
+                  {deal.title}
+                </h3>
+                {deal.summary && (
+                  <p className="mt-1 text-[11px] text-[#616161]">{deal.summary}</p>
+                )}
+              </div>
+
+              <p className="line-clamp-2 text-[11px] text-[#616161]">{deal.details}</p>
+
+              <div className="flex items-center justify-between text-[10px] text-[#757575]">
+                <span>{formatEndsAt(deal.endsAt)}</span>
+                <span>
+                  {deal.remainingClaims == null
+                    ? "Unlimited claims"
+                    : `${deal.remainingClaims} claims left`}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <Link
+                  href={`/vendor/${deal.vendor.slug}`}
+                  className="text-[11px] font-medium text-[var(--dr-primary)] hover:underline"
+                >
+                  View & claim
+                </Link>
+                {deal.terms && (
+                  <span className="line-clamp-1 max-w-[60%] text-right text-[10px] text-[#9e9e9e]">
+                    {deal.terms}
+                  </span>
+                )}
+              </div>
+            </article>
+          ))
+        )}
       </div>
     </section>
   );
