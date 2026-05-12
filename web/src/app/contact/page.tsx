@@ -1,8 +1,18 @@
 import Link from "next/link";
+import Script from "next/script";
+import { headers } from "next/headers";
 import { sendContactEmails } from "@/lib/email";
 
 async function handleContactSubmit(formData: FormData) {
   "use server";
+
+  const turnstileSecret = process.env.TURNSTILE_SECRET_KEY || "";
+
+  // Honeypot trap: bots often fill hidden fields that humans never see.
+  const company = (formData.get("company") || "").toString().trim();
+  if (company) {
+    return;
+  }
 
   const name = (formData.get("name") || "").toString().trim();
   const email = (formData.get("email") || "").toString().trim();
@@ -12,10 +22,74 @@ async function handleContactSubmit(formData: FormData) {
     return;
   }
 
+  if (message.length < 10 || message.length > 5000) {
+    return;
+  }
+
+  const urlCount = (message.match(/https?:\/\//gi) || []).length;
+  if (urlCount > 2) {
+    return;
+  }
+
+  const turnstileToken = (formData.get("cf-turnstile-response") || "")
+    .toString()
+    .trim();
+
+  if (!turnstileSecret || !turnstileToken) {
+    return;
+  }
+
+  const headerStore = await headers();
+  const remoteIp =
+    headerStore
+      .get("x-forwarded-for")
+      ?.split(",")
+      .map((value) => value.trim())
+      .filter(Boolean)[0] || "";
+
+  try {
+    const verifyBody = new URLSearchParams({
+      secret: turnstileSecret,
+      response: turnstileToken,
+    });
+
+    if (remoteIp) {
+      verifyBody.set("remoteip", remoteIp);
+    }
+
+    const verifyResponse = await fetch(
+      "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: verifyBody,
+        cache: "no-store",
+      },
+    );
+
+    if (!verifyResponse.ok) {
+      return;
+    }
+
+    const verifyJson = (await verifyResponse.json()) as {
+      success?: boolean;
+    };
+
+    if (!verifyJson.success) {
+      return;
+    }
+  } catch {
+    return;
+  }
+
   await sendContactEmails({ name, email, message });
 }
 
 export default function ContactPage() {
+  const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "";
+
   return (
     <div className="min-h-screen bg-[var(--dr-neutral)] text-[var(--dr-text)]">
       <div className="mx-auto max-w-2xl px-4 pb-12 pt-10 sm:px-6 lg:px-8">
@@ -38,6 +112,22 @@ export default function ContactPage() {
             aria-label="Contact form"
             action={handleContactSubmit}
           >
+            {turnstileSiteKey && (
+              <Script
+                src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+                strategy="afterInteractive"
+              />
+            )}
+
+            <input
+              type="text"
+              name="company"
+              tabIndex={-1}
+              autoComplete="off"
+              aria-hidden="true"
+              className="hidden"
+            />
+
             <div className="space-y-1">
               <label
                 htmlFor="name"
@@ -88,6 +178,14 @@ export default function ContactPage() {
                 placeholder="How can we help?"
               />
             </div>
+
+            {turnstileSiteKey ? (
+              <div className="cf-turnstile" data-sitekey={turnstileSiteKey} />
+            ) : (
+              <p className="text-[11px] text-[#9e9e9e]">
+                Anti-spam verification is currently unavailable.
+              </p>
+            )}
 
             <button
               type="submit"
