@@ -317,13 +317,20 @@ async function createAccount(formData: FormData) {
 export default async function SignupPage({
   searchParams,
 }: {
-  searchParams?: {
+  searchParams?: Promise<{
+    type?: string;
+    sent?: string;
+    error?: string;
+    email?: string;
+  }>;
+}) {
+  const sp = (await (searchParams ?? Promise.resolve({}))) as {
     type?: string;
     sent?: string;
     error?: string;
     email?: string;
   };
-}) {
+
   const existingUser = await getCurrentUser();
 
   if (existingUser) {
@@ -348,14 +355,14 @@ export default async function SignupPage({
   }
 
   const defaultType =
-    searchParams?.type === "vendor" || searchParams?.type === "customer"
-      ? searchParams.type
+    sp.type === "vendor" || sp.type === "customer"
+      ? sp.type
       : "customer";
 
   const notice =
-    searchParams?.sent === "1"
+    sp.sent === "1"
       ? "We sent a verification email. Check your inbox to finish creating your account."
-      : searchParams?.error === "email_delivery_failed"
+      : sp.error === "email_delivery_failed"
         ? "We created your account, but we could not send the verification email right now. Please try again from the verification page."
         : null;
 

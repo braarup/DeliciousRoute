@@ -153,15 +153,19 @@ async function loginUser(formData: FormData) {
 export default async function LoginSelectorPage({
   searchParams,
 }: {
-  searchParams?: { verified?: string };
+  searchParams?: Promise<{ verified?: string }>;
 }) {
   const existingUser = await getCurrentUser();
   if (existingUser) {
     redirect(await getAccountLandingPath(existingUser.id));
   }
 
+  const sp = (await (searchParams ?? Promise.resolve({}))) as {
+    verified?: string;
+  };
+
   const successMessage =
-    searchParams?.verified === "1"
+    sp.verified === "1"
       ? "Email verified successfully. You can now sign in."
       : null;
 
